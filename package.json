@@ -1,0 +1,37 @@
+{
+  "name": "scriptcat",
+  "version": "0.17.0-alpha",
+  "description": "脚本猫,一个可以执行用户脚本的浏览器扩展,万物皆可脚本化,让你的浏览器可以做更多的事情!",
+  "author": "CodFrm",
+  "license": "GPLv3",
+  "private": true,
+  "scripts": {
+    "build": "cross-env NODE_ENV=production rspack build",
+    "dev": "cross-env NODE_ENV=development rspack serve",
+    "format": "prettier --write .",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@eslint/compat": "^1.2.0",
+    "@eslint/js": "^9.12.0",
+    "@rspack/cli": "^1.0.14",
+    "@rspack/core": "^1.0.14",
+    "@rspack/plugin-react-refresh": "1.0.0",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "cross-env": "^7.0.3",
+    "eslint": "^9.12.0",
+    "eslint-plugin-react": "^7.37.1",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "globals": "^15.11.0",
+    "prettier": "^3.3.3",
+    "react-refresh": "^0.14.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.8.1"
+  }
+}
