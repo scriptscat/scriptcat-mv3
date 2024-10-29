@@ -1,45 +1,21 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "__MSG_scriptcat__",
   "version": "0.17.0.1001",
   "author": "CodFrm",
   "description": "__MSG_scriptcat_description__",
-  "options_ui": {
-    "page": "src/options.html",
-    "open_in_tab": true
+  "background": {
+    "service_worker": "src/service_worker.js"
   },
-  "default_locale": "zh_CN",
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "128": "assets/logo.png"
+    }
+  },
   "icons": {
     "128": "assets/logo.png"
   },
-  "browser_action": {
-    "default_popup": "src/popup.html"
-  },
-  "background": {
-    "page": "src/background.html"
-  },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["src/content.js"],
-      "run_at": "document_start",
-      "all_frames": true
-    }
-  ],
-  "permissions": [
-    "tabs",
-    "cookies",
-    "storage",
-    "downloads",
-    "webRequest",
-    "background",
-    "<all_urls>",
-    "contextMenus",
-    "notifications",
-    "clipboardWrite",
-    "webRequestBlocking"
-  ],
-  "sandbox": {
-    "pages": ["src/sandbox.html"]
-  }
+  "default_locale": "zh_CN",
+  "permissions": []
 }

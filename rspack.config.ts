@@ -15,6 +15,13 @@ const dist = `${__dirname}/dist`;
 const assets = `${src}/assets`;
 
 export default defineConfig({
+  ...(isDev
+    ? {
+        watch: true,
+        mode: "development",
+        devtool: "inline-source-map",
+      }
+    : {}),
   context: __dirname,
   entry: {
     service_worker: `${src}/service_worker.ts`,
@@ -35,7 +42,7 @@ export default defineConfig({
   module: {
     rules: [
       {
-        test: /\.svg$/,
+        test: /\.(svg|png)$/,
         type: "asset",
       },
       {
@@ -71,20 +78,23 @@ export default defineConfig({
           from: `${src}/manifest.json`,
           to: `${dist}/ext`,
           // 将manifest.json内版本号替换为package.json中版本号
-          transform(content) {
+          transform(content: Buffer) {
             const manifest = JSON.parse(content.toString());
-            manifest.name = "ScriptCat - Dev";
-            manifest.content_security_policy = "script-src 'self' https://cdn.crowdin.com; object-src 'self'";
+            if (isDev) {
+              manifest.name = "ScriptCat - Dev";
+              // manifest.content_security_policy = "script-src 'self' https://cdn.crowdin.com; object-src 'self'";
+            }
             return JSON.stringify(manifest);
           },
         },
         {
-          from: `${assets}/logo/logo${isDev ? "-beta" : ""}.png`,
+          from: `${assets}/logo${isDev ? "-beta" : ""}.png`,
           to: `${dist}/ext/assets/logo.png`,
         },
+        { from: `${assets}/logo`, to: `${dist}/ext/assets/logo` },
         {
           from: `${assets}/_locales`,
-          to: `${dist}/ext/src/_locales`,
+          to: `${dist}/ext/_locales`,
         },
       ],
     }),

@@ -7,7 +7,7 @@
   "private": true,
   "scripts": {
     "build": "cross-env NODE_ENV=production rspack build",
-    "dev": "cross-env NODE_ENV=development rspack serve",
+    "dev": "cross-env NODE_ENV=development rspack",
     "format": "prettier --write .",
     "lint": "eslint ."
   },
