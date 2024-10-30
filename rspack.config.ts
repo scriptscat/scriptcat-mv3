@@ -1,7 +1,6 @@
 import * as path from "path";
 import { defineConfig } from "@rspack/cli";
 import { rspack } from "@rspack/core";
-import * as RefreshPlugin from "@rspack/plugin-react-refresh";
 import { version } from "./package.json";
 
 const isDev = process.env.NODE_ENV === "development";
@@ -60,7 +59,6 @@ export default defineConfig({
                   react: {
                     runtime: "automatic",
                     development: isDev,
-                    refresh: isDev,
                   },
                 },
               },
@@ -106,7 +104,6 @@ export default defineConfig({
       minify: true,
       chunks: ["popup"],
     }),
-    isDev ? new RefreshPlugin() : null,
   ].filter(Boolean),
   optimization: {
     minimizer: [
