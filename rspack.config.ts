@@ -24,6 +24,7 @@ export default defineConfig({
   context: __dirname,
   entry: {
     service_worker: `${src}/service_worker.ts`,
+    sandbox: `${src}/sandbox.ts`,
     popup: `${src}/pages/popup/main.tsx`,
   },
   output: {
@@ -103,6 +104,13 @@ export default defineConfig({
       title: "Home - ScriptCat",
       minify: true,
       chunks: ["popup"],
+    }),
+    new rspack.HtmlRspackPlugin({
+      filename: `${dist}/ext/src/sandbox.html`,
+      template: `${src}/pages/sandbox.html`,
+      inject: "head",
+      minify: true,
+      chunks: ["sandbox"],
     }),
   ].filter(Boolean),
   optimization: {

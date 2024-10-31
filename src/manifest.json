@@ -17,5 +17,12 @@
     "128": "assets/logo.png"
   },
   "default_locale": "zh_CN",
-  "permissions": []
+  "permissions": [
+    "offscreen"
+  ],
+  "sandbox": {
+    "pages": [
+      "sandbox.html"
+    ]
+  }
 }
