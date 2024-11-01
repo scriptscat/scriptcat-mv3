@@ -22,7 +22,7 @@
   ],
   "sandbox": {
     "pages": [
-      "sandbox.html"
+      "src/sandbox.html"
     ]
   }
 }

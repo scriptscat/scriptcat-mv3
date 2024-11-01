@@ -24,6 +24,7 @@ export default defineConfig({
   context: __dirname,
   entry: {
     service_worker: `${src}/service_worker.ts`,
+    offscreen: `${src}/offscreen.ts`,
     sandbox: `${src}/sandbox.ts`,
     popup: `${src}/pages/popup/main.tsx`,
   },
@@ -104,6 +105,13 @@ export default defineConfig({
       title: "Home - ScriptCat",
       minify: true,
       chunks: ["popup"],
+    }),
+    new rspack.HtmlRspackPlugin({
+      filename: `${dist}/ext/src/offscreen.html`,
+      template: `${src}/pages/offscreen.html`,
+      inject: "head",
+      minify: true,
+      chunks: ["offscreen"],
     }),
     new rspack.HtmlRspackPlugin({
       filename: `${dist}/ext/src/sandbox.html`,

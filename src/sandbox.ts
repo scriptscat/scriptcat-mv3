@@ -1,3 +1,1 @@
-chrome.runtime.onMessage.addListener((data) => {
-  console.log(data);
-});
+eval('console.log("Hello from sandbox!");');
