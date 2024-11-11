@@ -20,13 +20,14 @@
       "@App/*": [
         "src/*"
       ],
-      "@Pkg/*": [
-        "pkg/*"
+      "@Packages/*": [
+        "packages/*"
       ]
     },
   },
   "include": [
-    "src"
+    "src",
+    "packages"
   ],
   "ts-node": {
     "compilerOptions": {

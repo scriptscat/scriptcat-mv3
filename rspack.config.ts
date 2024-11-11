@@ -37,7 +37,7 @@ export default defineConfig({
     extensions: ["...", ".ts", ".tsx", ".jsx"],
     alias: {
       "@App": path.resolve(__dirname, "src/"),
-      "@Pkg": path.resolve(__dirname, "pkg/"),
+      "@Packages": path.resolve(__dirname, "packages/"),
     },
   },
   module: {

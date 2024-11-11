@@ -1,6 +1,4 @@
-chrome.runtime.onConnect.addListener((port) => {
-  console.log("service worker connected", port);
-});
+import { ExtServer } from "@Packages/message/extension";
 
 async function setupOffscreenDocument() {
   // 创建运行后台脚本的沙盒环境
@@ -18,4 +16,11 @@ async function setupOffscreenDocument() {
   });
 }
 
-setupOffscreenDocument();
+async function main() {
+  // 初始化沙盒环境
+  await setupOffscreenDocument();
+  // 监听消息
+  new ExtServer();
+}
+
+main();
