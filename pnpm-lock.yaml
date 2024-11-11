@@ -11,6 +11,9 @@ importers:
       dayjs:
         specifier: ^1.11.13
         version: 1.11.13
+      eventemitter3:
+        specifier: ^5.0.1
+        version: 5.0.1
       i18next:
         specifier: ^23.16.4
         version: 23.16.4
