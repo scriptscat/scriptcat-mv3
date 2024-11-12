@@ -1,18 +1,18 @@
-import EventEmitter from 'eventemitter3';
-import { Connect } from '.';
+import EventEmitter from "eventemitter3";
+import { IConnect, IServer } from ".";
 
-export class ExtServer {
+export class ExtServer implements IServer {
   private EE: EventEmitter;
 
   constructor() {
     this.EE = new EventEmitter();
     chrome.runtime.onConnect.addListener((port) => {
-      this.EE.emit('connect', new ExtConnect(port));
+      this.EE.emit("connect", port.name, new ExtConnect(port));
     });
   }
 
-  onConnect(callback: (con: Connect) => void) {
-    this.EE.on('connect', callback);
+  onConnect(callback: (eventName: string, con: IConnect) => void) {
+    this.EE.on("connect", callback);
   }
 }
 
@@ -20,7 +20,7 @@ export function connect() {
   return new ExtConnect(chrome.runtime.connect());
 }
 
-export class ExtConnect implements Connect {
+export class ExtConnect implements IConnect {
   private EE: EventEmitter;
   private port: chrome.runtime.Port;
 
@@ -28,10 +28,10 @@ export class ExtConnect implements Connect {
     this.EE = new EventEmitter();
     this.port = port;
     port.onMessage.addListener((message) => {
-      this.EE.emit('message', message);
+      this.EE.emit("message", message);
     });
     port.onDisconnect.addListener(() => {
-      this.EE.emit('disconnect');
+      this.EE.emit("disconnect");
       this.EE.removeAllListeners();
     });
   }
@@ -41,11 +41,11 @@ export class ExtConnect implements Connect {
   }
 
   onMessage(callback: (message: unknown) => void) {
-    this.EE.on('message', callback);
+    this.EE.on("message", callback);
   }
 
   onDisconnect(callback: () => void) {
-    this.EE.on('disconnect', callback);
+    this.EE.on("disconnect", callback);
   }
 
   disconnect() {

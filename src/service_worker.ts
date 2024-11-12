@@ -1,4 +1,5 @@
 import { ExtServer } from "@Packages/message/extension";
+import { Server } from "@Packages/message";
 
 async function setupOffscreenDocument() {
   // 创建运行后台脚本的沙盒环境
@@ -20,7 +21,11 @@ async function main() {
   // 初始化沙盒环境
   await setupOffscreenDocument();
   // 监听消息
-  new ExtServer();
+  const extServer = new ExtServer();
+  const server = new Server(extServer);
+  server.on("", (con) => {
+    
+  });
 }
 
 main();
