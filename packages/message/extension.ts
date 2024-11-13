@@ -11,7 +11,7 @@ export class ExtServer implements IServer {
     });
   }
 
-  onConnect(callback: (eventName: string, con: IConnect) => void) {
+  onConnect(callback: (con: IConnect) => void) {
     this.EE.on("connect", callback);
   }
 }

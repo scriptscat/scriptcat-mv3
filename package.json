@@ -7,6 +7,8 @@
   "private": true,
   "scripts": {
     "preinstall": "npx -y only-allow pnpm",
+    "test": "vitest",
+    "coverage": "vitest run --coverage",
     "build": "cross-env NODE_ENV=production rspack build",
     "dev": "cross-env NODE_ENV=development rspack",
     "format": "prettier --write .",
@@ -35,9 +37,11 @@
     "eslint-plugin-react": "^7.37.1",
     "eslint-plugin-react-hooks": "^5.0.0",
     "globals": "^15.11.0",
+    "jsdom": "^25.0.1",
     "prettier": "^3.3.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3",
-    "typescript-eslint": "^8.8.1"
+    "typescript-eslint": "^8.8.1",
+    "vitest": "^2.1.4"
   }
 }

@@ -2,7 +2,7 @@ import EventEmitter from "eventemitter3";
 import { v4 as uuidv4 } from "uuid";
 
 export interface IServer {
-  onConnect: (callback: (eventName: string, con: IConnect) => void) => void;
+  onConnect: (callback: (con: IConnect) => void) => void;
 }
 
 export interface IConnect {
@@ -18,8 +18,8 @@ export class Server {
 
   constructor(private connect: IServer) {
     this.EE = new EventEmitter();
-    this.connect.onConnect((eventName, con) => {
-      this.EE.emit(eventName, con);
+    this.connect.onConnect((con) => {
+      this.EE.emit("connection", con);
     });
   }
 
@@ -31,20 +31,21 @@ export class Server {
 export class Connect {
   private EE: EventEmitter;
 
+  private con: IConnect;
+
   constructor(
     private id: string | IConnect,
-    private con: IConnect
+    con?: IConnect
   ) {
     this.EE = new EventEmitter();
     if (arguments.length === 1) {
       this.con = id as IConnect;
       this.con.onMessage((message) => {
-        const data = message as { eventName: string; data: unknown[]; messageId: string };
-        data.data.push(this.callbackFunc(data.messageId));
-        this.EE.emit(data.eventName, ...data.data);
+        this.messageHandler(message);
       });
     } else {
       // 子连接
+      this.con = con!;
       this.con.onMessage((message) => {
         const data = message as { eventName: string; data: unknown; id: string };
         if (data.eventName === "subcon") {
@@ -60,13 +61,13 @@ export class Connect {
   }
 
   private callbackFunc(msgId: string): (...data: unknown[]) => void {
-    return function (...data: unknown[]) {
+    return (...data: unknown[]) => {
       this.con.postMessage({ eventName: "callback", data, messageId: msgId });
     };
   }
 
   private messageHandler(data: unknown) {
-    const subData = data.data as { eventName: string; data: unknown[]; messageId: string };
+    const subData = data as { eventName: string; data: unknown[]; messageId: string };
     subData.data.push(this.callbackFunc(subData.messageId));
     this.EE.emit(subData.eventName, ...subData.data);
   }
