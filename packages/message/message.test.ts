@@ -1,42 +1,65 @@
 // @vitest-environment jsdom
-import { expect, test, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Server, Connect } from ".";
 import { connect, WindowServer } from "./window";
 
-test("server", async () => {
-  const myFunc = vi.fn();
-  const server = new Server(new WindowServer(global.window));
-  server.on("connection", (con) => {
-    myFunc();
-    con.onMessage((message) => {
-      myFunc(message);
+describe("server", () => {
+  it("hello", async () => {
+    const myFunc = vi.fn();
+    const server = new Server(new WindowServer(global.window));
+    server.on("connection", (con) => {
+      myFunc();
+      con.onMessage((message) => {
+        myFunc(message);
+      });
     });
+    const client = connect(window, window);
+    client.postMessage("hello");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(myFunc).toHaveBeenCalledTimes(2);
+    expect(myFunc).toHaveBeenCalledWith("hello");
   });
-  const client = connect(window, window);
-  client.postMessage("hello");
-  await new Promise((resolve) => setTimeout(resolve, 1));
-  expect(myFunc).toHaveBeenCalledTimes(2);
-  expect(myFunc).toHaveBeenCalledWith("hello");
 });
 
-test("connect", async () => {
-  const myFunc = vi.fn();
-  const server = new Server(new WindowServer(global.window));
-  server.on("connection", (con) => {
-    myFunc();
-    const wrapCon = new Connect(con);
-    wrapCon.on("hello", (message) => {
-      myFunc(message);
-      wrapCon.emit("world", "world");
+describe("connect", async () => {
+  it("hello", async () => {
+    const server = new Server(new WindowServer(global.window));
+    const myFunc = vi.fn();
+    server.on("connection", (con) => {
+      myFunc();
+      const wrapCon = new Connect(con);
+      wrapCon.on("hello", (message) => {
+        myFunc(message);
+        wrapCon.emit("world", "world");
+      });
     });
+    const client = new Connect(connect(window, window));
+    client.on("world", (message) => {
+      myFunc(message);
+    });
+    client.emit("hello", "hello");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(myFunc).toHaveBeenCalledTimes(3);
+    expect(myFunc).toHaveBeenCalledWith("hello");
+    expect(myFunc).toHaveBeenCalledWith("world");
   });
-  const client = new Connect(connect(window, window));
-  client.on("world", (message) => {
-    myFunc(message);
+  it("response", async () => {
+    const server = new Server(new WindowServer(global.window));
+    const myFunc = vi.fn();
+    server.on("connection", (con) => {
+      const wrapCon = new Connect(con);
+      wrapCon.on("ping", (message, response) => {
+        myFunc(message);
+        response("pong");
+      });
+    });
+    const client = new Connect(connect(window, window));
+    client.emit("ping", "ping", (message: string) => {
+      myFunc(message);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(myFunc).toHaveBeenCalledTimes(2);
+    expect(myFunc).toHaveBeenCalledWith("ping");
+    expect(myFunc).toHaveBeenCalledWith("pong");
   });
-  client.emit("hello", "hello");
-  await new Promise((resolve) => setTimeout(resolve, 1));
-  expect(myFunc).toHaveBeenCalledTimes(3);
-  expect(myFunc).toHaveBeenCalledWith("hello");
-  expect(myFunc).toHaveBeenCalledWith("world");
 });

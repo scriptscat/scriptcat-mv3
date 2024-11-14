@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import EventEmitter from "eventemitter3";
 import { v4 as uuidv4 } from "uuid";
 
@@ -23,6 +24,7 @@ export class Server {
     });
   }
 
+  on(eventName: "connection", callback: (con: IConnect) => void): void;
   on(eventName: string, callback: (con: IConnect) => void) {
     this.EE.on(eventName, callback);
   }
@@ -31,29 +33,11 @@ export class Server {
 export class Connect {
   private EE: EventEmitter;
 
-  private con: IConnect;
-
-  constructor(
-    private id: string | IConnect,
-    con?: IConnect
-  ) {
+  constructor(private con: IConnect) {
     this.EE = new EventEmitter();
-    if (arguments.length === 1) {
-      this.con = id as IConnect;
-      this.con.onMessage((message) => {
-        this.messageHandler(message);
-      });
-    } else {
-      // 子连接
-      this.con = con!;
-      this.con.onMessage((message) => {
-        const data = message as { eventName: string; data: unknown; id: string };
-        if (data.eventName === "subcon") {
-          if (data.id !== this.id) return;
-          this.messageHandler(data.data);
-        }
-      });
-    }
+    this.con.onMessage((message) => {
+      this.messageHandler(message);
+    });
     this.con.onDisconnect(() => {
       this.EE.emit("disconnect");
       this.EE.removeAllListeners();
@@ -67,12 +51,16 @@ export class Connect {
   }
 
   private messageHandler(data: unknown) {
-    const subData = data as { eventName: string; data: unknown[]; messageId: string };
+    const subData = data as { eventName: string; data: unknown[]; messageId: string; conType: string; id: string };
+    if (subData.eventName === "callback") {
+      this.EE.emit(subData.eventName + subData.messageId, ...subData.data);
+      return;
+    }
     subData.data.push(this.callbackFunc(subData.messageId));
     this.EE.emit(subData.eventName, ...subData.data);
   }
 
-  on(eventName: string, callback: (message: unknown) => void) {
+  on(eventName: string, callback: (...args: any[]) => void) {
     this.EE.on(eventName, callback);
   }
 
@@ -80,17 +68,18 @@ export class Connect {
     this.con.postMessage({ eventName, data });
   }
 
-  emit(eventName: string, ...data: unknown[]) {
+  emit(eventName: string, ...data: any[]) {
     // 判断最后一个参数是否为函数
     const callback = data.pop();
+    const messageId = uuidv4();
     if (typeof callback !== "function") {
       data.push(callback);
+    } else {
+      this.EE.on("callback" + messageId, (...args) => {
+        callback(...args);
+      });
     }
-    this.con.postMessage({ eventName, data, messageId: uuidv4() });
-  }
-
-  // 子连接
-  connect() {
-    return new Connect(uuidv4(), this.con);
+    const sendData = { eventName, data, messageId };
+    this.con.postMessage(sendData);
   }
 }

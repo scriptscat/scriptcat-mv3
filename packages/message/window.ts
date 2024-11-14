@@ -20,8 +20,9 @@ export class WindowServer implements IServer {
 }
 
 export function connect(source: Window, target: Window) {
-  const con = new WindowConnect(uuidv4(), source, target);
-  con.postMessage({ type: "connect" });
+  const connectId = uuidv4();
+  target.postMessage({ type: "connect", connectId }, "*");
+  const con = new WindowConnect(connectId, source, target);
   return con;
 }
 
@@ -35,14 +36,14 @@ export class WindowConnect implements IConnect {
   ) {
     this.EE = new EventEmitter();
     this.source.addEventListener("message", (event) => {
-      if (event.data.id === id) {
-        this.EE.emit("message", event.data);
+      if (event.data.eventName === "message" && event.data.id === id) {
+        this.EE.emit("message", event.data.data);
       }
     });
   }
 
-  postMessage(message: unknown) {
-    this.target.postMessage(message, "*");
+  postMessage(data: unknown) {
+    this.target.postMessage({ eventName: "message", id: this.id, data }, "*");
   }
 
   onMessage(callback: (message: unknown) => void) {
