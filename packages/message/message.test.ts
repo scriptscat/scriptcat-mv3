@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
 import { Server, Connect } from ".";
-import { connect, WindowServer } from "./window";
+import { windowConnect, WindowServer } from "./window";
 
 describe("server", () => {
   it("hello", async () => {
@@ -13,7 +13,7 @@ describe("server", () => {
         myFunc(message);
       });
     });
-    const client = connect(window, window);
+    const client = windowConnect(window, window);
     client.postMessage("hello");
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(myFunc).toHaveBeenCalledTimes(2);
@@ -33,7 +33,7 @@ describe("connect", async () => {
         wrapCon.emit("world", "world");
       });
     });
-    const client = new Connect(connect(window, window));
+    const client = new Connect(windowConnect(window, window));
     client.on("world", (message) => {
       myFunc(message);
     });
@@ -53,7 +53,7 @@ describe("connect", async () => {
         response("pong");
       });
     });
-    const client = new Connect(connect(window, window));
+    const client = new Connect(windowConnect(window, window));
     client.emit("ping", "ping", (message: string) => {
       myFunc(message);
     });

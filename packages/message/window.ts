@@ -9,7 +9,7 @@ export class WindowServer implements IServer {
     this.EE = new EventEmitter();
     win.addEventListener("message", (event) => {
       if (event.data.type === "connect") {
-        this.EE.emit("connection", new WindowConnect(event.data.connectId, event.target as Window, win));
+        this.EE.emit("connection", new WindowConnect(event.data.connectId, win, event.source as Window));
       }
     });
   }
@@ -19,7 +19,7 @@ export class WindowServer implements IServer {
   }
 }
 
-export function connect(source: Window, target: Window) {
+export function windowConnect(source: Window, target: Window) {
   const connectId = uuidv4();
   target.postMessage({ type: "connect", connectId }, "*");
   const con = new WindowConnect(connectId, source, target);

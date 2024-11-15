@@ -7,7 +7,7 @@ export class ExtServer implements IServer {
   constructor() {
     this.EE = new EventEmitter();
     chrome.runtime.onConnect.addListener((port) => {
-      this.EE.emit("connect", port.name, new ExtConnect(port));
+      this.EE.emit("connect", new ExtConnect(port));
     });
   }
 
@@ -16,7 +16,7 @@ export class ExtServer implements IServer {
   }
 }
 
-export function connect() {
+export function extConnect() {
   return new ExtConnect(chrome.runtime.connect());
 }
 
