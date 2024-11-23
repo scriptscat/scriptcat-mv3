@@ -39,6 +39,9 @@ export default defineConfig({
       "@App": path.resolve(__dirname, "src/"),
       "@Packages": path.resolve(__dirname, "packages/"),
     },
+    fallback: {
+      child_process: false,
+    },
   },
   module: {
     rules: [

@@ -16,13 +16,17 @@
     "lint-fix": "eslint --fix ."
   },
   "dependencies": {
+    "cron": "^3.2.1",
     "dayjs": "^1.11.13",
+    "dexie": "^4.0.10",
     "eventemitter3": "^5.0.1",
     "i18next": "^23.16.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-i18next": "^15.1.0",
-    "uuid": "^11.0.3"
+    "semver": "^7.6.3",
+    "uuid": "^11.0.3",
+    "yaml": "^2.6.1"
   },
   "devDependencies": {
     "@eslint/compat": "^1.2.0",
@@ -32,6 +36,7 @@
     "@types/chrome": "^0.0.279",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
+    "@types/semver": "^7.5.8",
     "@vitest/coverage-v8": "2.1.4",
     "cross-env": "^7.0.3",
     "eslint": "^9.12.0",

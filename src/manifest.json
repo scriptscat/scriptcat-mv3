@@ -18,7 +18,13 @@
   },
   "default_locale": "zh_CN",
   "permissions": [
-    "offscreen"
+    "offscreen",
+    "scripting",
+    "webRequest",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "*://*/*"
   ],
   "sandbox": {
     "pages": [
