@@ -16,6 +16,7 @@
     "lint-fix": "eslint --fix ."
   },
   "dependencies": {
+    "@reduxjs/toolkit": "^2.3.0",
     "cron": "^3.2.1",
     "dayjs": "^1.11.13",
     "dexie": "^4.0.10",
@@ -24,6 +25,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-i18next": "^15.1.0",
+    "react-redux": "^9.1.2",
     "semver": "^7.6.3",
     "uuid": "^11.0.3",
     "yaml": "^2.6.1"
@@ -38,13 +40,17 @@
     "@types/react-dom": "^18.2.18",
     "@types/semver": "^7.5.8",
     "@vitest/coverage-v8": "2.1.4",
+    "autoprefixer": "^10.4.20",
     "cross-env": "^7.0.3",
     "eslint": "^9.12.0",
     "eslint-plugin-react": "^7.37.1",
     "eslint-plugin-react-hooks": "^5.0.0",
     "globals": "^15.11.0",
     "jsdom": "^25.0.1",
+    "postcss": "^8.4.49",
+    "postcss-loader": "^8.1.1",
     "prettier": "^3.3.3",
+    "tailwindcss": "^3.4.15",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.8.1",

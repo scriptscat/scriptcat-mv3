@@ -13,8 +13,8 @@ export default class Manager {
 
   listenerScriptInstall() {
     // 初始化脚本安装监听
-    chrome.webRequest.onBeforeRequest.addListener(
-      (req: chrome.webRequest.WebRequestBodyDetails) => {
+    chrome.webRequest.onCompleted.addListener(
+      (req: chrome.webRequest.WebResponseCacheDetails) => {
         // 处理url, 实现安装脚本
         if (req.method !== "GET") {
           return;
@@ -30,20 +30,41 @@ export default class Manager {
         }
         // 获取url参数
         const targetUrl = url.hash.split("url=")[1];
-        // 判断是否有bypass参数
-        if (url.hash.includes("bypass=true")) {
-          return;
-        }
         // 读取脚本url内容, 进行安装
         LoggerCore.getInstance().logger().debug("install script", { url: targetUrl });
         this.openInstallPageByUrl(targetUrl).catch(() => {
           // 如果打开失败, 则重定向到安装页
           chrome.scripting.executeScript({
             target: { tabId: req.tabId },
-            func: () => {
+            func: function () {
               history.back();
             },
           });
+          // 并不再重定向当前url
+          chrome.declarativeNetRequest.updateDynamicRules(
+            {
+              removeRuleIds: [2],
+              addRules: [
+                {
+                  id: 2,
+                  priority: 1,
+                  action: {
+                    type: chrome.declarativeNetRequest.RuleActionType.ALLOW,
+                  },
+                  condition: {
+                    regexFilter: targetUrl,
+                    resourceTypes: [chrome.declarativeNetRequest.ResourceType.MAIN_FRAME],
+                    requestMethods: [chrome.declarativeNetRequest.RequestMethod.GET],
+                  },
+                },
+              ],
+            },
+            () => {
+              if (chrome.runtime.lastError) {
+                console.error(chrome.runtime.lastError);
+              }
+            }
+          );
         });
       },
       {
@@ -54,37 +75,6 @@ export default class Manager {
         types: ["main_frame"],
       }
     );
-    // 屏蔽某个tab都安装脚本
-    this.connect.on("install_script", (data: { req: chrome.webRequest.WebRequestBodyDetails }) => {
-      chrome.declarativeNetRequest.updateDynamicRules(
-        {
-          removeRuleIds: [2],
-          addRules: [
-            {
-              id: 2,
-              priority: 1,
-              action: {
-                type: chrome.declarativeNetRequest.RuleActionType.ALLOW,
-                redirect: {
-                  regexSubstitution: "https://docs.scriptcat.org/docs/script_installation#url=\\0",
-                },
-              },
-              condition: {
-                regexFilter: "^([^#]+?)\\.user(\\.bg|\\.sub)?\\.js((\\?).*|$)",
-                resourceTypes: [chrome.declarativeNetRequest.ResourceType.MAIN_FRAME],
-                requestMethods: [chrome.declarativeNetRequest.RequestMethod.GET],
-                tabIds: [data.req.tabId],
-              },
-            },
-          ],
-        },
-        () => {
-          if (chrome.runtime.lastError) {
-            console.error(chrome.runtime.lastError);
-          }
-        }
-      );
-    });
     // 重定向到脚本安装页
     chrome.declarativeNetRequest.updateDynamicRules(
       {

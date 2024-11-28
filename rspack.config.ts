@@ -27,6 +27,7 @@ export default defineConfig({
     offscreen: `${src}/offscreen.ts`,
     sandbox: `${src}/sandbox.ts`,
     popup: `${src}/pages/popup/main.tsx`,
+    install: `${src}/pages/install/main.tsx`,
   },
   output: {
     path: `${dist}/ext/src`,
@@ -45,6 +46,23 @@ export default defineConfig({
   },
   module: {
     rules: [
+      {
+        test: /\.css$/,
+        use: [
+          {
+            loader: "postcss-loader",
+            options: {
+              postcssOptions: {
+                plugins: {
+                  tailwindcss: {},
+                  autoprefixer: {},
+                },
+              },
+            },
+          },
+        ],
+        type: "css",
+      },
       {
         test: /\.(svg|png)$/,
         type: "asset",
@@ -100,6 +118,14 @@ export default defineConfig({
           to: `${dist}/ext/_locales`,
         },
       ],
+    }),
+    new rspack.HtmlRspackPlugin({
+      filename: `${dist}/ext/src/install.html`,
+      template: `${src}/pages/install/index.html`,
+      inject: "head",
+      title: "Install - ScriptCat",
+      minify: true,
+      chunks: ["install"],
     }),
     new rspack.HtmlRspackPlugin({
       filename: `${dist}/ext/src/popup.html`,
