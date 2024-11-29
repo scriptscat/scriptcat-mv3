@@ -16,6 +16,7 @@
     "lint-fix": "eslint --fix ."
   },
   "dependencies": {
+    "@arco-design/web-react": "^2.64.1",
     "@reduxjs/toolkit": "^2.3.0",
     "cron": "^3.2.1",
     "dayjs": "^1.11.13",
@@ -25,6 +26,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-i18next": "^15.1.0",
+    "react-icons": "^5.3.0",
     "react-redux": "^9.1.2",
     "semver": "^7.6.3",
     "uuid": "^11.0.3",
@@ -39,6 +41,7 @@
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "@types/semver": "^7.5.8",
+    "@unocss/postcss": "0.65.0-beta.2",
     "@vitest/coverage-v8": "2.1.4",
     "autoprefixer": "^10.4.20",
     "cross-env": "^7.0.3",
@@ -50,10 +53,10 @@
     "postcss": "^8.4.49",
     "postcss-loader": "^8.1.1",
     "prettier": "^3.3.3",
-    "tailwindcss": "^3.4.15",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.8.1",
+    "unocss": "0.65.0-beta.2",
     "vitest": "^2.1.4"
   }
 }

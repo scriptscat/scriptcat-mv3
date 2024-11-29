@@ -54,7 +54,6 @@ export default defineConfig({
             options: {
               postcssOptions: {
                 plugins: {
-                  tailwindcss: {},
                   autoprefixer: {},
                 },
               },
@@ -157,6 +156,7 @@ export default defineConfig({
         minimizerOptions: { targets },
       }),
     ],
+    realContentHash: true,
   },
   experiments: {
     css: true,
