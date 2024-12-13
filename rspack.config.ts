@@ -89,6 +89,16 @@ export default defineConfig({
           },
         ],
       },
+      {
+        type: "asset",
+        test: /\.d\.ts$/,
+        exclude: /node_modules/,
+      },
+      {
+        type: "asset",
+        test: /\.tpl$/,
+        exclude: /node_modules/,
+      },
     ],
   },
   plugins: [

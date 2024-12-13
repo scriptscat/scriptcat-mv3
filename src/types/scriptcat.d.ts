@@ -94,7 +94,7 @@ declare function GM_log(message: string, level?: GMTypes.LoggerLevel, labels?: G
 
 declare function GM_getResourceText(name: string): string | undefined;
 
-declare function GM_getResourceURL(name: string, isBlobUrl?: boolean = false): string | undefined;
+declare function GM_getResourceURL(name: string, isBlobUrl?: boolean): string | undefined;
 
 declare function GM_registerMenuCommand(name: string, listener: () => void, accessKey?: string): number;
 

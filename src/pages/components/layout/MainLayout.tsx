@@ -15,12 +15,15 @@ import { IconDesktop, IconMoonFill, IconSunFill } from "@arco-design/web-react/i
 import React, { ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import "./index.css";
+import { useAppDispatch, useAppSelector } from "@App/store/hooks";
+import { selectThemeMode, setDarkMode } from "@App/store/features/setting";
 
 const MainLayout: React.FC<{
   children: ReactNode;
   className: string;
 }> = ({ children, className }) => {
-  const [lightMode, setLightMode] = useState(localStorage.lightMode || "auto");
+  const lightMode = useAppSelector(selectThemeMode);
+  const dispatch = useAppDispatch();
   const importRef = useRef<RefInputType>(null);
   const [importVisible, setImportVisible] = useState(false);
   const { t } = useTranslation();
@@ -62,8 +65,7 @@ const MainLayout: React.FC<{
               droplist={
                 <Menu
                   onClickMenuItem={(key) => {
-                    setLightMode(key);
-                    localStorage.lightMode = key;
+                    dispatch(setDarkMode(key as "light" | "dark" | "auto"));
                   }}
                   selectedKeys={[lightMode]}
                 >
