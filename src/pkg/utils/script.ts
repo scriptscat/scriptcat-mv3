@@ -11,7 +11,7 @@ import {
   ScriptDAO,
   UserConfig,
 } from "@App/app/repo/scripts";
-import { InstallSource } from "@App/app/service/manager";
+import { InstallSource } from "@App/app/service/service_worker";
 import YAML from "yaml";
 import { Subscribe, SUBSCRIBE_STATUS_ENABLE, SubscribeDAO } from "@App/app/repo/subscribe";
 import { nextTime } from "./utils";

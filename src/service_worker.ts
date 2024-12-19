@@ -1,6 +1,4 @@
-import { extConnect } from "@Packages/message/extension";
-import Manager from "./app/service/manager";
-import { Connect } from "@Packages/message";
+import ServiceWorkerManager from "./app/service/service_worker";
 import migrate from "./app/migrate";
 import LoggerCore from "./app/logger/core";
 import DBWriter from "./app/logger/db_writer";
@@ -55,10 +53,8 @@ async function main() {
   loggerCore.logger().debug("background start");
   // 初始化沙盒环境
   await setupOffscreenDocument();
-  // 初始化连接
-  const extClient = new Connect(extConnect());
   // 初始化管理器
-  const manager = new Manager(extClient);
+  const manager = new ServiceWorkerManager();
   manager.initManager();
 }
 
