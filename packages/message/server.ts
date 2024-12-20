@@ -5,9 +5,11 @@ export class Server {
 
   constructor(private env: string) {
     chrome.runtime.onConnect.addListener((port) => {
-      port.onMessage.addListener((msg: { action: string }) => {
+      const handler = (msg: { action: string }) => {
+        port.onMessage.removeListener(handler);
         this.connectHandle(msg.action, msg, port);
-      });
+      };
+      port.onMessage.addListener(handler);
     });
 
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
