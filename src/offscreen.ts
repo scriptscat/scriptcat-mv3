@@ -1,10 +1,8 @@
-import { Connect, Server } from "@Packages/message";
-import { ExtServer } from "@Packages/message/extension";
-import { WindowServer } from "@Packages/message/window";
 import migrate from "./app/migrate";
 import LoggerCore from "./app/logger/core";
 import DBWriter from "./app/logger/db_writer";
 import { LoggerDAO } from "./app/repo/logger";
+import { OffscreenManager } from "./app/service/offscreen";
 
 function main() {
   // 初始化数据库
@@ -16,23 +14,10 @@ function main() {
     labels: { env: "offscreen" },
   });
   loggerCore.logger().debug("offscreen start");
-  // 与sandbox建立连接
-  const server = new Server(new WindowServer(window));
-  server.on("connection", (con) => {
-    const wrapCon = new Connect(con);
-    wrapCon.on("forward", (data, resp) => {
-      console.log(data);
-    });
-  });
-  // 监听扩展消息
-  const extServer = new Server(new ExtServer());
-  extServer.on("connection", (con) => {
-    const wrapCon = new Connect(con);
-    wrapCon.on("recv", (data, resp) => {
-      console.log(data);
-      resp("service_wwww");
-    });
-  });
+
+  // 初始化管理器
+  const manager = new OffscreenManager();
+  manager.initManager();
 }
 
 main();

@@ -1,6 +1,6 @@
 import { Avatar, Button, Grid, Message, Space, Switch, Tag, Tooltip, Typography } from "@arco-design/web-react";
 import CodeEditor from "../components/CodeEditor";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Metadata, Script, SCRIPT_STATUS_DISABLE, SCRIPT_STATUS_ENABLE } from "@App/app/repo/scripts";
 import { Subscribe } from "@App/app/repo/subscribe";
 import { i18nDescription, i18nName } from "@App/locales/locales";
@@ -71,6 +71,14 @@ function App() {
       description: t("antifeature_tracking_description"),
     },
   };
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const uuid = url.searchParams.get("uuid");
+    if (!uuid) {
+      return;
+    }
+  });
 
   return (
     <div className="h-full">

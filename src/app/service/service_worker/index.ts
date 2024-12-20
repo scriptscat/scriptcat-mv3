@@ -120,7 +120,7 @@ export default class ServiceWorkerManager {
     });
   }
 
-  private api: Server = new Server();
+  private api: Server = new Server("service_worker");
 
   private mq: MessageQueue = new MessageQueue();
 
@@ -133,6 +133,7 @@ export default class ServiceWorkerManager {
   initManager() {
     // 监听消息
     this.api.on("getInstallInfo", this.getInstallInfo);
+    this.api.on("messageQueue", this.mq.handler());
 
     this.listenerScriptInstall();
   }

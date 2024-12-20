@@ -1,9 +1,9 @@
 export type ApiFunction = (params: any, con: chrome.runtime.Port | chrome.runtime.MessageSender) => any;
 
 export class Server {
-  apiFunctionMap: Map<string, ApiFunction> = new Map();
+  private apiFunctionMap: Map<string, ApiFunction> = new Map();
 
-  constructor() {
+  constructor(private env: string) {
     chrome.runtime.onConnect.addListener((port) => {
       port.onMessage.addListener((msg: { action: string }) => {
         this.connectHandle(msg.action, msg, port);
