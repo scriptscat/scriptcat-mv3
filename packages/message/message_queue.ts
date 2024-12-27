@@ -1,12 +1,12 @@
-import { ApiFunction } from "./server";
+import { connect } from "./client";
+import { ApiFunction, Server } from "./server";
 
 export class Broker {
   constructor() {}
 
   // 订阅
-  subscribe(topic: string, handler: (message: any) => void) {
-    const con = chrome.runtime.connect({ name: topic });
-    con.postMessage({ action: "subscribe", topic });
+  async subscribe(topic: string, handler: (message: any) => void) {
+    const con = await connect("messageQueue", { action: "subscribe", topic });
     con.onMessage.addListener((msg: { action: string; topic: string; message: any }) => {
       if (msg.action === "message") {
         handler(msg.message);
@@ -23,6 +23,10 @@ export class Broker {
 // 消息队列
 export class MessageQueue {
   topicConMap: Map<string, { name: string; con: chrome.runtime.Port }[]> = new Map();
+
+  constructor(api: Server) {
+    api.on("messageQueue", this.handler());
+  }
 
   handler(): ApiFunction {
     return ({ action, topic, message }: { action: string; topic: string; message: any }, con) => {
@@ -53,7 +57,10 @@ export class MessageQueue {
     }
     list.push({ name: topic, con });
     con.onDisconnect.addListener(() => {
+      let list = this.topicConMap.get(topic);
+      // 移除断开连接的con
       list = list!.filter((item) => item.con !== con);
+      this.topicConMap.set(topic, list);
     });
   }
 

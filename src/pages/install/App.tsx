@@ -5,7 +5,9 @@ import { Metadata, Script, SCRIPT_STATUS_DISABLE, SCRIPT_STATUS_ENABLE } from "@
 import { Subscribe } from "@App/app/repo/subscribe";
 import { i18nDescription, i18nName } from "@App/locales/locales";
 import { useTranslation } from "react-i18next";
-import { ScriptInfo } from "@App/pkg/utils/script";
+import { prepareScriptByCode, prepareSubscribeByCode, ScriptInfo } from "@App/pkg/utils/script";
+import { isDebug, nextTime } from "@App/pkg/utils/utils";
+import { ScriptClient } from "@App/app/service/service_worker/client";
 
 type Permission = { label: string; color?: string; value: string[] }[];
 
@@ -14,27 +16,73 @@ const closeWindow = () => {
 };
 
 function App() {
-  const [permission, setPermission] = useState<Permission>([]);
-  const [metadata, setMetadata] = useState<Metadata>({});
-  // 脚本信息包括脚本代码、下载url，但是不包括解析代码后得到的metadata，通过background的缓存获取
-  const [info, setInfo] = useState<ScriptInfo>();
-  // 对脚本详细的描述
-  const [description, setDescription] = useState<any>();
+  // 脚本信息包括脚本代码、下载url、metadata等信息，通过service_worker的缓存获取
+  const [scriptInfo, setScriptInfo] = useState<ScriptInfo>();
   // 是系统检测到脚本更新时打开的窗口会有一个倒计时
   const [countdown, setCountdown] = useState<number>(-1);
-  // 是否为更新
-  const [isUpdate, setIsUpdate] = useState<boolean>(false);
   // 脚本信息
   const [upsertScript, setUpsertScript] = useState<Script | Subscribe>();
   // 更新的情况下会有老版本的脚本信息
   const [oldScript, setOldScript] = useState<Script | Subscribe>();
   // 脚本开启状态
   const [enable, setEnable] = useState<boolean>(false);
-  // 是否是订阅脚本
-  const [isSub, setIsSub] = useState<boolean>(false);
   // 按钮文案
-  const [btnText, setBtnText] = useState<string>();
+  const [btnText, setBtnText] = useState<string>("");
   const { t } = useTranslation();
+
+  const metadata: Metadata = scriptInfo?.metadata || {};
+  const permission: Permission = [];
+  const isUpdate = scriptInfo?.update;
+  const description = [];
+  if (scriptInfo) {
+    if (scriptInfo.userSubscribe) {
+      permission.push({
+        label: t("subscribe_install_label"),
+        color: "#ff0000",
+        value: metadata.scripturl,
+      });
+    }
+    if (metadata.match) {
+      permission.push({ label: t("script_runs_in"), value: metadata.match });
+    }
+    if (metadata.connect) {
+      permission.push({
+        label: t("script_has_full_access_to"),
+        color: "#F9925A",
+        value: metadata.connect,
+      });
+    }
+    if (metadata.require) {
+      permission.push({ label: t("script_requires"), value: metadata.require });
+    }
+
+    let isCookie = false;
+    metadata.grant?.forEach((val) => {
+      if (val === "GM_cookie") {
+        isCookie = true;
+      }
+    });
+    if (isCookie) {
+      description.push(
+        <Typography.Text type="error" key="cookie">
+          {t("cookie_warning")}
+        </Typography.Text>
+      );
+    }
+    if (metadata.crontab) {
+      description.push(<Typography.Text key="crontab">{t("scheduled_script_description_1")}</Typography.Text>);
+      description.push(
+        <Typography.Text key="cronta-nexttime">
+          {t("scheduled_script_description_2", {
+            expression: metadata.crontab[0],
+            time: nextTime(metadata.crontab[0]),
+          })}
+        </Typography.Text>
+      );
+    } else if (metadata.background) {
+      description.push(<Typography.Text key="background">{t("background_script_description")}</Typography.Text>);
+    }
+  }
 
   // 不推荐的内容标签与描述
   const antifeatures: {
@@ -78,12 +126,46 @@ function App() {
     if (!uuid) {
       return;
     }
-  });
+    new ScriptClient()
+      .getInstallInfo(uuid)
+      .then(async (info: ScriptInfo) => {
+        if (!info) {
+          throw new Error("fetch script info failed");
+        }
+        // 如果是更新的情况下, 获取老版本的脚本信息
+        let prepare: { script: Script; oldScript?: Script } | { subscribe: Subscribe; oldSubscribe?: Subscribe };
+        let action: Script | Subscribe;
+        if (info.userSubscribe) {
+          prepare = await prepareSubscribeByCode(info.code, info.url);
+          action = prepare.subscribe;
+          setOldScript(prepare.oldSubscribe);
+        } else {
+          if (info.update) {
+            prepare = await prepareScriptByCode(info.code, info.url, info.uuid);
+          } else {
+            prepare = await prepareScriptByCode(info.code, info.url);
+          }
+          action = prepare.script;
+          setOldScript(prepare.oldScript);
+        }
+        if (info.userSubscribe) {
+          setBtnText(isUpdate ? t("update_subscribe")! : t("install_subscribe"));
+        } else {
+          setBtnText(isUpdate ? t("update_script")! : t("install_script"));
+        }
+        setScriptInfo(info);
+        setEnable(action.status === SCRIPT_STATUS_ENABLE);
+        setUpsertScript(action);
+      })
+      .catch(() => {
+        Message.error(t("script_info_load_failed"));
+      });
+  }, [t]);
 
   return (
     <div className="h-full">
       <div className="h-full">
-        <Grid.Row gutter={8}>
+        <Grid.Row className="mb-2" gutter={8}>
           <Grid.Col flex={1} className="flex-col p-8px">
             <Space direction="vertical">
               <div>
@@ -94,7 +176,9 @@ function App() {
                 )}
                 <Typography.Text bold className="text-size-lg">
                   {upsertScript && i18nName(upsertScript)}
-                  <Tooltip content={isSub ? t("subscribe_source_tooltip") : t("script_status_tooltip")}>
+                  <Tooltip
+                    content={scriptInfo?.userSubscribe ? t("subscribe_source_tooltip") : t("script_status_tooltip")}
+                  >
                     <Switch
                       style={{ marginLeft: "8px" }}
                       checked={enable}
@@ -131,7 +215,7 @@ function App() {
                     overflowY: "auto",
                   }}
                 >
-                  {t("source")}: {info?.url}
+                  {t("source")}: {scriptInfo?.url}
                 </Typography.Text>
               </div>
               <div className="text-end">
@@ -144,7 +228,7 @@ function App() {
                         Message.error(t("script_info_load_failed")!);
                         return;
                       }
-                      if (isSub) {
+                      if (scriptInfo?.userSubscribe) {
                         // subscribeCtrl
                         //   .upsert(upsertScript as Subscribe)
                         //   .then(() => {
@@ -159,23 +243,25 @@ function App() {
                         //   });
                         return;
                       }
-                      // scriptCtrl
-                      //   .upsert(upsertScript as Script)
-                      //   .then(() => {
-                      //     if (isUpdate) {
-                      //       Message.success(t("install.update_success")!);
-                      //       setBtnText(t("install.update_success")!);
-                      //     } else {
-                      //       Message.success(t("install_success")!);
-                      //       setBtnText(t("install_success")!);
-                      //     }
-                      //     setTimeout(() => {
-                      //       closeWindow();
-                      //     }, 200);
-                      //   })
-                      //   .catch((e) => {
-                      //     Message.error(`${t("install_failed")}: ${e}`);
-                      //   });
+                      new ScriptClient()
+                        .installScript(upsertScript as Script)
+                        .then(() => {
+                          if (isUpdate) {
+                            Message.success(t("install.update_success")!);
+                            setBtnText(t("install.update_success")!);
+                          } else {
+                            Message.success(t("install_success")!);
+                            setBtnText(t("install_success")!);
+                          }
+                          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+                          !isDebug() &&
+                            setTimeout(() => {
+                              closeWindow();
+                            }, 200);
+                        })
+                        .catch((e) => {
+                          Message.error(`${t("install_failed")}: ${e}`);
+                        });
                     }}
                   >
                     {btnText}

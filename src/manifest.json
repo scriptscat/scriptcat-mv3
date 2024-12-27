@@ -18,6 +18,7 @@
   },
   "default_locale": "zh_CN",
   "permissions": [
+    "storage",
     "offscreen",
     "scripting",
     "activeTab",

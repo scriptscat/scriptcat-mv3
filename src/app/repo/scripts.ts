@@ -1,4 +1,4 @@
-import { DAO, db } from "./dao";
+import { Repo } from "./repo";
 import { Resource } from "./resource";
 import { Value } from "./value";
 
@@ -26,14 +26,7 @@ export const SCRIPT_RUN_STATUS_RETRY: SCRIPT_RUN_STATUS = "retry";
 
 export type Metadata = { [key: string]: string[] };
 
-export type ConfigType =
-  | "text"
-  | "checkbox"
-  | "select"
-  | "mult-select"
-  | "number"
-  | "textarea"
-  | "time";
+export type ConfigType = "text" | "checkbox" | "select" | "mult-select" | "number" | "textarea" | "time";
 
 export interface Config {
   [key: string]: any;
@@ -88,34 +81,40 @@ export interface ScriptRunResouce extends Script {
   sourceCode: string;
 }
 
-export class ScriptDAO extends DAO<Script> {
-  public tableName = "scripts";
-
+export class ScriptDAO extends Repo<Script> {
   constructor() {
-    super();
-    this.table = db.table(this.tableName);
+    super("script");
+  }
+
+  public save(val: Script) {
+    return super._save(val.uuid, val);
   }
 
   public findByName(name: string) {
-    return this.findOne({ name });
+    return this.findOne((key, value) => {
+      return value.name === name;
+    });
   }
 
   public findByNameAndNamespace(name: string, namespace?: string) {
-    if (namespace) {
-      return this.findOne({ name, namespace });
-    }
-    return this.findOne({ name });
+    return this.findOne((key, value) => {
+      return value.name === name && (!namespace || value.namespace === namespace);
+    });
   }
 
   public findByUUID(uuid: string) {
-    return this.findOne({ uuid });
+    return this.get(uuid);
   }
 
   public findByUUIDAndSubscribeUrl(uuid: string, suburl: string) {
-    return this.findOne({ subscribeUrl: suburl, uuid });
+    return this.findOne((key, value) => {
+      return value.uuid === uuid && value.subscribeUrl === suburl;
+    });
   }
 
   public findByOriginAndSubscribeUrl(origin: string, suburl: string) {
-    return this.findOne({ subscribeUrl: suburl, origin });
+    return this.findOne((key, value) => {
+      return value.origin === origin && value.subscribeUrl === suburl;
+    });
   }
 }

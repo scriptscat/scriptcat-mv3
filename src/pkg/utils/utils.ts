@@ -182,3 +182,7 @@ export function openInCurrentTab(url: string) {
     }
   );
 }
+
+export function isDebug() {
+  return process.env.NODE_ENV === "development";
+}

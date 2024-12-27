@@ -11,10 +11,10 @@ import {
   ScriptDAO,
   UserConfig,
 } from "@App/app/repo/scripts";
-import { InstallSource } from "@App/app/service/service_worker";
 import YAML from "yaml";
 import { Subscribe, SUBSCRIBE_STATUS_ENABLE, SubscribeDAO } from "@App/app/repo/subscribe";
 import { nextTime } from "./utils";
+import { InstallSource } from "@App/app/service/service_worker";
 
 export function getMetadataStr(code: string): string | null {
   const start = code.indexOf("==UserScript==");
@@ -95,16 +95,16 @@ export type ScriptInfo = {
   url: string;
   code: string;
   uuid: string;
-  isSubscribe: boolean;
-  isUpdate: boolean;
+  userSubscribe: boolean;
   metadata: Metadata;
+  update: boolean;
   source: InstallSource;
 };
 
 export async function fetchScriptInfo(
   url: string,
   source: InstallSource,
-  isUpdate: boolean,
+  update: boolean,
   uuid: string
 ): Promise<ScriptInfo> {
   const resp = await fetch(url, {
@@ -127,15 +127,12 @@ export async function fetchScriptInfo(
   const ret: ScriptInfo = {
     url,
     code: body,
-    uuid,
-    isSubscribe: false,
-    isUpdate,
-    metadata: parse,
     source,
+    update,
+    uuid,
+    userSubscribe: parse.usersubscribe !== undefined,
+    metadata: parse,
   };
-  if (parse.usersubscribe) {
-    ret.isSubscribe = true;
-  }
   return ret;
 }
 

@@ -32,6 +32,10 @@ function renameField(): void {
     // export是0.10.x时的兼容性处理
     export: "++id,&scriptId",
   });
+  // 将脚本数据迁移到chrome.storage
+  // db.version(18)
+  //   .stores({})
+  //   .upgrade((tx) => {});
 }
 
 export default function migrate() {

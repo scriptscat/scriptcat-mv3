@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import dayjs from "dayjs";
 import LoggerCore, { LogLabel, LogLevel } from "./core";
 
@@ -54,7 +53,6 @@ export default class Logger {
           break;
       }
     }
-    LoggerCore.EE.emit("log", { level, message, label });
   }
 
   with(...label: LogLabel[]) {

@@ -1,4 +1,3 @@
-import EventEmitter from "eventemitter3";
 import Logger from "./logger";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
@@ -20,7 +19,7 @@ export default class LoggerCore {
     return LoggerCore.instance;
   }
 
-  static getLogger(...label: LogLabel[]) {
+  static logger(...label: LogLabel[]) {
     return LoggerCore.getInstance().logger(...label);
   }
 
@@ -45,6 +44,4 @@ export default class LoggerCore {
   logger(...label: LogLabel[]) {
     return new Logger(this, this.labels, ...label);
   }
-
-  static EE = new EventEmitter();
 }

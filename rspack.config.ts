@@ -28,6 +28,7 @@ export default defineConfig({
     sandbox: `${src}/sandbox.ts`,
     popup: `${src}/pages/popup/main.tsx`,
     install: `${src}/pages/install/main.tsx`,
+    options: `${src}/pages/options/main.tsx`,
   },
   output: {
     path: `${dist}/ext/src`,
@@ -130,11 +131,19 @@ export default defineConfig({
     }),
     new rspack.HtmlRspackPlugin({
       filename: `${dist}/ext/src/install.html`,
-      template: `${src}/pages/install/index.html`,
+      template: `${src}/pages/template.html`,
       inject: "head",
       title: "Install - ScriptCat",
       minify: true,
       chunks: ["install"],
+    }),
+    new rspack.HtmlRspackPlugin({
+      filename: `${dist}/ext/src/options.html`,
+      template: `${src}/pages/template.html`,
+      inject: "head",
+      title: "Home - ScriptCat",
+      minify: true,
+      chunks: ["options"],
     }),
     new rspack.HtmlRspackPlugin({
       filename: `${dist}/ext/src/popup.html`,

@@ -5,16 +5,20 @@ export class Server {
 
   constructor(private env: string) {
     chrome.runtime.onConnect.addListener((port) => {
-      const handler = (msg: { action: string }) => {
+      const handler = (msg: { action: string; data: any }) => {
         port.onMessage.removeListener(handler);
-        this.connectHandle(msg.action, msg, port);
+        this.connectHandle(msg.action, msg.data, port);
       };
       port.onMessage.addListener(handler);
     });
 
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-      this.messageHandle(msg.action, msg, sender, sendResponse);
+      this.messageHandle(msg.action, msg.data, sender, sendResponse);
     });
+  }
+
+  group(name: string) {
+    return new Group(this, name);
   }
 
   on(name: string, func: ApiFunction) {
@@ -43,5 +47,24 @@ export class Server {
         sendResponse({ code: -1, message: e.message });
       }
     }
+  }
+}
+
+export class Group {
+  constructor(
+    private server: Server,
+    private name: string
+  ) {
+    if (!name.endsWith("/")) {
+      this.name += "/";
+    }
+  }
+
+  group(name: string) {
+    return new Group(this.server, `${this.name}${name}`);
+  }
+
+  on(name: string, func: ApiFunction) {
+    this.server.on(`${this.name}${name}`, func);
   }
 }
