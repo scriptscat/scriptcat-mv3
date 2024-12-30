@@ -46,7 +46,7 @@ export interface Config {
 export type UserConfig = { [key: string]: { [key: string]: Config } };
 
 export interface Script {
-  id: number; // 脚本id
+  // id: number; // 脚本id mv3迁移为chrome.storage后舍弃
   uuid: string; // 脚本uuid,通过脚本uuid识别唯一脚本
   name: string; // 脚本名称
   code: string; // 脚本执行代码

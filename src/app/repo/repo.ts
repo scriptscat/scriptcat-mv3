@@ -1,15 +1,15 @@
 export abstract class Repo<T> {
   constructor(private prefix: string) {
     if (!prefix.endsWith(":")) {
-      prefix += ":";
+      this.prefix += ":";
     }
   }
 
-  private joinKey(key: string) {
+  protected joinKey(key: string) {
     return this.prefix + key;
   }
 
-  public async _save(key: string, val: T) {
+  protected async _save(key: string, val: T) {
     return new Promise((resolve) => {
       const data = {
         [this.joinKey(key)]: val,
@@ -52,6 +52,41 @@ export abstract class Repo<T> {
           }
         }
         resolve(undefined);
+      });
+    });
+  }
+
+  public delete(key: string) {
+    return new Promise<void>((resolve) => {
+      chrome.storage.local.remove(this.joinKey(key), () => {
+        resolve();
+      });
+    });
+  }
+
+  update(key: string, val: Partial<T>) {
+    return new Promise((resolve) => {
+      this.get(key).then((result) => {
+        if (result) {
+          Object.assign(result, val);
+          this._save(key, result).then(() => {
+            resolve(result);
+          });
+        }
+      });
+    });
+  }
+
+  all(): Promise<T[]> {
+    return new Promise((resolve) => {
+      chrome.storage.local.get((result) => {
+        const ret = [];
+        for (const key in result) {
+          if (key.startsWith(this.prefix)) {
+            ret.push(result[key]);
+          }
+        }
+        resolve(ret);
       });
     });
   }

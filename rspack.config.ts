@@ -139,7 +139,7 @@ export default defineConfig({
     }),
     new rspack.HtmlRspackPlugin({
       filename: `${dist}/ext/src/options.html`,
-      template: `${src}/pages/template.html`,
+      template: `${src}/pages/options.html`,
       inject: "head",
       title: "Home - ScriptCat",
       minify: true,

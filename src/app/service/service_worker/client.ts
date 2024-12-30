@@ -1,5 +1,6 @@
 import { Script } from "@App/app/repo/scripts";
 import { Client } from "@Packages/message/client";
+import { InstallSource } from ".";
 
 export class ScriptClient extends Client {
   constructor() {
@@ -11,7 +12,7 @@ export class ScriptClient extends Client {
     return this.do("getInstallInfo", uuid);
   }
 
-  installScript(script: Script) {
-    return this.do("installScript", script);
+  installScript(script: Script, upsertBy: InstallSource = "user") {
+    return this.do("installScript", { script, upsertBy });
   }
 }

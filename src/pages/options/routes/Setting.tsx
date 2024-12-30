@@ -8,15 +8,9 @@ import {
   Select,
   Space,
 } from "@arco-design/web-react";
-import FileSystemParams from "@App/pages/components/FileSystemParams";
-import { SystemConfig } from "@App/pkg/config/config";
-import IoC from "@App/app/ioc";
-import FileSystemFactory, { FileSystemType } from "@Pkg/filesystem/factory";
 import Title from "@arco-design/web-react/es/Typography/title";
 import { IconQuestionCircleFill } from "@arco-design/web-react/icon";
-// eslint-disable-next-line import/no-extraneous-dependencies, import/no-import-module-exports
 import { format } from "prettier";
-// eslint-disable-next-line import/no-extraneous-dependencies, import/no-import-module-exports
 import babel from "prettier/parser-babel";
 import GMApiSetting from "@App/pages/components/GMApiSetting";
 import i18n from "@App/locales/locales";

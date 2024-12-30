@@ -3,27 +3,16 @@ import CodeEditor from "@App/pages/components/CodeEditor";
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { editor, KeyCode, KeyMod } from "monaco-editor";
-import {
-  Button,
-  Dropdown,
-  Grid,
-  Menu,
-  Message,
-  Tabs,
-  Tooltip,
-} from "@arco-design/web-react";
+import { Button, Dropdown, Grid, Menu, Message, Tabs, Tooltip } from "@arco-design/web-react";
 import TabPane from "@arco-design/web-react/es/Tabs/tab-pane";
-import ScriptController from "@App/app/service/script/controller";
 import normalTpl from "@App/template/normal.tpl";
 import crontabTpl from "@App/template/crontab.tpl";
 import backgroundTpl from "@App/template/background.tpl";
 import { v4 as uuidv4 } from "uuid";
 import "./index.css";
-import IoC from "@App/app/ioc";
 import LoggerCore from "@App/app/logger/core";
 import Logger from "@App/app/logger/logger";
 import { prepareScriptByCode } from "@App/pkg/utils/script";
-import RuntimeController from "@App/runtime/content/runtime";
 import ScriptStorage from "@App/pages/components/ScriptStorage";
 import ScriptResource from "@App/pages/components/ScriptResource";
 import ScriptSetting from "@App/pages/components/ScriptSetting";
@@ -49,7 +38,7 @@ const Editor: React.FC<{
   const [init, setInit] = useState(false);
   const codeEditor = useRef<{ editor: editor.IStandaloneCodeEditor }>(null);
   // Script.uuid为key，Script为value，储存Script
-  ScriptMap.has(script.uuid) || ScriptMap.set(script.uuid, script);
+  ScriptMap.set(script.uuid, script);
   useEffect(() => {
     if (!codeEditor.current || !codeEditor.current.editor) {
       setTimeout(() => {
@@ -69,13 +58,13 @@ const Editor: React.FC<{
         const activeEditor = editor
           .getEditors()
           // @ts-ignore
-          // eslint-disable-next-line no-underscore-dangle
           .find((i) => i._focusTracker._hasFocus);
 
         // 仅在获取到激活的editor时，通过editor上绑定的uuid获取Script，并指定激活的editor执行快捷键action
-        activeEditor &&
+        if (activeEditor) {
           // @ts-ignore
           item.action(ScriptMap.get(activeEditor.uuid), activeEditor);
+        }
       });
     });
     codeEditor.current.editor.onKeyUp(() => {
@@ -85,15 +74,7 @@ const Editor: React.FC<{
     return () => {};
   }, [init]);
 
-  return (
-    <CodeEditor
-      id={id}
-      ref={codeEditor}
-      code={script.code}
-      diffCode=""
-      editable
-    />
-  );
+  return <CodeEditor id={id} ref={codeEditor} code={script.code} diffCode="" editable />;
 };
 
 type EditorMenu = {
@@ -180,8 +161,7 @@ function ScriptEditor() {
   >([]);
   const [scriptList, setScriptList] = useState<Script[]>([]);
   const [currentScript, setCurrentScript] = useState<Script>();
-  const [selectSciptButtonAndTab, setSelectSciptButtonAndTab] =
-    useState<string>("");
+  const [selectSciptButtonAndTab, setSelectSciptButtonAndTab] = useState<string>("");
   const [rightOperationTab, setRightOperationTab] = useState<{
     key: string;
     uuid: string;
@@ -196,10 +176,7 @@ function ScriptEditor() {
   };
 
   const { id } = useParams();
-  const save = (
-    script: Script,
-    e: editor.IStandaloneCodeEditor
-  ): Promise<Script> => {
+  const save = (script: Script, e: editor.IStandaloneCodeEditor): Promise<Script> => {
     // 解析code生成新的script并更新
     return new Promise((resolve) => {
       prepareScriptByCode(e.getValue(), script.origin || "", script.uuid)
@@ -257,9 +234,7 @@ function ScriptEditor() {
     return new Promise<void>((resolve) => {
       chrome.downloads.download(
         {
-          url: URL.createObjectURL(
-            new Blob([e.getValue()], { type: "text/javascript" })
-          ),
+          url: URL.createObjectURL(new Blob([e.getValue()], { type: "text/javascript" })),
           saveAs: true, // true直接弹出对话框；false弹出下载选项
           filename: `${script.name}.user.js`,
         },
@@ -306,8 +281,7 @@ function ScriptEditor() {
           title: "调试",
           hotKey: KeyMod.CtrlCmd | KeyCode.F5,
           hotKeyString: "Ctrl+F5",
-          tooltip:
-            "只有后台脚本/定时脚本才能调试, 且调试模式下不对进行权限校验(例如@connect)",
+          tooltip: "只有后台脚本/定时脚本才能调试, 且调试模式下不对进行权限校验(例如@connect)",
           action: async (script, e) => {
             // 保存更新代码之后再调试
             const newScript = await save(script, e);
@@ -457,44 +431,31 @@ function ScriptEditor() {
       // eslint-disable-next-line default-case
       switch (rightOperationTab.key) {
         case "1":
-          newEditors = editors.filter(
-            (item) => item.script.uuid !== rightOperationTab.uuid
-          );
+          newEditors = editors.filter((item) => item.script.uuid !== rightOperationTab.uuid);
           if (newEditors.length > 0) {
             // 还有的话，如果之前有选中的，那么我们还是选中之前的，如果没有选中的我们就选中第一个
-            if (
-              rightOperationTab.selectSciptButtonAndTab ===
-              rightOperationTab.uuid
-            ) {
+            if (rightOperationTab.selectSciptButtonAndTab === rightOperationTab.uuid) {
               if (newEditors.length > 0) {
                 newEditors[0].active = true;
                 setSelectSciptButtonAndTab(newEditors[0].script.uuid);
               }
             } else {
-              setSelectSciptButtonAndTab(
-                rightOperationTab.selectSciptButtonAndTab
-              );
+              setSelectSciptButtonAndTab(rightOperationTab.selectSciptButtonAndTab);
               // 之前选中的tab
               editors.filter((item) => {
-                if (
-                  item.script.uuid === rightOperationTab.selectSciptButtonAndTab
-                ) {
+                if (item.script.uuid === rightOperationTab.selectSciptButtonAndTab) {
                   item.active = true;
                 } else {
                   item.active = false;
                 }
-                return (
-                  item.script.uuid === rightOperationTab.selectSciptButtonAndTab
-                );
+                return item.script.uuid === rightOperationTab.selectSciptButtonAndTab;
               });
             }
           }
           setEditors([...newEditors]);
           break;
         case "2":
-          newEditors = editors.filter(
-            (item) => item.script.uuid === rightOperationTab.uuid
-          );
+          newEditors = editors.filter((item) => item.script.uuid === rightOperationTab.uuid);
           setSelectSciptButtonAndTab(rightOperationTab.uuid);
           setEditors([...newEditors]);
           break;
@@ -657,11 +618,7 @@ function ScriptEditor() {
                           }}
                         >
                           {menuItem.tooltip ? (
-                            <Tooltip
-                              key={`m${i.toString()}`}
-                              position="right"
-                              content={menuItem.tooltip}
-                            >
+                            <Tooltip key={`m${i.toString()}`} position="right" content={menuItem.tooltip}>
                               {btn}
                             </Tooltip>
                           ) : (
@@ -722,8 +679,7 @@ function ScriptEditor() {
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
-                  backgroundColor:
-                    selectSciptButtonAndTab === script.uuid ? "gray" : "",
+                  backgroundColor: selectSciptButtonAndTab === script.uuid ? "gray" : "",
                 }}
                 onClick={() => {
                   setSelectSciptButtonAndTab(script.uuid);
@@ -857,10 +813,10 @@ function ScriptEditor() {
                         color: e.isChanged
                           ? "rgb(var(--orange-5))" // eslint-disable-next-line no-nested-ternary
                           : e.script.uuid === selectSciptButtonAndTab
-                          ? "rgb(var(--green-7))"
-                          : e.active
-                          ? "rgb(var(--green-7))"
-                          : "var(--color-text-1)",
+                            ? "rgb(var(--green-7))"
+                            : e.active
+                              ? "rgb(var(--green-7))"
+                              : "var(--color-text-1)",
                       }}
                     >
                       {e.script.name}

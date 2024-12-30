@@ -1,3 +1,4 @@
+import EventEmitter from "eventemitter3";
 import { connect } from "./client";
 import { ApiFunction, Server } from "./server";
 
@@ -23,6 +24,8 @@ export class Broker {
 // 消息队列
 export class MessageQueue {
   topicConMap: Map<string, { name: string; con: chrome.runtime.Port }[]> = new Map();
+
+  private EE: EventEmitter = new EventEmitter();
 
   constructor(api: Server) {
     api.on("messageQueue", this.handler());
@@ -69,5 +72,16 @@ export class MessageQueue {
     list?.forEach((item) => {
       item.con.postMessage({ action: "message", topic, message });
     });
+    this.EE.emit(topic, message);
+  }
+
+  // 只发布给当前环境
+  emit(topic: string, message: any) {
+    this.EE.emit(topic, message);
+  }
+
+  // 同环境下使用addListener
+  addListener(topic: string, handler: (message: any) => void) {
+    this.EE.on(topic, handler);
   }
 }

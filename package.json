@@ -17,6 +17,9 @@
   },
   "dependencies": {
     "@arco-design/web-react": "^2.64.1",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@reduxjs/toolkit": "^2.3.0",
     "cron": "^3.2.1",
     "dayjs": "^1.11.13",
@@ -29,7 +32,9 @@
     "react-dom": "^18.2.0",
     "react-i18next": "^15.1.0",
     "react-icons": "^5.3.0",
+    "react-joyride": "^2.9.3",
     "react-redux": "^9.1.2",
+    "react-router-dom": "^7.1.1",
     "semver": "^7.6.3",
     "uuid": "^11.0.3",
     "yaml": "^2.6.1"

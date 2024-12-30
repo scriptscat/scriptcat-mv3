@@ -4,6 +4,10 @@
   "version": "0.17.0.1001",
   "author": "CodFrm",
   "description": "__MSG_scriptcat_description__",
+  "options_ui": {
+    "page": "src/options.html",
+    "open_in_tab": true
+  },
   "background": {
     "service_worker": "src/service_worker.js"
   },

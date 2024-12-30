@@ -25,7 +25,6 @@ import {
   SCRIPT_STATUS_ENABLE,
   SCRIPT_TYPE_BACKGROUND,
   SCRIPT_TYPE_NORMAL,
-  ScriptDAO,
   UserConfig,
 } from "@App/app/repo/scripts";
 import {
@@ -46,7 +45,6 @@ import {
   RiUploadCloudFill,
 } from "react-icons/ri";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import ScriptController from "@App/app/service/script/controller";
 import { RefInputType } from "@arco-design/web-react/es/Input/interface";
 import Text from "@arco-design/web-react/es/Typography/text";
 import {
@@ -59,28 +57,21 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import IoC from "@App/app/ioc";
-import RuntimeController from "@App/runtime/content/runtime";
 import UserConfigPanel from "@App/pages/components/UserConfigPanel";
 import CloudScriptPlan from "@App/pages/components/CloudScriptPlan";
-import SynchronizeController from "@App/app/service/synchronize/controller";
 import { useTranslation } from "react-i18next";
 import { nextTime, semTime } from "@App/pkg/utils/utils";
 import { i18nName } from "@App/locales/locales";
-import { SystemConfig } from "@App/pkg/config/config";
-import {
-  getValues,
-  ListHomeRender,
-  ScriptIcons,
-  scriptListSort,
-} from "./utils";
+import { ListHomeRender, ScriptIcons } from "./utils";
+import { useAppDispatch, useAppSelector } from "@App/store/hooks";
+import { fetchScriptList, selectScripts } from "@App/store/features/script";
+import { selectScriptListColumnWidth } from "@App/store/features/setting";
 
 type ListType = Script & { loading?: boolean };
 
@@ -91,43 +82,38 @@ function ScriptList() {
     values: { [key: string]: any };
   }>();
   const [cloudScript, setCloudScript] = useState<Script>();
-  const scriptCtrl = IoC.instance(ScriptController) as ScriptController;
-  const synchronizeCtrl = IoC.instance(
-    SynchronizeController
-  ) as SynchronizeController;
-  const runtimeCtrl = IoC.instance(RuntimeController) as RuntimeController;
-  const [scriptList, setScriptList] = useState<ListType[]>([]);
+  const dispatch = useAppDispatch();
+  const scriptList = useAppSelector(selectScripts);
+  const scriptListColumnWidth = useAppSelector(selectScriptListColumnWidth);
   const inputRef = useRef<RefInputType>(null);
   const navigate = useNavigate();
-  const openUserConfig = parseInt(
-    useSearchParams()[0].get("userConfig") || "",
-    10
-  );
+  const openUserConfig = parseInt(useSearchParams()[0].get("userConfig") || "", 10);
   const [showAction, setShowAction] = useState(false);
   const [action, setAction] = useState("");
   const [select, setSelect] = useState<Script[]>([]);
   const [selectColumn, setSelectColumn] = useState(0);
-  const systemConfig = IoC.instance(SystemConfig) as SystemConfig;
 
   const { t } = useTranslation();
 
   useEffect(() => {
+    dispatch(fetchScriptList());
+    // 监听脚本安装/运行
     // Monitor script running status
-    const channel = runtimeCtrl.watchRunStatus();
-    channel.setHandler(([id, status]: any) => {
-      setScriptList((list) => {
-        return list.map((item) => {
-          if (item.id === id) {
-            item.runStatus = status;
-          }
-          return item;
-        });
-      });
-    });
-    return () => {
-      channel.disChannel();
-    };
-  }, []);
+    // const channel = runtimeCtrl.watchRunStatus();
+    // channel.setHandler(([id, status]: any) => {
+    //   setScriptList((list) => {
+    //     return list.map((item) => {
+    //       if (item.id === id) {
+    //         item.runStatus = status;
+    //       }
+    //       return item;
+    //     });
+    //   });
+    // });
+    // return () => {
+    //   channel.disChannel();
+    // };
+  }, [dispatch]);
 
   const columns: ColumnProps[] = [
     {
@@ -167,27 +153,27 @@ function ScriptList() {
             loading={item.loading}
             disabled={item.loading}
             onChange={(checked) => {
-              setScriptList((list) => {
-                const index = list.findIndex((script) => script.id === item.id);
-                list[index].loading = true;
-                let p: Promise<any>;
-                if (checked) {
-                  p = scriptCtrl.enable(item.id).then(() => {
-                    list[index].status = SCRIPT_STATUS_ENABLE;
-                  });
-                } else {
-                  p = scriptCtrl.disable(item.id).then(() => {
-                    list[index].status = SCRIPT_STATUS_DISABLE;
-                  });
-                }
-                p.catch((err) => {
-                  Message.error(err);
-                }).finally(() => {
-                  list[index].loading = false;
-                  setScriptList([...list]);
-                });
-                return list;
-              });
+              // setScriptList((list) => {
+              //   const index = list.findIndex((script) => script.id === item.id);
+              //   list[index].loading = true;
+              //   let p: Promise<any>;
+              //   if (checked) {
+              //     p = scriptCtrl.enable(item.id).then(() => {
+              //       list[index].status = SCRIPT_STATUS_ENABLE;
+              //     });
+              //   } else {
+              //     p = scriptCtrl.disable(item.id).then(() => {
+              //       list[index].status = SCRIPT_STATUS_DISABLE;
+              //     });
+              //   }
+              //   p.catch((err) => {
+              //     Message.error(err);
+              //   }).finally(() => {
+              //     list[index].loading = false;
+              //     setScriptList([...list]);
+              //   });
+              //   return list;
+              // });
             }}
           />
         );
@@ -199,7 +185,6 @@ function ScriptList() {
       dataIndex: "name",
       sorter: (a, b) => a.name.localeCompare(b.name),
       filterIcon: <IconSearch />,
-      // eslint-disable-next-line react/no-unstable-nested-components
       filterDropdown: ({ filterKeys, setFilterKeys, confirm }: any) => {
         return (
           <div className="arco-table-custom-filter">
@@ -244,7 +229,7 @@ function ScriptList() {
         return (
           <Tooltip content={col} position="tl">
             <Link
-              to={`/script/editor/${item.id}`}
+              to={`/script/editor/${item.uuid}`}
               style={{
                 textDecoration: "none",
               }}
@@ -287,7 +272,7 @@ function ScriptList() {
             pathname: "logger",
             search: `query=${encodeURIComponent(
               JSON.stringify([
-                { key: "scriptId", value: item.id },
+                { key: "scriptId", value: item.uuid },
                 {
                   key: "component",
                   value: "GM_log",
@@ -317,9 +302,7 @@ function ScriptList() {
         if (item.type === SCRIPT_TYPE_BACKGROUND) {
           tooltip = t("background_script_tooltip");
         } else {
-          tooltip = `${t("scheduled_script_tooltip")} ${nextTime(
-            item.metadata.crontab[0]
-          )}`;
+          tooltip = `${t("scheduled_script_tooltip")} ${nextTime(item.metadata.crontab[0])}`;
         }
         return (
           <Tooltip content={tooltip}>
@@ -332,9 +315,7 @@ function ScriptList() {
               }}
               onClick={toLogger}
             >
-              {item.runStatus === SCRIPT_RUN_STATUS_RUNNING
-                ? t("running")
-                : t("completed")}
+              {item.runStatus === SCRIPT_RUN_STATUS_RUNNING ? t("running") : t("completed")}
             </Tag>
           </Tooltip>
         );
@@ -351,8 +332,7 @@ function ScriptList() {
             <Tooltip
               content={
                 <p style={{ margin: 0 }}>
-                  {t("subscription_link")}:{" "}
-                  {decodeURIComponent(item.subscribeUrl)}
+                  {t("subscription_link")}: {decodeURIComponent(item.subscribeUrl)}
                 </p>
               }
             >
@@ -440,41 +420,40 @@ function ScriptList() {
       sorter: (a, b) => a.updatetime - b.updatetime,
       render(col, script: Script) {
         return (
-          // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
           <span
             style={{
               cursor: "pointer",
             }}
             onClick={() => {
-              if (!script.checkUpdateUrl) {
-                Message.warning(t("update_not_supported")!);
-                return;
-              }
-              Message.info({
-                id: "checkupdate",
-                content: t("checking_for_updates"),
-              });
-              scriptCtrl
-                .checkUpdate(script.id)
-                .then((res) => {
-                  if (res) {
-                    Message.warning({
-                      id: "checkupdate",
-                      content: t("new_version_available"),
-                    });
-                  } else {
-                    Message.success({
-                      id: "checkupdate",
-                      content: t("latest_version"),
-                    });
-                  }
-                })
-                .catch((e) => {
-                  Message.error({
-                    id: "checkupdate",
-                    content: `${t("update_check_failed")}: ${e.message}`,
-                  });
-                });
+              // if (!script.checkUpdateUrl) {
+              //   Message.warning(t("update_not_supported")!);
+              //   return;
+              // }
+              // Message.info({
+              //   id: "checkupdate",
+              //   content: t("checking_for_updates"),
+              // });
+              // scriptCtrl
+              //   .checkUpdate(script.id)
+              //   .then((res) => {
+              //     if (res) {
+              //       Message.warning({
+              //         id: "checkupdate",
+              //         content: t("new_version_available"),
+              //       });
+              //     } else {
+              //       Message.success({
+              //         id: "checkupdate",
+              //         content: t("latest_version"),
+              //       });
+              //     }
+              //   })
+              //   .catch((e) => {
+              //     Message.error({
+              //       id: "checkupdate",
+              //       content: `${t("update_check_failed")}: ${e.message}`,
+              //     });
+              //   });
             }}
           >
             {semTime(new Date(col))}
@@ -490,7 +469,7 @@ function ScriptList() {
       render(col, item: Script) {
         return (
           <Button.Group>
-            <Link to={`/script/editor/${item.id}`}>
+            <Link to={`/script/editor/${item.uuid}`}>
               <Button
                 type="text"
                 icon={<RiPencilFill />}
@@ -503,12 +482,12 @@ function ScriptList() {
               title={t("confirm_delete_script")}
               icon={<RiDeleteBin5Fill />}
               onOk={() => {
-                setScriptList((list) => {
-                  return list.filter((i) => i.id !== item.id);
-                });
-                scriptCtrl.delete(item.id).catch((e) => {
-                  Message.error(`${t("delete_failed")}: ${e}`);
-                });
+                // setScriptList((list) => {
+                //   return list.filter((i) => i.id !== item.id);
+                // });
+                // scriptCtrl.delete(item.id).catch((e) => {
+                //   Message.error(`${t("delete_failed")}: ${e}`);
+                // });
               }}
             >
               <Button
@@ -526,13 +505,13 @@ function ScriptList() {
                 icon={<RiSettings3Fill />}
                 onClick={() => {
                   // Get value
-                  getValues(item).then((newValues) => {
-                    setUserConfig({
-                      userConfig: { ...item.config! },
-                      script: item,
-                      values: newValues,
-                    });
-                  });
+                  // getValues(item).then((newValues) => {
+                  //   setUserConfig({
+                  //     userConfig: { ...item.config! },
+                  //     script: item,
+                  //     values: newValues,
+                  //   });
+                  // });
                 }}
                 style={{
                   color: "var(--color-text-2)",
@@ -546,16 +525,16 @@ function ScriptList() {
                   icon={<RiStopFill />}
                   onClick={async () => {
                     // Stop script
-                    Message.loading({
-                      id: "script-stop",
-                      content: t("stopping_script"),
-                    });
-                    await runtimeCtrl.stopScript(item.id);
-                    Message.success({
-                      id: "script-stop",
-                      content: t("script_stopped"),
-                      duration: 3000,
-                    });
+                    // Message.loading({
+                    //   id: "script-stop",
+                    //   content: t("stopping_script"),
+                    // });
+                    // await runtimeCtrl.stopScript(item.id);
+                    // Message.success({
+                    //   id: "script-stop",
+                    //   content: t("script_stopped"),
+                    //   duration: 3000,
+                    // });
                   }}
                   style={{
                     color: "var(--color-text-2)",
@@ -567,25 +546,25 @@ function ScriptList() {
                   icon={<RiPlayFill />}
                   onClick={async () => {
                     // Start script
-                    Message.loading({
-                      id: "script-run",
-                      content: t("starting_script"),
-                    });
-                    await runtimeCtrl.startScript(item.id);
-                    Message.success({
-                      id: "script-run",
-                      content: t("script_started"),
-                      duration: 3000,
-                    });
-                    setScriptList((list) => {
-                      for (let i = 0; i < list.length; i += 1) {
-                        if (list[i].id === item.id) {
-                          list[i].runStatus = SCRIPT_RUN_STATUS_RUNNING;
-                          break;
-                        }
-                      }
-                      return [...list];
-                    });
+                    // Message.loading({
+                    //   id: "script-run",
+                    //   content: t("starting_script"),
+                    // });
+                    // await runtimeCtrl.startScript(item.id);
+                    // Message.success({
+                    //   id: "script-run",
+                    //   content: t("script_started"),
+                    //   duration: 3000,
+                    // });
+                    // setScriptList((list) => {
+                    //   for (let i = 0; i < list.length; i += 1) {
+                    //     if (list[i].id === item.id) {
+                    //       list[i].runStatus = SCRIPT_RUN_STATUS_RUNNING;
+                    //       break;
+                    //     }
+                    //   }
+                    //   return [...list];
+                    // });
                   }}
                   style={{
                     color: "var(--color-text-2)",
@@ -612,32 +591,31 @@ function ScriptList() {
 
   const [newColumns, setNewColumns] = useState<ColumnProps[]>([]);
 
+  // 设置列和排序
   useEffect(() => {
-    const dao = new ScriptDAO();
-    dao.table
-      .orderBy("sort")
-      .toArray()
-      .then(async (scripts) => {
-        // Sort when a new script is added (-1)
-        scriptListSort(scripts);
-        // Open user config panel
-        if (openUserConfig) {
-          const script = scripts.find((item) => item.id === openUserConfig);
-          if (script && script.config) {
-            setUserConfig({
-              script,
-              userConfig: script.config,
-              values: await getValues(script),
-            });
-          }
-        }
-        setScriptList(scripts);
-      });
-
+    // const dao = new ScriptDAO();
+    // dao.table
+    //   .orderBy("sort")
+    //   .toArray()
+    //   .then(async (scripts) => {
+    //     // Sort when a new script is added (-1)
+    //     scriptListSort(scripts);
+    //     // Open user config panel
+    //     if (openUserConfig) {
+    //       const script = scripts.find((item) => item.id === openUserConfig);
+    //       if (script && script.config) {
+    //         setUserConfig({
+    //           script,
+    //           userConfig: script.config,
+    //           values: await getValues(script),
+    //         });
+    //       }
+    //     }
+    //     setScriptList(scripts);
+    //   });
     setNewColumns(
       columns.map((item) => {
-        item.width =
-          systemConfig.scriptListColumnWidth[item.key!] ?? item.width;
+        item.width = scriptListColumnWidth[item.key!] ?? item.width;
         return item;
       })
     );
@@ -651,7 +629,6 @@ function ScriptList() {
     })
   );
 
-  // eslint-disable-next-line react/no-unstable-nested-components
   const SortableWrapper = (props: any, ref: any) => {
     return (
       <DndContext
@@ -663,27 +640,24 @@ function ScriptList() {
             return;
           }
           if (active.id !== over.id) {
-            setScriptList((items) => {
-              let oldIndex = 0;
-              let newIndex = 0;
-              items.forEach((item, index) => {
-                if (item.id === active.id) {
-                  oldIndex = index;
-                } else if (item.id === over.id) {
-                  newIndex = index;
-                }
-              });
-              const newItems = arrayMove(items, oldIndex, newIndex);
-              scriptListSort(newItems);
-              return newItems;
-            });
+            // setScriptList((items) => {
+            //   let oldIndex = 0;
+            //   let newIndex = 0;
+            //   items.forEach((item, index) => {
+            //     if (item.id === active.id) {
+            //       oldIndex = index;
+            //     } else if (item.id === over.id) {
+            //       newIndex = index;
+            //     }
+            //   });
+            //   const newItems = arrayMove(items, oldIndex, newIndex);
+            //   scriptListSort(newItems);
+            //   return newItems;
+            // });
           }
         }}
       >
-        <SortableContext
-          items={scriptList}
-          strategy={verticalListSortingStrategy}
-        >
+        <SortableContext items={scriptList} strategy={verticalListSortingStrategy}>
           <table ref={ref} {...props} />
         </SortableContext>
       </DndContext>
@@ -704,10 +678,8 @@ function ScriptList() {
 
   const sortIndex = dealColumns.findIndex((item) => item.key === "sort");
 
-  // eslint-disable-next-line react/no-unstable-nested-components
   const SortableItem = (props: any) => {
-    const { attributes, listeners, setNodeRef, transform, transition } =
-      useSortable({ id: props!.record.id });
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: props!.record.uuid });
 
     const style = {
       transform: CSS.Transform.toString(transform),
@@ -715,7 +687,6 @@ function ScriptList() {
     };
 
     // 替换排序列,使其可以拖拽
-    // eslint-disable-next-line react/destructuring-assignment
     props.children[sortIndex + 1] = (
       <td
         className="arco-table-td"
@@ -778,9 +749,7 @@ function ScriptList() {
                   <Select.Option value="disable">{t("disable")}</Select.Option>
                   <Select.Option value="export">{t("export")}</Select.Option>
                   <Select.Option value="delete">{t("delete")}</Select.Option>
-                  <Select.Option value="check_update">
-                    {t("check_update")}
-                  </Select.Option>
+                  <Select.Option value="check_update">{t("check_update")}</Select.Option>
                 </Select>
                 <Button
                   type="primary"
@@ -853,9 +822,7 @@ function ScriptList() {
                                   // 需要更新
                                   Message.warning({
                                     id: "checkupdate",
-                                    content: `${i18nName(item)} ${t(
-                                      "new_version_available"
-                                    )}`,
+                                    content: `${i18nName(item)} ${t("new_version_available")}`,
                                   });
                                 }
                                 if (index === array.length - 1) {
@@ -869,9 +836,7 @@ function ScriptList() {
                               .catch((e) => {
                                 Message.error({
                                   id: "checkupdate",
-                                  content: `${t("update_check_failed")}: ${
-                                    e.message
-                                  }`,
+                                  content: `${t("update_check_failed")}: ${e.message}`,
                                 });
                               });
                           });
@@ -944,12 +909,7 @@ function ScriptList() {
                   position="bl"
                 >
                   <Input
-                    type={
-                      newColumns[selectColumn].width === 0 ||
-                      newColumns[selectColumn].width === -1
-                        ? ""
-                        : "number"
-                    }
+                    type={newColumns[selectColumn].width === 0 || newColumns[selectColumn].width === -1 ? "" : "number"}
                     style={{ width: "80px" }}
                     size="mini"
                     value={
@@ -957,8 +917,8 @@ function ScriptList() {
                       newColumns[selectColumn].width === 0
                         ? t("auto")
                         : newColumns[selectColumn].width === -1
-                        ? t("hide")
-                        : newColumns[selectColumn].width?.toString()
+                          ? t("hide")
+                          : newColumns[selectColumn].width?.toString()
                     }
                     onChange={(val) => {
                       setNewColumns((cols) => {
@@ -1031,11 +991,7 @@ function ScriptList() {
           }}
         />
         {userConfig && (
-          <UserConfigPanel
-            script={userConfig.script}
-            userConfig={userConfig.userConfig}
-            values={userConfig.values}
-          />
+          <UserConfigPanel script={userConfig.script} userConfig={userConfig.userConfig} values={userConfig.values} />
         )}
         <CloudScriptPlan
           script={cloudScript}

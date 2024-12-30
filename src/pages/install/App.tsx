@@ -6,7 +6,7 @@ import { Subscribe } from "@App/app/repo/subscribe";
 import { i18nDescription, i18nName } from "@App/locales/locales";
 import { useTranslation } from "react-i18next";
 import { prepareScriptByCode, prepareSubscribeByCode, ScriptInfo } from "@App/pkg/utils/script";
-import { isDebug, nextTime } from "@App/pkg/utils/utils";
+import { nextTime } from "@App/pkg/utils/utils";
 import { ScriptClient } from "@App/app/service/service_worker/client";
 
 type Permission = { label: string; color?: string; value: string[] }[];
@@ -156,11 +156,13 @@ function App() {
         setScriptInfo(info);
         setEnable(action.status === SCRIPT_STATUS_ENABLE);
         setUpsertScript(action);
+        // 修改网页显示title
+        document.title = `${!isUpdate ? t("install_script") : t("update_script")} - ${i18nName(action)} - ScriptCat`;
       })
       .catch(() => {
         Message.error(t("script_info_load_failed"));
       });
-  }, [t]);
+  }, [isUpdate, t]);
 
   return (
     <div className="h-full">
@@ -253,11 +255,9 @@ function App() {
                             Message.success(t("install_success")!);
                             setBtnText(t("install_success")!);
                           }
-                          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-                          !isDebug() &&
-                            setTimeout(() => {
-                              closeWindow();
-                            }, 200);
+                          setTimeout(() => {
+                            closeWindow();
+                          }, 500);
                         })
                         .catch((e) => {
                           Message.error(`${t("install_failed")}: ${e}`);

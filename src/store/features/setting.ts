@@ -10,6 +10,7 @@ export const settingSlice = createAppSlice({
       enable: true,
       config: "",
     },
+    scriptListColumnWidth: {} as { [key: string]: number },
   },
   reducers: (create) => {
     // 初始化黑夜模式
@@ -45,9 +46,10 @@ export const settingSlice = createAppSlice({
   },
   selectors: {
     selectThemeMode: (state) => state.lightMode,
+    selectScriptListColumnWidth: (state) => state.scriptListColumnWidth,
   },
 });
 
 export const { setDarkMode } = settingSlice.actions;
 
-export const { selectThemeMode } = settingSlice.selectors;
+export const { selectThemeMode, selectScriptListColumnWidth } = settingSlice.selectors;

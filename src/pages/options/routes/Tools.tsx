@@ -12,17 +12,11 @@ import {
   Space,
 } from "@arco-design/web-react";
 import Title from "@arco-design/web-react/es/Typography/title";
-import IoC from "@App/app/ioc";
-import SynchronizeController from "@App/app/service/synchronize/controller";
-import FileSystemFactory, { FileSystemType } from "@Pkg/filesystem/factory";
-import { SystemConfig } from "@App/pkg/config/config";
-import { File, FileReader } from "@Pkg/filesystem/filesystem";
 import { formatUnixTime } from "@App/pkg/utils/utils";
 import FileSystemParams from "@App/pages/components/FileSystemParams";
 import { IconQuestionCircleFill } from "@arco-design/web-react/icon";
 import { RefInputType } from "@arco-design/web-react/es/Input/interface";
 import { useTranslation } from "react-i18next";
-import SystemController from "@App/app/service/system/controller";
 
 function Tools() {
   const [loading, setLoading] = useState<{ [key: string]: boolean }>({});

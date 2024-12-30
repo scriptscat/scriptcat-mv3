@@ -8,6 +8,7 @@ import CacheKey from "@App/app/cache_key";
 import { openInCurrentTab } from "@App/pkg/utils/utils";
 import { Script, ScriptDAO } from "@App/app/repo/scripts";
 import { MessageQueue } from "@Packages/message/message_queue";
+import { InstallSource } from ".";
 
 export class ScriptService {
   logger: Logger;
@@ -135,17 +136,34 @@ export class ScriptService {
   }
 
   // 安装脚本
-  async installScript(script: Script) {
+  async installScript(param: { script: Script; upsertBy: InstallSource }) {
+    param.upsertBy = param.upsertBy || "user";
+    const { script, upsertBy } = param;
+    const logger = this.logger.with({
+      name: script.name,
+      uuid: script.uuid,
+      version: script.metadata.version[0],
+      upsertBy,
+    });
     const dao = new ScriptDAO();
     // 判断是否已经安装
     const oldScript = await dao.findByUUID(script.uuid);
-    if (!oldScript) {
-      // 执行安装逻辑
-    } else {
+    if (oldScript) {
       // 执行更新逻辑
+      script.selfMetadata = oldScript.selfMetadata;
     }
-    // 广播一下
-    this.mq.publish("installScript", script);
+    return dao
+      .save(script)
+      .then(() => {
+        logger.info("install success");
+        // 广播一下
+        this.mq.publish("installScript", script);
+        return {};
+      })
+      .catch((e) => {
+        logger.error("install error", Logger.E(e));
+        throw e;
+      });
   }
 
   init() {
