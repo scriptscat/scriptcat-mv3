@@ -246,7 +246,7 @@ function App() {
                         return;
                       }
                       new ScriptClient()
-                        .installScript(upsertScript as Script)
+                        .install(upsertScript as Script)
                         .then(() => {
                           if (isUpdate) {
                             Message.success(t("install.update_success")!);

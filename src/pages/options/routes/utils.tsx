@@ -148,7 +148,7 @@ export function ListHomeRender({ script }: { script: Script }) {
 }
 
 export function getValues(script: Script) {
-  return {};
+  return Promise.resolve({});
 }
 
 export type ScriptIconsProps = {

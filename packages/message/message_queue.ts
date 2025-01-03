@@ -2,17 +2,20 @@ import EventEmitter from "eventemitter3";
 import { connect } from "./client";
 import { ApiFunction, Server } from "./server";
 
+export type SubscribeCallback = (message: any) => void;
+
 export class Broker {
   constructor() {}
 
   // 订阅
-  async subscribe(topic: string, handler: (message: any) => void) {
+  async subscribe(topic: string, handler: SubscribeCallback): Promise<chrome.runtime.Port> {
     const con = await connect("messageQueue", { action: "subscribe", topic });
     con.onMessage.addListener((msg: { action: string; topic: string; message: any }) => {
       if (msg.action === "message") {
         handler(msg.message);
       }
     });
+    return con;
   }
 
   // 发布

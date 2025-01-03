@@ -68,10 +68,21 @@ import CloudScriptPlan from "@App/pages/components/CloudScriptPlan";
 import { useTranslation } from "react-i18next";
 import { nextTime, semTime } from "@App/pkg/utils/utils";
 import { i18nName } from "@App/locales/locales";
-import { ListHomeRender, ScriptIcons } from "./utils";
+import { getValues, ListHomeRender, ScriptIcons } from "./utils";
 import { useAppDispatch, useAppSelector } from "@App/store/hooks";
-import { fetchScriptList, selectScripts } from "@App/store/features/script";
+import {
+  deleteScript,
+  requestEnableScript,
+  fetchAndSortScriptList,
+  requestDeleteScript,
+  ScriptLoading,
+  selectScripts,
+  sortScript,
+  upsertScript,
+} from "@App/store/features/script";
 import { selectScriptListColumnWidth } from "@App/store/features/setting";
+import { Broker } from "@Packages/message/message_queue";
+import { subscribeScriptDelete, subscribeScriptInstall } from "@App/app/service/service_worker/client";
 
 type ListType = Script & { loading?: boolean };
 
@@ -87,7 +98,7 @@ function ScriptList() {
   const scriptListColumnWidth = useAppSelector(selectScriptListColumnWidth);
   const inputRef = useRef<RefInputType>(null);
   const navigate = useNavigate();
-  const openUserConfig = parseInt(useSearchParams()[0].get("userConfig") || "", 10);
+  const openUserConfig = useSearchParams()[0].get("userConfig") || "";
   const [showAction, setShowAction] = useState(false);
   const [action, setAction] = useState("");
   const [select, setSelect] = useState<Script[]>([]);
@@ -96,9 +107,24 @@ function ScriptList() {
   const { t } = useTranslation();
 
   useEffect(() => {
-    dispatch(fetchScriptList());
+    dispatch(fetchAndSortScriptList());
     // 监听脚本安装/运行
-    // Monitor script running status
+    const border = new Broker();
+    const subCon: chrome.runtime.Port[] = [];
+
+    subscribeScriptInstall(border, (message) => {
+      dispatch(upsertScript(message.script));
+    }).then((con) => subCon.push(con));
+
+    subscribeScriptDelete(border, (message) => {
+      dispatch(deleteScript(message.uuid));
+    }).then((con) => subCon.push(con));
+
+    return () => {
+      subCon.forEach((con) => {
+        con.disconnect();
+      });
+    };
     // const channel = runtimeCtrl.watchRunStatus();
     // channel.setHandler(([id, status]: any) => {
     //   setScriptList((list) => {
@@ -123,6 +149,9 @@ function ScriptList() {
       key: "#",
       sorter: (a, b) => a.sort - b.sort,
       render(col) {
+        if (col < 0) {
+          return "-";
+        }
         return col + 1;
       },
     },
@@ -146,34 +175,14 @@ function ScriptList() {
         },
       ],
       onFilter: (value, row) => row.status === value,
-      render: (col, item: ListType) => {
+      render: (col, item: ScriptLoading) => {
         return (
           <Switch
             checked={item.status === SCRIPT_STATUS_ENABLE}
-            loading={item.loading}
-            disabled={item.loading}
+            loading={item.enableLoading}
+            disabled={item.enableLoading}
             onChange={(checked) => {
-              // setScriptList((list) => {
-              //   const index = list.findIndex((script) => script.id === item.id);
-              //   list[index].loading = true;
-              //   let p: Promise<any>;
-              //   if (checked) {
-              //     p = scriptCtrl.enable(item.id).then(() => {
-              //       list[index].status = SCRIPT_STATUS_ENABLE;
-              //     });
-              //   } else {
-              //     p = scriptCtrl.disable(item.id).then(() => {
-              //       list[index].status = SCRIPT_STATUS_DISABLE;
-              //     });
-              //   }
-              //   p.catch((err) => {
-              //     Message.error(err);
-              //   }).finally(() => {
-              //     list[index].loading = false;
-              //     setScriptList([...list]);
-              //   });
-              //   return list;
-              // });
+              dispatch(requestEnableScript({ uuid: item.uuid, enable: checked }));
             }}
           />
         );
@@ -466,7 +475,7 @@ function ScriptList() {
       dataIndex: "action",
       key: "action",
       width: 160,
-      render(col, item: Script) {
+      render(col, item: ScriptLoading) {
         return (
           <Button.Group>
             <Link to={`/script/editor/${item.uuid}`}>
@@ -482,18 +491,13 @@ function ScriptList() {
               title={t("confirm_delete_script")}
               icon={<RiDeleteBin5Fill />}
               onOk={() => {
-                // setScriptList((list) => {
-                //   return list.filter((i) => i.id !== item.id);
-                // });
-                // scriptCtrl.delete(item.id).catch((e) => {
-                //   Message.error(`${t("delete_failed")}: ${e}`);
-                // });
+                dispatch(requestDeleteScript(item.uuid));
               }}
             >
               <Button
                 type="text"
                 icon={<RiDeleteBin5Fill />}
-                onClick={() => {}}
+                loading={item.actionLoading}
                 style={{
                   color: "var(--color-text-2)",
                 }}
@@ -504,13 +508,39 @@ function ScriptList() {
                 type="text"
                 icon={<RiSettings3Fill />}
                 onClick={() => {
-                  // Get value
-                  // getValues(item).then((newValues) => {
-                  //   setUserConfig({
-                  //     userConfig: { ...item.config! },
-                  //     script: item,
-                  //     values: newValues,
-                  //   });
+                  getValues(item).then((newValues) => {
+                    setUserConfig({
+                      userConfig: { ...item.config! },
+                      script: item,
+                      values: newValues,
+                    });
+                  });
+                }}
+                style={{
+                  color: "var(--color-text-2)",
+                }}
+              />
+            )}
+            {item.type !== SCRIPT_TYPE_NORMAL && (
+              <Button
+                type="text"
+                icon={item.runStatus === SCRIPT_RUN_STATUS_RUNNING ? <RiStopFill /> : <RiPlayFill />}
+                loading={item.actionLoading}
+                onClick={async () => {
+                  if (item.runStatus === SCRIPT_RUN_STATUS_RUNNING) {
+                    // Stop script
+                  }
+                  console.log(item.runStatus);
+                  // Stop script
+                  // Message.loading({
+                  //   id: "script-stop",
+                  //   content: t("stopping_script"),
+                  // });
+                  // await runtimeCtrl.stopScript(item.id);
+                  // Message.success({
+                  //   id: "script-stop",
+                  //   content: t("script_stopped"),
+                  //   duration: 3000,
                   // });
                 }}
                 style={{
@@ -518,59 +548,6 @@ function ScriptList() {
                 }}
               />
             )}
-            {item.type !== SCRIPT_TYPE_NORMAL &&
-              (item.runStatus === SCRIPT_RUN_STATUS_RUNNING ? (
-                <Button
-                  type="text"
-                  icon={<RiStopFill />}
-                  onClick={async () => {
-                    // Stop script
-                    // Message.loading({
-                    //   id: "script-stop",
-                    //   content: t("stopping_script"),
-                    // });
-                    // await runtimeCtrl.stopScript(item.id);
-                    // Message.success({
-                    //   id: "script-stop",
-                    //   content: t("script_stopped"),
-                    //   duration: 3000,
-                    // });
-                  }}
-                  style={{
-                    color: "var(--color-text-2)",
-                  }}
-                />
-              ) : (
-                <Button
-                  type="text"
-                  icon={<RiPlayFill />}
-                  onClick={async () => {
-                    // Start script
-                    // Message.loading({
-                    //   id: "script-run",
-                    //   content: t("starting_script"),
-                    // });
-                    // await runtimeCtrl.startScript(item.id);
-                    // Message.success({
-                    //   id: "script-run",
-                    //   content: t("script_started"),
-                    //   duration: 3000,
-                    // });
-                    // setScriptList((list) => {
-                    //   for (let i = 0; i < list.length; i += 1) {
-                    //     if (list[i].id === item.id) {
-                    //       list[i].runStatus = SCRIPT_RUN_STATUS_RUNNING;
-                    //       break;
-                    //     }
-                    //   }
-                    //   return [...list];
-                    // });
-                  }}
-                  style={{
-                    color: "var(--color-text-2)",
-                  }}
-                />
-              ))}
             {item.metadata.cloudcat && (
               <Button
                 type="text"
@@ -591,28 +568,20 @@ function ScriptList() {
 
   const [newColumns, setNewColumns] = useState<ColumnProps[]>([]);
 
-  // 设置列和排序
+  // 设置列和判断是否打开用户配置
   useEffect(() => {
-    // const dao = new ScriptDAO();
-    // dao.table
-    //   .orderBy("sort")
-    //   .toArray()
-    //   .then(async (scripts) => {
-    //     // Sort when a new script is added (-1)
-    //     scriptListSort(scripts);
-    //     // Open user config panel
-    //     if (openUserConfig) {
-    //       const script = scripts.find((item) => item.id === openUserConfig);
-    //       if (script && script.config) {
-    //         setUserConfig({
-    //           script,
-    //           userConfig: script.config,
-    //           values: await getValues(script),
-    //         });
-    //       }
-    //     }
-    //     setScriptList(scripts);
-    //   });
+    if (openUserConfig) {
+      const script = scriptList.find((item) => item.uuid === openUserConfig);
+      if (script && script.config) {
+        getValues(script).then((values) => {
+          setUserConfig({
+            script,
+            userConfig: script.config!,
+            values: values,
+          });
+        });
+      }
+    }
     setNewColumns(
       columns.map((item) => {
         item.width = scriptListColumnWidth[item.key!] ?? item.width;
@@ -640,24 +609,21 @@ function ScriptList() {
             return;
           }
           if (active.id !== over.id) {
-            // setScriptList((items) => {
-            //   let oldIndex = 0;
-            //   let newIndex = 0;
-            //   items.forEach((item, index) => {
-            //     if (item.id === active.id) {
-            //       oldIndex = index;
-            //     } else if (item.id === over.id) {
-            //       newIndex = index;
-            //     }
-            //   });
-            //   const newItems = arrayMove(items, oldIndex, newIndex);
-            //   scriptListSort(newItems);
-            //   return newItems;
-            // });
+            console.log(active);
+            let oldIndex = 0;
+            let newIndex = 0;
+            scriptList.forEach((item, index) => {
+              if (item.uuid === active.id) {
+                oldIndex = index;
+              } else if (item.uuid === over.id) {
+                newIndex = index;
+              }
+            });
+            dispatch(sortScript({ uuid: active.id as string, newIndex, oldIndex }));
           }
         }}
       >
-        <SortableContext items={scriptList} strategy={verticalListSortingStrategy}>
+        <SortableContext items={scriptList.map((s) => ({ ...s, id: s.uuid }))} strategy={verticalListSortingStrategy}>
           <table ref={ref} {...props} />
         </SortableContext>
       </DndContext>
@@ -970,7 +936,7 @@ function ScriptList() {
         <Table
           className="arco-drag-table-container"
           components={components}
-          rowKey="id"
+          rowKey="uuid"
           tableLayoutFixed
           columns={dealColumns}
           data={scriptList}

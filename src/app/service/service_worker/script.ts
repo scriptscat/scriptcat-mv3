@@ -6,7 +6,14 @@ import LoggerCore from "@App/app/logger/core";
 import Cache from "@App/app/cache";
 import CacheKey from "@App/app/cache_key";
 import { openInCurrentTab } from "@App/pkg/utils/utils";
-import { Script, ScriptDAO } from "@App/app/repo/scripts";
+import {
+  Script,
+  SCRIPT_RUN_STATUS_COMPLETE,
+  SCRIPT_RUN_STATUS_RUNNING,
+  SCRIPT_STATUS_DISABLE,
+  SCRIPT_STATUS_ENABLE,
+  ScriptDAO,
+} from "@App/app/repo/scripts";
 import { MessageQueue } from "@Packages/message/message_queue";
 import { InstallSource } from ".";
 
@@ -145,11 +152,13 @@ export class ScriptService {
       version: script.metadata.version[0],
       upsertBy,
     });
+    let update = false;
     const dao = new ScriptDAO();
     // 判断是否已经安装
     const oldScript = await dao.findByUUID(script.uuid);
     if (oldScript) {
       // 执行更新逻辑
+      update = true;
       script.selfMetadata = oldScript.selfMetadata;
     }
     return dao
@@ -157,7 +166,7 @@ export class ScriptService {
       .then(() => {
         logger.info("install success");
         // 广播一下
-        this.mq.publish("installScript", script);
+        this.mq.publish("installScript", { script, update });
         return {};
       })
       .catch((e) => {
@@ -166,10 +175,54 @@ export class ScriptService {
       });
   }
 
+  async deleteScript(uuid: string) {
+    const logger = this.logger.with({ uuid });
+    const dao = new ScriptDAO();
+    const script = await dao.findByUUID(uuid);
+    if (!script) {
+      logger.error("script not found");
+      throw new Error("script not found");
+    }
+    return dao
+      .delete(uuid)
+      .then(() => {
+        logger.info("delete success");
+        this.mq.publish("deleteScript", { uuid });
+        return {};
+      })
+      .catch((e) => {
+        logger.error("delete error", Logger.E(e));
+        throw e;
+      });
+  }
+
+  async enableScript(param: { uuid: string; enable: boolean }) {
+    const logger = this.logger.with({ uuid: param.uuid, enable: param.enable });
+    const dao = new ScriptDAO();
+    const script = await dao.findByUUID(param.uuid);
+    if (!script) {
+      logger.error("script not found");
+      throw new Error("script not found");
+    }
+    return dao
+      .update(param.uuid, { status: param.enable ? SCRIPT_STATUS_ENABLE : SCRIPT_STATUS_DISABLE })
+      .then(() => {
+        logger.info("enable success");
+        this.mq.publish("enableScript", { uuid: param.uuid, enable: param.enable });
+        return {};
+      })
+      .catch((e) => {
+        logger.error("enable error", Logger.E(e));
+        throw e;
+      });
+  }
+
   init() {
     this.listenerScriptInstall();
 
     this.group.on("getInstallInfo", this.getInstallInfo);
-    this.group.on("installScript", this.installScript.bind(this));
+    this.group.on("install", this.installScript.bind(this));
+    this.group.on("delete", this.deleteScript.bind(this));
+    this.group.on("enable", this.enableScript.bind(this));
   }
 }

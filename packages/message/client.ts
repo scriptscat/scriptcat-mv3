@@ -1,6 +1,6 @@
-export function sendMessage(action: string, params?: any): Promise<any> {
+export function sendMessage(action: string, data?: any): Promise<any> {
   return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage({ action, data: params }, (res) => {
+    chrome.runtime.sendMessage({ action, data }, (res) => {
       if (res.code) {
         console.error(res);
         reject(res.message);
@@ -11,10 +11,10 @@ export function sendMessage(action: string, params?: any): Promise<any> {
   });
 }
 
-export function connect(action: string, params?: any): Promise<chrome.runtime.Port> {
+export function connect(action: string, data?: any): Promise<chrome.runtime.Port> {
   return new Promise((resolve) => {
     const port = chrome.runtime.connect();
-    port.postMessage({ action, data: params });
+    port.postMessage({ action, data });
     resolve(port);
   });
 }
