@@ -1,19 +1,36 @@
-export type ApiFunction = (params: any, con: chrome.runtime.Port | chrome.runtime.MessageSender) => any;
+export interface Message {
+  onConnect(callback: (data: any, con: MessageConnect) => void): void;
+  onMessage(callback: (data: any, sendResponse: (data: any) => void) => void): void;
+  connect(data: any): Promise<MessageConnect>;
+  sendMessage(data: any): Promise<any>;
+}
+
+export interface MessageConnect {
+  onMessage(callback: (data: any) => void): void;
+  sendMessage(data: any): void;
+  disconnect(): void;
+  onDisconnect(callback: () => void): void;
+}
+
+export type MessageSender = {
+  tabId: number;
+};
+
+export type ApiFunction = (params: any, con: MessageConnect | null) => any;
 
 export class Server {
   private apiFunctionMap: Map<string, ApiFunction> = new Map();
 
-  constructor(private env: string) {
-    chrome.runtime.onConnect.addListener((port) => {
-      const handler = (msg: { action: string; data: any }) => {
-        port.onMessage.removeListener(handler);
-        this.connectHandle(msg.action, msg.data, port);
-      };
-      port.onMessage.addListener(handler);
+  constructor(
+    private env: string,
+    message: Message
+  ) {
+    message.onConnect((msg: any, con: MessageConnect) => {
+      this.connectHandle(msg.action, msg.data, con);
     });
 
-    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-      this.messageHandle(msg.action, msg.data, sender, sendResponse);
+    message.onMessage((msg, sendResponse) => {
+      return this.messageHandle(msg.action, msg.data, sendResponse);
     });
   }
 
@@ -25,24 +42,26 @@ export class Server {
     this.apiFunctionMap.set(name, func);
   }
 
-  private connectHandle(msg: string, params: any, con: chrome.runtime.Port) {
+  private connectHandle(msg: string, params: any, con: MessageConnect) {
     const func = this.apiFunctionMap.get(msg);
     if (func) {
       func(params, con);
     }
   }
 
-  private messageHandle(
-    msg: string,
-    params: any,
-    sender: chrome.runtime.MessageSender,
-    sendResponse: (response: any) => void
-  ) {
+  private messageHandle(msg: string, params: any, sendResponse: (response: any) => void) {
     const func = this.apiFunctionMap.get(msg);
     if (func) {
       try {
-        const ret = func(params, sender);
-        sendResponse({ code: 0, data: ret });
+        const ret = func(params, null);
+        if (ret instanceof Promise) {
+          ret.then((data) => {
+            sendResponse({ code: 0, data });
+          });
+          return true;
+        } else {
+          sendResponse({ code: 0, data: ret });
+        }
       } catch (e: any) {
         sendResponse({ code: -1, message: e.message });
       }

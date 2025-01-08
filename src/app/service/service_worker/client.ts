@@ -3,6 +3,16 @@ import { Client } from "@Packages/message/client";
 import { InstallSource } from ".";
 import { Broker } from "@Packages/message/message_queue";
 
+export class ServiceWorkerClient extends Client {
+  constructor() {
+    super("serviceWorker");
+  }
+
+  preparationOffscreen() {
+    return this.do("preparationOffscreen");
+  }
+}
+
 export class ScriptClient extends Client {
   constructor() {
     super("serviceWorker/script");
@@ -24,6 +34,10 @@ export class ScriptClient extends Client {
   enable(uuid: string, enable: boolean) {
     return this.do("enable", { uuid, enable });
   }
+
+  info(uuid: string): Promise<Script> {
+    return this.do("fetchInfo", uuid);
+  }
 }
 
 export function subscribeScriptInstall(
@@ -35,4 +49,10 @@ export function subscribeScriptInstall(
 
 export function subscribeScriptDelete(border: Broker, callback: (message: { uuid: string }) => void) {
   return border.subscribe("deleteScript", callback);
+}
+
+export type ScriptEnableCallbackValue = { uuid: string; enable: boolean };
+
+export function subscribeScriptEnable(border: Broker, callback: (message: ScriptEnableCallbackValue) => void) {
+  return border.subscribe("enableScript", callback);
 }

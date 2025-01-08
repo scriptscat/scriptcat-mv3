@@ -14,7 +14,6 @@ function main() {
     labels: { env: "offscreen" },
   });
   loggerCore.logger().debug("offscreen start");
-
   // 初始化管理器
   const manager = new OffscreenManager();
   manager.initManager();

@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
+import { Message, MessageConnect } from "./server";
 
 // 通过 window.postMessage/onmessage 实现通信
 
@@ -7,11 +8,11 @@ import EventEmitter from "eventemitter3";
 // 消息体
 export type WindowMessageBody = {
   messageId: string; // 消息id
-  type: "sendMessage" | "respMessage" | "connect"; // 消息类型
+  type: "sendMessage" | "respMessage" | "connect" | "disconnect" | "connectMessage"; // 消息类型
   data: any; // 消息数据
 };
 
-export class WindowMessage {
+export class WindowMessage implements Message {
   EE: EventEmitter = new EventEmitter();
 
   // source: Window 消息来源
@@ -22,7 +23,7 @@ export class WindowMessage {
   ) {
     // 监听消息
     this.source.addEventListener("message", (e) => {
-      if (e.source === this.target) {
+      if (e.source === this.target || e.source === this.source) {
         this.messageHandle(e.data);
       }
     });
@@ -47,22 +48,22 @@ export class WindowMessage {
     } else if (data.type === "connect") {
       this.EE.emit("connect", data.data, new WindowMessageConnect(data.messageId, this.EE, this.target));
     } else if (data.type === "disconnect") {
-      this.EE.emit("disconnect", data.data, new WindowMessageConnect(data.messageId, this.EE, this.target));
+      this.EE.emit("disconnect:" + data.messageId);
     } else if (data.type === "connectMessage") {
-      this.EE.emit("connectMessage", data.data, new WindowMessageConnect(data.messageId, this.EE, this.target));
+      this.EE.emit("connectMessage:" + data.messageId, data.data);
     }
   }
 
-  onConnect(callback: (data: any, con: WindowMessageConnect) => void) {
+  onConnect(callback: (data: any, con: MessageConnect) => void) {
     this.EE.addListener("connect", callback);
   }
 
-  connect(action: string, data?: any): Promise<WindowMessageConnect> {
+  connect(data: any): Promise<MessageConnect> {
     return new Promise((resolve) => {
       const body: WindowMessageBody = {
         messageId: uuidv4(),
         type: "connect",
-        data: { action, data },
+        data,
       };
       this.target.postMessage(body, "*");
       resolve(new WindowMessageConnect(body.messageId, this.EE, this.target));
@@ -73,12 +74,13 @@ export class WindowMessage {
     this.EE.addListener("message", callback);
   }
 
-  sendMessage(action: string, data?: any): Promise<any> {
+  // 发送消息 注意不进行回调的内存泄漏
+  sendMessage(data: any): Promise<any> {
     return new Promise((resolve) => {
       const body: WindowMessageBody = {
         messageId: uuidv4(),
         type: "sendMessage",
-        data: { action, data },
+        data,
       };
       const callback = (body: WindowMessageBody) => {
         this.EE.removeListener("response:" + body.messageId, callback);
@@ -90,10 +92,42 @@ export class WindowMessage {
   }
 }
 
-export class WindowMessageConnect {
+export class WindowMessageConnect implements MessageConnect {
   constructor(
     private messageId: string,
     private EE: EventEmitter,
     private target: Window
-  ) {}
+  ) {
+    this.onDisconnect(() => {
+      // 移除所有监听
+      this.EE.removeAllListeners("connectMessage:" + this.messageId);
+      this.EE.removeAllListeners("disconnect:" + this.messageId);
+    });
+  }
+
+  sendMessage(data: any) {
+    const body: WindowMessageBody = {
+      messageId: this.messageId,
+      type: "connectMessage",
+      data,
+    };
+    this.target.postMessage(body, "*");
+  }
+
+  onMessage(callback: (data: any) => void) {
+    this.EE.addListener("connectMessage:" + this.messageId, callback);
+  }
+
+  disconnect() {
+    const body: WindowMessageBody = {
+      messageId: this.messageId,
+      type: "disconnect",
+      data: null,
+    };
+    this.target.postMessage(body);
+  }
+
+  onDisconnect(callback: () => void) {
+    this.EE.addListener("disconnect:" + this.messageId, callback);
+  }
 }

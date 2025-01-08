@@ -1,16 +1,15 @@
 import EventEmitter from "eventemitter3";
-import { connect } from "./client";
-import { ApiFunction, Server } from "./server";
+import { ApiFunction, Message, MessageConnect, Server } from "./server";
 
 export type SubscribeCallback = (message: any) => void;
 
 export class Broker {
-  constructor() {}
+  constructor(private msg: Message) {}
 
   // 订阅
-  async subscribe(topic: string, handler: SubscribeCallback): Promise<chrome.runtime.Port> {
-    const con = await connect("messageQueue", { action: "subscribe", topic });
-    con.onMessage.addListener((msg: { action: string; topic: string; message: any }) => {
+  async subscribe(topic: string, handler: SubscribeCallback): Promise<MessageConnect> {
+    const con = await this.msg.connect({ action: "messageQueue", data: { action: "subscribe", topic } });
+    con.onMessage((msg: { action: string; topic: string; message: any }) => {
       if (msg.action === "message") {
         handler(msg.message);
       }
@@ -26,7 +25,7 @@ export class Broker {
 
 // 消息队列
 export class MessageQueue {
-  topicConMap: Map<string, { name: string; con: chrome.runtime.Port }[]> = new Map();
+  topicConMap: Map<string, { name: string; con: MessageConnect }[]> = new Map();
 
   private EE: EventEmitter = new EventEmitter();
 
@@ -44,7 +43,7 @@ export class MessageQueue {
       }
       switch (action) {
         case "subscribe":
-          this.subscribe(topic, con as chrome.runtime.Port);
+          this.subscribe(topic, con as MessageConnect);
           break;
         case "publish":
           this.publish(topic, message);
@@ -55,14 +54,14 @@ export class MessageQueue {
     };
   }
 
-  private subscribe(topic: string, con: chrome.runtime.Port) {
+  private subscribe(topic: string, con: MessageConnect) {
     let list = this.topicConMap.get(topic);
     if (!list) {
       list = [];
       this.topicConMap.set(topic, list);
     }
     list.push({ name: topic, con });
-    con.onDisconnect.addListener(() => {
+    con.onDisconnect(() => {
       let list = this.topicConMap.get(topic);
       // 移除断开连接的con
       list = list!.filter((item) => item.con !== con);
@@ -73,7 +72,7 @@ export class MessageQueue {
   publish(topic: string, message: any) {
     const list = this.topicConMap.get(topic);
     list?.forEach((item) => {
-      item.con.postMessage({ action: "message", topic, message });
+      item.con.sendMessage({ action: "message", topic, message });
     });
     this.EE.emit(topic, message);
   }

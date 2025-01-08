@@ -83,6 +83,8 @@ import {
 import { selectScriptListColumnWidth } from "@App/store/features/setting";
 import { Broker } from "@Packages/message/message_queue";
 import { subscribeScriptDelete, subscribeScriptInstall } from "@App/app/service/service_worker/client";
+import { ExtensionMessage } from "@Packages/message/extension_message";
+import { MessageConnect } from "@Packages/message/server";
 
 type ListType = Script & { loading?: boolean };
 
@@ -109,8 +111,9 @@ function ScriptList() {
   useEffect(() => {
     dispatch(fetchAndSortScriptList());
     // 监听脚本安装/运行
-    const border = new Broker();
-    const subCon: chrome.runtime.Port[] = [];
+    const msg = new ExtensionMessage();
+    const border = new Broker(msg);
+    const subCon: MessageConnect[] = [];
 
     subscribeScriptInstall(border, (message) => {
       dispatch(upsertScript(message.script));

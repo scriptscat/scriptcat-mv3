@@ -51,11 +51,11 @@ async function main() {
     labels: { env: "background" },
   });
   loggerCore.logger().debug("background start");
-  // 初始化沙盒环境
-  await setupOffscreenDocument();
   // 初始化管理器
   const manager = new ServiceWorkerManager();
   manager.initManager();
+  // 初始化沙盒环境
+  await setupOffscreenDocument();
 }
 
 main();

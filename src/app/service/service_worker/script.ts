@@ -8,14 +8,14 @@ import CacheKey from "@App/app/cache_key";
 import { openInCurrentTab } from "@App/pkg/utils/utils";
 import {
   Script,
-  SCRIPT_RUN_STATUS_COMPLETE,
-  SCRIPT_RUN_STATUS_RUNNING,
   SCRIPT_STATUS_DISABLE,
   SCRIPT_STATUS_ENABLE,
+  SCRIPT_TYPE_NORMAL,
   ScriptDAO,
 } from "@App/app/repo/scripts";
 import { MessageQueue } from "@Packages/message/message_queue";
 import { InstallSource } from ".";
+import { ScriptEnableCallbackValue } from "./client";
 
 export class ScriptService {
   logger: Logger;
@@ -217,12 +217,67 @@ export class ScriptService {
       });
   }
 
-  init() {
+  async fetchInfo(uuid: string) {
+    const script = await new ScriptDAO().findByUUID(uuid);
+    if (!script) {
+      return null;
+    }
+    return script;
+  }
+
+  async init() {
     this.listenerScriptInstall();
 
     this.group.on("getInstallInfo", this.getInstallInfo);
     this.group.on("install", this.installScript.bind(this));
     this.group.on("delete", this.deleteScript.bind(this));
     this.group.on("enable", this.enableScript.bind(this));
+    this.group.on("fetchInfo", this.fetchInfo.bind(this));
+
+    this.listenScript();
   }
+
+  // 监听脚本
+  async listenScript() {
+    // 监听脚本开启
+    this.mq.addListener("enableScript", async (data: ScriptEnableCallbackValue) => {
+      const script = await new ScriptDAO().findByUUID(data.uuid);
+      if (!script) {
+        return;
+      }
+      // 如果是普通脚本, 在service worker中进行注册
+      // 如果是后台脚本, 在offscreen中进行处理
+      if (script.type === SCRIPT_TYPE_NORMAL) {
+        // 注册入页面脚本
+        if (data.enable) {
+          this.registryPageScript(script);
+        } else {
+          this.unregistryPageScript(script);
+        }
+      }
+    });
+
+    // 将开启的脚本发送一次enable消息
+    const scriptDao = new ScriptDAO();
+    const list = await scriptDao.all();
+    list.forEach((script) => {
+      if (script.status !== SCRIPT_STATUS_ENABLE || script.type !== SCRIPT_TYPE_NORMAL) {
+        return;
+      }
+      this.mq.publish("enableScript", { uuid: script.uuid, enable: true });
+    });
+    // 监听offscreen环境初始化, 初始化完成后, 再将后台脚本运行起来
+    this.mq.addListener("preparationOffscreen", () => {
+      list.forEach((script) => {
+        if (script.status !== SCRIPT_STATUS_ENABLE || script.type === SCRIPT_TYPE_NORMAL) {
+          return;
+        }
+        this.mq.publish("enableScript", { uuid: script.uuid, enable: true });
+      });
+    });
+  }
+
+  registryPageScript(script: Script) {}
+
+  unregistryPageScript(script: Script) {}
 }
