@@ -69,7 +69,7 @@ import { useTranslation } from "react-i18next";
 import { nextTime, semTime } from "@App/pkg/utils/utils";
 import { i18nName } from "@App/locales/locales";
 import { getValues, ListHomeRender, ScriptIcons } from "./utils";
-import { useAppDispatch, useAppSelector } from "@App/store/hooks";
+import { useAppDispatch, useAppSelector } from "@App/pages/store/hooks";
 import {
   deleteScript,
   requestEnableScript,
@@ -79,8 +79,8 @@ import {
   selectScripts,
   sortScript,
   upsertScript,
-} from "@App/store/features/script";
-import { selectScriptListColumnWidth } from "@App/store/features/setting";
+} from "@App/pages/store/features/script";
+import { selectScriptListColumnWidth } from "@App/pages/store/features/setting";
 import { Broker } from "@Packages/message/message_queue";
 import { subscribeScriptDelete, subscribeScriptInstall } from "@App/app/service/service_worker/client";
 import { ExtensionMessage } from "@Packages/message/extension_message";

@@ -1,6 +1,6 @@
 import Cache from "@App/app/cache";
 import { LinterWorker } from "@App/pkg/utils/monaco-editor";
-import { useAppSelector } from "@App/store/hooks";
+import { useAppSelector } from "@App/pages/store/hooks";
 import { editor, Range } from "monaco-editor";
 import React, { useEffect, useImperativeHandle, useState } from "react";
 

@@ -48,9 +48,9 @@ async function main() {
   const loggerCore = new LoggerCore({
     debug: process.env.NODE_ENV === "development",
     writer: new DBWriter(new LoggerDAO()),
-    labels: { env: "background" },
+    labels: { env: "service_worker" },
   });
-  loggerCore.logger().debug("background start");
+  loggerCore.logger().debug("service worker start");
   // 初始化管理器
   const manager = new ServiceWorkerManager();
   manager.initManager();

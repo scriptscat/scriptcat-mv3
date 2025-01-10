@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import MainLayout from "../components/layout/MainLayout.tsx";
 import Sider from "../components/layout/Sider.tsx";
 import { Provider } from "react-redux";
-import { store } from "@App/store/store.ts";
+import { store } from "@App/pages/store/store.ts";
 import "@arco-design/web-react/dist/css/arco.css";
 import "@App/locales/locales";
 import "@App/index.css";
