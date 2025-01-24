@@ -1,7 +1,6 @@
-import Dexie from "dexie";
-import { DAO, db } from "./dao";
+import { Repo } from "./repo";
 
-export interface Value {
+export interface OldValue {
   id: number;
   scriptId: number;
   storageName?: string;
@@ -11,15 +10,16 @@ export interface Value {
   updatetime: number;
 }
 
-export class ValueDAO extends DAO<Value> {
-  public tableName = "value";
+export interface Value {
+  uuid: string;
+  storageName?: string;
+  data: { [key: string]: any };
+  createtime: number;
+  updatetime: number;
+}
 
-  constructor(table?: Dexie.Table<Value, number>) {
-    super();
-    if (table) {
-      this.table = table;
-    } else {
-      this.table = db.table(this.tableName);
-    }
+export class ValueDAO extends Repo<Value> {
+  constructor() {
+    super("value");
   }
 }

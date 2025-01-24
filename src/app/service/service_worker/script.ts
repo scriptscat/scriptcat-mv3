@@ -5,24 +5,34 @@ import Logger from "@App/app/logger/logger";
 import LoggerCore from "@App/app/logger/core";
 import Cache from "@App/app/cache";
 import CacheKey from "@App/app/cache_key";
-import { openInCurrentTab } from "@App/pkg/utils/utils";
+import { openInCurrentTab, randomString } from "@App/pkg/utils/utils";
 import {
   Script,
+  SCRIPT_RUN_STATUS,
   SCRIPT_STATUS_DISABLE,
   SCRIPT_STATUS_ENABLE,
   SCRIPT_TYPE_NORMAL,
+  ScriptCodeDAO,
   ScriptDAO,
+  ScriptRunResouce,
 } from "@App/app/repo/scripts";
 import { MessageQueue } from "@Packages/message/message_queue";
 import { InstallSource } from ".";
 import { ScriptEnableCallbackValue } from "./client";
+import { ResourceService } from "./resource";
+import { ValueService } from "./value";
+import { compileScriptCode } from "@App/runtime/content/utils";
 
 export class ScriptService {
   logger: Logger;
+  scriptDAO: ScriptDAO = new ScriptDAO();
+  scriptCodeDAO: ScriptCodeDAO = new ScriptCodeDAO();
 
   constructor(
     private group: Group,
-    private mq: MessageQueue
+    private mq: MessageQueue,
+    private valueService: ValueService,
+    private resourceService: ResourceService
   ) {
     this.logger = LoggerCore.logger().with({ service: "script" });
   }
@@ -143,7 +153,7 @@ export class ScriptService {
   }
 
   // 安装脚本
-  async installScript(param: { script: Script; upsertBy: InstallSource }) {
+  async installScript(param: { script: Script; code: string; upsertBy: InstallSource }) {
     param.upsertBy = param.upsertBy || "user";
     const { script, upsertBy } = param;
     const logger = this.logger.with({
@@ -225,6 +235,45 @@ export class ScriptService {
     return script;
   }
 
+  async updateRunStatus(params: { uuid: string; runStatus: SCRIPT_RUN_STATUS; error?: string; nextruntime?: number }) {
+    await new ScriptDAO().update(params.uuid, {
+      runStatus: params.runStatus,
+      lastruntime: new Date().getTime(),
+      error: params.error,
+      nextruntime: params.nextruntime,
+    });
+    this.mq.publish("updateRunStatus", params);
+  }
+
+  getCode(uuid: string) {
+    return this.scriptCodeDAO.get(uuid);
+  }
+
+  async buildScriptRunResource(script: Script): Promise<ScriptRunResouce> {
+    const ret: ScriptRunResouce = <ScriptRunResouce>Object.assign(script);
+
+    // 自定义配置
+    if (ret.selfMetadata) {
+      ret.metadata = { ...ret.metadata };
+      Object.keys(ret.selfMetadata).forEach((key) => {
+        ret.metadata[key] = ret.selfMetadata![key];
+      });
+    }
+
+    ret.value = await this.valueService.getScriptValue(ret);
+
+    ret.resource = await this.resourceService.getScriptResources(ret);
+
+    ret.flag = randomString(16);
+    const code = await this.getCode(ret.uuid);
+    if (!code) {
+      throw new Error("code is null");
+    }
+    ret.code = compileScriptCode(ret, code.code);
+
+    return Promise.resolve(ret);
+  }
+
   async init() {
     this.listenerScriptInstall();
 
@@ -233,51 +282,8 @@ export class ScriptService {
     this.group.on("delete", this.deleteScript.bind(this));
     this.group.on("enable", this.enableScript.bind(this));
     this.group.on("fetchInfo", this.fetchInfo.bind(this));
-
-    this.listenScript();
+    this.group.on("updateRunStatus", this.updateRunStatus.bind(this));
+    this.group.on("getCode", this.getCode.bind(this));
+    this.group.on("getScriptRunResource", this.buildScriptRunResource.bind(this));
   }
-
-  // 监听脚本
-  async listenScript() {
-    // 监听脚本开启
-    this.mq.addListener("enableScript", async (data: ScriptEnableCallbackValue) => {
-      const script = await new ScriptDAO().findByUUID(data.uuid);
-      if (!script) {
-        return;
-      }
-      // 如果是普通脚本, 在service worker中进行注册
-      // 如果是后台脚本, 在offscreen中进行处理
-      if (script.type === SCRIPT_TYPE_NORMAL) {
-        // 注册入页面脚本
-        if (data.enable) {
-          this.registryPageScript(script);
-        } else {
-          this.unregistryPageScript(script);
-        }
-      }
-    });
-
-    // 将开启的脚本发送一次enable消息
-    const scriptDao = new ScriptDAO();
-    const list = await scriptDao.all();
-    list.forEach((script) => {
-      if (script.status !== SCRIPT_STATUS_ENABLE || script.type !== SCRIPT_TYPE_NORMAL) {
-        return;
-      }
-      this.mq.publish("enableScript", { uuid: script.uuid, enable: true });
-    });
-    // 监听offscreen环境初始化, 初始化完成后, 再将后台脚本运行起来
-    this.mq.addListener("preparationOffscreen", () => {
-      list.forEach((script) => {
-        if (script.status !== SCRIPT_STATUS_ENABLE || script.type === SCRIPT_TYPE_NORMAL) {
-          return;
-        }
-        this.mq.publish("enableScript", { uuid: script.uuid, enable: true });
-      });
-    });
-  }
-
-  registryPageScript(script: Script) {}
-
-  unregistryPageScript(script: Script) {}
 }

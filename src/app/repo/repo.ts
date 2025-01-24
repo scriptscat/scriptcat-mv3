@@ -1,5 +1,5 @@
 export abstract class Repo<T> {
-  constructor(private prefix: string) {
+  constructor(protected prefix: string) {
     if (!prefix.endsWith(":")) {
       this.prefix += ":";
     }

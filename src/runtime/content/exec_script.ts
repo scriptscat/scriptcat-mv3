@@ -8,7 +8,13 @@ import { compileScript, createContext, proxyContext, ScriptFunc } from "./utils"
 export type ValueUpdateData = {
   oldValue: any;
   value: Value;
+  sender: {
+    runFlag: string;
+    tabId?: number;
+  };
 };
+
+export class RuntimeMessage {}
 
 // 执行脚本,控制脚本执行与停止
 export default class ExecScript {
@@ -24,27 +30,26 @@ export default class ExecScript {
 
   GM_info: any;
 
-  constructor(scriptRes: ScriptRunResouce, scriptFunc?: ScriptFunc, thisContext?: { [key: string]: any }) {
+  constructor(scriptRes: ScriptRunResouce, thisContext?: { [key: string]: any }) {
     this.scriptRes = scriptRes;
     this.logger = LoggerCore.getInstance().logger({
       component: "exec",
-      uuid: this.scriptRes.uuid,
+      script: this.scriptRes.uuid,
       name: this.scriptRes.name,
     });
     this.GM_info = GMApi.GM_info(this.scriptRes);
-    this.proxyMessage = new ProxyMessageManager(message);
-    if (scriptFunc) {
-      this.scriptFunc = scriptFunc;
-    } else {
-      // 构建脚本资源
-      this.scriptFunc = compileScript(this.scriptRes.code);
-    }
-    if (scriptRes.grantMap.none) {
+    // 构建脚本资源
+    this.scriptFunc = compileScript(this.scriptRes.code);
+    const grantMap: { [key: string]: boolean } = {};
+    scriptRes.metadata.grant.forEach((key) => {
+      grantMap[key] = true;
+    });
+    if (grantMap.none) {
       // 不注入任何GM api
       this.proxyContent = global;
     } else {
       // 构建脚本GM上下文
-      this.sandboxContent = createContext(scriptRes, this.GM_info, this.proxyMessage);
+      this.sandboxContent = createContext(scriptRes, this.GM_info);
       this.proxyContent = proxyContext(global, this.sandboxContent, thisContext);
     }
   }
@@ -62,7 +67,6 @@ export default class ExecScript {
   // TODO: 实现脚本的停止,资源释放
   stop() {
     this.logger.debug("script stop");
-    this.proxyMessage.cleanChannel();
     return true;
   }
 }

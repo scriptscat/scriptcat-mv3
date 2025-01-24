@@ -1,10 +1,10 @@
 import { ScriptRunResouce } from "@App/app/repo/scripts";
 import { v4 as uuidv4 } from "uuid";
 import GMApi, { ApiValue, GMContext } from "./gm_api";
+import { has } from "@App/pkg/utils/lodash";
 
 // 构建脚本运行代码
-export function compileScriptCode(scriptRes: ScriptRunResouce): string {
-  let { code } = scriptRes;
+export function compileScriptCode(scriptRes: ScriptRunResouce, code: string): string {
   let require = "";
   if (scriptRes.metadata.require) {
     scriptRes.metadata.require.forEach((val) => {
@@ -52,11 +52,10 @@ function setDepend(context: { [key: string]: any }, apiVal: ApiValue) {
 }
 
 // 构建沙盒上下文
-export function createContext(scriptRes: ScriptRunResouce, GMInfo: any, message: MessageManager): GMApi {
+export function createContext(scriptRes: ScriptRunResouce, GMInfo: any): GMApi {
   // 按照GMApi构建
   const context: { [key: string]: any } = {
     scriptRes,
-    message,
     valueChangeListener: new Map<number, { name: string; listener: GMTypes.ValueChangeListener }>(),
     sendMessage: GMApi.prototype.sendMessage,
     connect: GMApi.prototype.connect,
@@ -77,7 +76,7 @@ export function createContext(scriptRes: ScriptRunResouce, GMInfo: any, message:
       } else if (val === "GM_cookie") {
         // 特殊处理GM_cookie.list之类
         context[val] = api.api.bind(context);
-        // eslint-disable-next-line func-names, camelcase
+
         const GM_cookie = function (action: string) {
           return (
             details: GMTypes.CookieDetails,
@@ -135,14 +134,14 @@ Object.keys(descs).forEach((key) => {
   }
 });
 
-export function warpObject(thisContext: Object, ...context: Object[]) {
+export function warpObject(thisContext: object, ...context: object[]) {
   // 处理Object上的方法
   thisContext.hasOwnProperty = (name: PropertyKey) => {
     return (
       Object.hasOwnProperty.call(thisContext, name) || context.some((val) => Object.hasOwnProperty.call(val, name))
     );
   };
-  thisContext.isPrototypeOf = (name: Object) => {
+  thisContext.isPrototypeOf = (name: object) => {
     return Object.isPrototypeOf.call(thisContext, name) || context.some((val) => Object.isPrototypeOf.call(val, name));
   };
   thisContext.propertyIsEnumerable = (name: PropertyKey) => {
@@ -187,7 +186,6 @@ export function proxyContext(global: any, context: any, thisContext?: { [key: st
         case "window":
         case "self":
         case "globalThis":
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
           return proxy;
         case "top":
         case "parent":
@@ -330,6 +328,7 @@ export function proxyContext(global: any, context: any, thisContext?: { [key: st
         }
         ret = Object.getOwnPropertyDescriptor(global, name);
         return ret;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (e) {
         return undefined;
       }

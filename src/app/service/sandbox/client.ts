@@ -1,11 +1,11 @@
-import { Script } from "@App/app/repo/scripts";
+import { ScriptRunResouce } from "@App/app/repo/scripts";
 import { WindowMessage } from "@Packages/message/window_message";
 import { sendMessage } from "../utils";
 
-export function enableScript(msg: WindowMessage, data: Script) {
+export function enableScript(msg: WindowMessage, data: ScriptRunResouce) {
   return sendMessage(msg, "enableScript", data);
 }
 
-export function disableScript(msg: WindowMessage, data: Script) {
-  return sendMessage(msg, "disableScript", data);
+export function disableScript(msg: WindowMessage, uuid: string) {
+  return sendMessage(msg, "disableScript", uuid);
 }

@@ -8,6 +8,7 @@ import {
   SCRIPT_TYPE_BACKGROUND,
   SCRIPT_TYPE_CRONTAB,
   SCRIPT_TYPE_NORMAL,
+  ScriptCodeDAO,
   ScriptDAO,
   UserConfig,
 } from "@App/app/repo/scripts";
@@ -138,7 +139,6 @@ export async function fetchScriptInfo(
 
 export function copyScript(script: Script, old: Script): Script {
   const ret = script;
-  ret.id = old.id;
   ret.uuid = old.uuid;
   ret.createtime = old.createtime;
   ret.lastruntime = old.lastruntime;
@@ -204,7 +204,7 @@ export function prepareScriptByCode(
   url: string,
   uuid?: string,
   override?: boolean
-): Promise<{ script: Script; oldScript?: Script }> {
+): Promise<{ script: Script; oldScript?: Script; oldScriptCode?: string }> {
   const dao = new ScriptDAO();
   return new Promise((resolve, reject) => {
     const metadata = parseMetadata(code);
@@ -254,10 +254,8 @@ export function prepareScriptByCode(
       newUUID = uuidv4();
     }
     let script: Script = {
-      id: 0,
       uuid: newUUID,
       name: metadata.name[0],
-      code,
       author: metadata.author && metadata.author[0],
       namespace: metadata.namespace && metadata.namespace[0],
       originDomain: domain,
@@ -277,6 +275,7 @@ export function prepareScriptByCode(
     };
     const handler = async () => {
       let old: Script | undefined;
+      let oldCode: string | undefined;
       if (uuid) {
         old = await dao.findByUUID(uuid);
         if (!old && override) {
@@ -293,6 +292,12 @@ export function prepareScriptByCode(
           reject(new Error("脚本类型不匹配,普通脚本与后台脚本不能互相转变"));
           return;
         }
+        const scriptCode = await new ScriptCodeDAO().get(old.uuid);
+        if(!scriptCode) {
+          reject(new Error("旧的脚本代码不存在"));
+          return;
+        }
+        oldCode = scriptCode.code;
         script = copyScript(script, old);
       } else {
         // 前台脚本默认开启
@@ -301,7 +306,7 @@ export function prepareScriptByCode(
         }
         script.checktime = new Date().getTime();
       }
-      resolve({ script, oldScript: old });
+      resolve({ script, oldScript: old, oldScriptCode: oldCode });
     };
     handler();
   });

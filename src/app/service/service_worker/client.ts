@@ -1,7 +1,8 @@
-import { Script } from "@App/app/repo/scripts";
+import { Script, ScriptCode, ScriptRunResouce } from "@App/app/repo/scripts";
 import { Client } from "@Packages/message/client";
 import { InstallSource } from ".";
 import { Broker } from "@Packages/message/message_queue";
+import { Resource } from "@App/app/repo/resource";
 
 export class ServiceWorkerClient extends Client {
   constructor() {
@@ -23,8 +24,8 @@ export class ScriptClient extends Client {
     return this.do("getInstallInfo", uuid);
   }
 
-  install(script: Script, upsertBy: InstallSource = "user") {
-    return this.do("install", { script, upsertBy });
+  install(script: Script, code: string, upsertBy: InstallSource = "user") {
+    return this.do("install", { script, code, upsertBy });
   }
 
   delete(uuid: string) {
@@ -37,6 +38,34 @@ export class ScriptClient extends Client {
 
   info(uuid: string): Promise<Script> {
     return this.do("fetchInfo", uuid);
+  }
+
+  getCode(uuid: string): Promise<ScriptCode | undefined> {
+    return this.do("getCode", uuid);
+  }
+
+  getScriptRunResource(script: Script): Promise<ScriptRunResouce> {
+    return this.do("getScriptRunResource", script);
+  }
+}
+
+export class ResourceClient extends Client {
+  constructor() {
+    super("serviceWorker/resource");
+  }
+
+  getScriptResources(script: Script): Promise<{ [key: string]: Resource }> {
+    return this.do("getScriptResources", script);
+  }
+}
+
+export class ValueClient extends Client {
+  constructor() {
+    super("serviceWorker/value");
+  }
+
+  getScriptValue(script: Script) {
+    return this.do("getScriptValue", script);
   }
 }
 

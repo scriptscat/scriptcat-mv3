@@ -5,6 +5,7 @@ import { Logger, LoggerDAO } from "@App/app/repo/logger";
 import { WindowMessage } from "@Packages/message/window_message";
 import { ExtensionMessage } from "@Packages/message/extension_message";
 import { ServiceWorkerClient } from "../service_worker/client";
+import { sendMessage } from "@Packages/message/client";
 
 // offscreen环境的管理器
 export class OffscreenManager {
@@ -31,11 +32,16 @@ export class OffscreenManager {
     serviceWorker.preparationOffscreen();
   }
 
+  sendMessageToServiceWorker(data: { action: string; data: any }) {
+    return sendMessage(data.action, data.data);
+  }
+
   initManager() {
     // 监听消息
     const group = this.api.group("offscreen");
     this.windowApi.on("logger", this.logger.bind(this));
     this.windowApi.on("preparationSandbox", this.preparationSandbox.bind(this));
+    this.windowApi.on("sendMessageToServiceWorker", this.sendMessageToServiceWorker.bind(this));
     const script = new ScriptService(group.group("script"), this.mq, this.windowMessage, this.broker);
     script.init();
   }

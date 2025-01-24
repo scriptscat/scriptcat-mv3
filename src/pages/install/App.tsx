@@ -22,6 +22,10 @@ function App() {
   const [countdown, setCountdown] = useState<number>(-1);
   // 脚本信息
   const [upsertScript, setUpsertScript] = useState<Script | Subscribe>();
+  // 脚本代码
+  const [code, setCode] = useState<string>("");
+  // 对比代码
+  const [diffCode, setDiffCode] = useState<string>();
   // 更新的情况下会有老版本的脚本信息
   const [oldScript, setOldScript] = useState<Script | Subscribe>();
   // 脚本开启状态
@@ -133,12 +137,16 @@ function App() {
           throw new Error("fetch script info failed");
         }
         // 如果是更新的情况下, 获取老版本的脚本信息
-        let prepare: { script: Script; oldScript?: Script } | { subscribe: Subscribe; oldSubscribe?: Subscribe };
+        let prepare:
+          | { script: Script; oldScript?: Script; oldScriptCode?: string }
+          | { subscribe: Subscribe; oldSubscribe?: Subscribe };
         let action: Script | Subscribe;
         if (info.userSubscribe) {
           prepare = await prepareSubscribeByCode(info.code, info.url);
           action = prepare.subscribe;
           setOldScript(prepare.oldSubscribe);
+          setCode(prepare.subscribe.code);
+          setDiffCode(prepare.oldSubscribe?.code);
         } else {
           if (info.update) {
             prepare = await prepareScriptByCode(info.code, info.url, info.uuid);
@@ -147,6 +155,8 @@ function App() {
           }
           action = prepare.script;
           setOldScript(prepare.oldScript);
+          setCode(info.code);
+          setDiffCode(prepare.oldScriptCode);
         }
         if (info.userSubscribe) {
           setBtnText(isUpdate ? t("update_subscribe")! : t("install_subscribe"));
@@ -246,7 +256,7 @@ function App() {
                         return;
                       }
                       new ScriptClient()
-                        .install(upsertScript as Script)
+                        .install(upsertScript as Script, code)
                         .then(() => {
                           if (isUpdate) {
                             Message.success(t("install.update_success")!);
@@ -362,7 +372,7 @@ function App() {
             </Grid.Row>
           </Grid.Col>
         </Grid.Row>
-        <CodeEditor id="show-code" code={upsertScript?.code || undefined} diffCode={oldScript?.code || ""} />
+        <CodeEditor id="show-code" code={code || undefined} diffCode={diffCode || ""} />
       </div>
     </div>
   );

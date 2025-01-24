@@ -41,10 +41,8 @@ export interface Config {
 export type UserConfig = { [key: string]: { [key: string]: Config } };
 
 export interface Script {
-  // id: number; // 脚本id mv3迁移为chrome.storage后舍弃
   uuid: string; // 脚本uuid,通过脚本uuid识别唯一脚本
   name: string; // 脚本名称
-  code: string; // 脚本执行代码
   namespace: string; // 脚本命名空间
   author?: string; // 脚本作者
   originDomain?: string; // 脚本来源域名
@@ -67,13 +65,18 @@ export interface Script {
   nextruntime?: number; // 脚本下一次运行时间戳
 }
 
+// 分开存储脚本代码
+export interface ScriptCode {
+  uuid: string;
+  code: string; // 脚本执行代码
+}
+
 // 脚本运行时的资源,包含已经编译好的脚本与脚本需要的资源
 export interface ScriptRunResouce extends Script {
-  grantMap: { [key: string]: string };
+  code: string;
   value: { [key: string]: Value };
   flag: string;
   resource: { [key: string]: Resource };
-  sourceCode: string;
 }
 
 export class ScriptDAO extends Repo<Script> {
@@ -111,5 +114,16 @@ export class ScriptDAO extends Repo<Script> {
     return this.findOne((key, value) => {
       return value.origin === origin && value.subscribeUrl === suburl;
     });
+  }
+}
+
+// 为了防止脚本代码数据量过大,单独存储脚本代码
+export class ScriptCodeDAO extends Repo<ScriptCode> {
+  constructor() {
+    super("scriptCode");
+  }
+
+  public save(val: ScriptCode) {
+    return super._save(val.uuid, val);
   }
 }
