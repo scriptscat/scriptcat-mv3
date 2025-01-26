@@ -43,7 +43,13 @@ export class OffscreenManager {
     this.windowApi.on("logger", this.logger.bind(this));
     this.windowApi.on("preparationSandbox", this.preparationSandbox.bind(this));
     this.windowApi.on("sendMessageToServiceWorker", this.sendMessageToServiceWorker.bind(this));
-    const script = new ScriptService(group.group("script"), this.mq, this.windowMessage, this.broker);
+    const script = new ScriptService(
+      group.group("script"),
+      this.mq,
+      this.extensionMessage,
+      this.windowMessage,
+      this.broker
+    );
     script.init();
     // 转发gm api请求
     forwardMessage("serviceWorker/runtime/gmApi", this.windowApi, this.extensionMessage);
