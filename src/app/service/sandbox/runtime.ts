@@ -107,7 +107,7 @@ export class Runtime {
       // 暂未实现执行完成后立马释放,会在下一次执行时释放
       await this.stopScript(script.uuid);
     }
-    const exec = new BgExecScriptWarp(script);
+    const exec = new BgExecScriptWarp(script, this.windowMessage);
     this.execScripts.set(script.uuid, exec);
     proxyUpdateRunStatus(this.windowMessage, { uuid: script.uuid, runStatus: SCRIPT_RUN_STATUS_RUNNING });
     // 修改掉脚本掉最后运行时间, 数据库也需要修改

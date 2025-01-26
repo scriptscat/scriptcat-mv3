@@ -1,6 +1,5 @@
 import { Repo } from "./repo";
 import { Resource } from "./resource";
-import { Value } from "./value";
 
 // 脚本模型
 export type SCRIPT_TYPE = 1 | 2 | 3;
@@ -71,21 +70,34 @@ export interface ScriptCode {
   code: string; // 脚本执行代码
 }
 
+export type ScriptAndCode = Script & ScriptCode;
+
 // 脚本运行时的资源,包含已经编译好的脚本与脚本需要的资源
 export interface ScriptRunResouce extends Script {
   code: string;
-  value: { [key: string]: Value };
+  value: { [key: string]: any };
   flag: string;
   resource: { [key: string]: Resource };
 }
 
 export class ScriptDAO extends Repo<Script> {
+  scriptCodeDAO: ScriptCodeDAO = new ScriptCodeDAO();
+
   constructor() {
     super("script");
   }
 
   public save(val: Script) {
     return super._save(val.uuid, val);
+  }
+
+  getAndCode(uuid: string): Promise<ScriptAndCode|undefined> {
+    return Promise.all([this.get(uuid), this.scriptCodeDAO.get(uuid)]).then(([script, code]) => {
+      if (!script || !code) {
+        return undefined;
+      }
+      return Object.assign(script, code);
+    });
   }
 
   public findByName(name: string) {
@@ -98,10 +110,6 @@ export class ScriptDAO extends Repo<Script> {
     return this.findOne((key, value) => {
       return value.name === name && (!namespace || value.namespace === namespace);
     });
-  }
-
-  public findByUUID(uuid: string) {
-    return this.get(uuid);
   }
 
   public findByUUIDAndSubscribeUrl(uuid: string, suburl: string) {

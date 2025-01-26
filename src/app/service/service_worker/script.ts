@@ -11,14 +11,12 @@ import {
   SCRIPT_RUN_STATUS,
   SCRIPT_STATUS_DISABLE,
   SCRIPT_STATUS_ENABLE,
-  SCRIPT_TYPE_NORMAL,
   ScriptCodeDAO,
   ScriptDAO,
   ScriptRunResouce,
 } from "@App/app/repo/scripts";
 import { MessageQueue } from "@Packages/message/message_queue";
 import { InstallSource } from ".";
-import { ScriptEnableCallbackValue } from "./client";
 import { ResourceService } from "./resource";
 import { ValueService } from "./value";
 import { compileScriptCode } from "@App/runtime/content/utils";
@@ -163,23 +161,26 @@ export class ScriptService {
       upsertBy,
     });
     let update = false;
-    const dao = new ScriptDAO();
     // 判断是否已经安装
-    const oldScript = await dao.findByUUID(script.uuid);
+    const oldScript = await this.scriptDAO.get(script.uuid);
     if (oldScript) {
       // 执行更新逻辑
       update = true;
       script.selfMetadata = oldScript.selfMetadata;
     }
-    return dao
+    return this.scriptDAO
       .save(script)
-      .then(() => {
+      .then(async () => {
+        await this.scriptCodeDAO.save({
+          uuid: script.uuid,
+          code: param.code,
+        });
         logger.info("install success");
         // 广播一下
         this.mq.publish("installScript", { script, update });
         return {};
       })
-      .catch((e) => {
+      .catch((e: any) => {
         logger.error("install error", Logger.E(e));
         throw e;
       });
@@ -187,13 +188,12 @@ export class ScriptService {
 
   async deleteScript(uuid: string) {
     const logger = this.logger.with({ uuid });
-    const dao = new ScriptDAO();
-    const script = await dao.findByUUID(uuid);
+    const script = await this.scriptDAO.get(uuid);
     if (!script) {
       logger.error("script not found");
       throw new Error("script not found");
     }
-    return dao
+    return this.scriptDAO
       .delete(uuid)
       .then(() => {
         logger.info("delete success");
@@ -208,13 +208,12 @@ export class ScriptService {
 
   async enableScript(param: { uuid: string; enable: boolean }) {
     const logger = this.logger.with({ uuid: param.uuid, enable: param.enable });
-    const dao = new ScriptDAO();
-    const script = await dao.findByUUID(param.uuid);
+    const script = await this.scriptDAO.get(param.uuid);
     if (!script) {
       logger.error("script not found");
       throw new Error("script not found");
     }
-    return dao
+    return this.scriptDAO
       .update(param.uuid, { status: param.enable ? SCRIPT_STATUS_ENABLE : SCRIPT_STATUS_DISABLE })
       .then(() => {
         logger.info("enable success");
@@ -228,7 +227,7 @@ export class ScriptService {
   }
 
   async fetchInfo(uuid: string) {
-    const script = await new ScriptDAO().findByUUID(uuid);
+    const script = await this.scriptDAO.get(uuid);
     if (!script) {
       return null;
     }
@@ -236,7 +235,7 @@ export class ScriptService {
   }
 
   async updateRunStatus(params: { uuid: string; runStatus: SCRIPT_RUN_STATUS; error?: string; nextruntime?: number }) {
-    await new ScriptDAO().update(params.uuid, {
+    await this.scriptDAO.update(params.uuid, {
       runStatus: params.runStatus,
       lastruntime: new Date().getTime(),
       error: params.error,

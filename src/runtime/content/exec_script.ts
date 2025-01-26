@@ -1,13 +1,16 @@
 import LoggerCore from "@App/app/logger/core";
 import Logger from "@App/app/logger/logger";
 import { ScriptRunResouce } from "@App/app/repo/scripts";
-import { Value } from "@App/app/repo/value";
 import GMApi from "./gm_api";
 import { compileScript, createContext, proxyContext, ScriptFunc } from "./utils";
+import { Message } from "@Packages/message/server";
 
 export type ValueUpdateData = {
   oldValue: any;
-  value: Value;
+  value: any;
+  key: string; // 值key
+  uuid: string;
+  storageKey: string; // 储存key
   sender: {
     runFlag: string;
     tabId?: number;
@@ -30,7 +33,7 @@ export default class ExecScript {
 
   GM_info: any;
 
-  constructor(scriptRes: ScriptRunResouce, thisContext?: { [key: string]: any }) {
+  constructor(scriptRes: ScriptRunResouce, message: Message, thisContext?: { [key: string]: any }) {
     this.scriptRes = scriptRes;
     this.logger = LoggerCore.getInstance().logger({
       component: "exec",
@@ -49,7 +52,7 @@ export default class ExecScript {
       this.proxyContent = global;
     } else {
       // 构建脚本GM上下文
-      this.sandboxContent = createContext(scriptRes, this.GM_info);
+      this.sandboxContent = createContext(scriptRes, this.GM_info, message);
       this.proxyContent = proxyContext(global, this.sandboxContent, thisContext);
     }
   }

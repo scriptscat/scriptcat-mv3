@@ -1,8 +1,9 @@
 import { ScriptRunResouce } from "@App/app/repo/scripts";
 import { getMetadataStr, getUserConfigStr, parseUserConfig } from "@App/pkg/utils/script";
-import { v4 as uuidv4 } from "uuid";
 import { ValueUpdateData } from "./exec_script";
 import { ExtVersion } from "@App/app/const";
+import { storageKey } from "../utils";
+import { Message } from "@Packages/message/server";
 
 interface ApiParam {
   depend?: string[];
@@ -57,34 +58,44 @@ export default class GMApi {
 
   valueChangeListener = new Map<number, { name: string; listener: GMTypes.ValueChangeListener }>();
 
+  constructor(private message: Message) {}
+
   // 单次回调使用
   public sendMessage(api: string, params: any[]) {
-    return null;
+    return this.message.sendMessage({
+      action: "serviceWorker/runtime/gmApi",
+      data: {
+        api,
+        params,
+      },
+    });
   }
 
-  // 长连接使用,connect只用于接受消息,不能发送消息
+  // 长连接使用,connect只用于接受消息,不发送消息
   public connect(api: string, params: any[]) {
-    return null;
+    return this.message.connect({
+      action: "serviceWorker/runtime/gmApi",
+      data: {
+        api,
+        params,
+      },
+    });
   }
 
   public valueUpdate(data: ValueUpdateData) {
-    const { storagename } = this.scriptRes.metadata;
-    if (
-      data.value.uuid === this.scriptRes.uuid ||
-      (storagename && data.value.storageName && storagename[0] === data.value.storageName)
-    ) {
+    if (data.uuid === this.scriptRes.uuid || data.storageKey === storageKey(this.scriptRes)) {
       // 触发,并更新值
-      if (data.value.value === undefined) {
-        delete this.scriptRes.value[data.value.key];
+      if (data.value === undefined) {
+        delete this.scriptRes.value[data.value];
       } else {
-        this.scriptRes.value[data.value.key] = data.value;
+        this.scriptRes.value[data.key] = data.value;
       }
       this.valueChangeListener.forEach((item) => {
         if (item.name === data.value.key) {
           item.listener(
             data.value.key,
             data.oldValue,
-            data.value.value,
+            data.value,
             data.sender.runFlag !== this.runFlag,
             data.sender.tabId
           );
@@ -129,5 +140,42 @@ export default class GMApi {
         ...options,
       },
     };
+  }
+
+  // 获取脚本的值,可以通过@storageName让多个脚本共享一个储存空间
+  @GMContext.API()
+  public GM_getValue(key: string, defaultValue?: any) {
+    const ret = this.scriptRes.value[key];
+    if (ret) {
+      return ret;
+    }
+    return defaultValue;
+  }
+
+  @GMContext.API()
+  public GM_setValue(key: string, value: any) {
+    // 对object的value进行一次转化
+    if (typeof value === "object") {
+      value = JSON.parse(JSON.stringify(value));
+    }
+    if (value === undefined) {
+      delete this.scriptRes.value[key];
+    } else {
+      this.scriptRes.value[key] = value;
+    }
+    return this.sendMessage("GM_setValue", [key, value]);
+  }
+
+  @GMContext.API({ depend: ["GM_setValue"] })
+  public GM_deleteValue(name: string): void {
+    this.GM_setValue(name, undefined);
+  }
+
+  @GMContext.API()
+  GM_log(message: string, level?: GMTypes.LoggerLevel, labels?: GMTypes.LoggerLabel) {
+    if (typeof message !== "string") {
+      message = JSON.stringify(message);
+    }
+    return this.sendMessage("GM_log", [message, level, labels]);
   }
 }

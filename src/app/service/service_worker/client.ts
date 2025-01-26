@@ -3,10 +3,11 @@ import { Client } from "@Packages/message/client";
 import { InstallSource } from ".";
 import { Broker } from "@Packages/message/message_queue";
 import { Resource } from "@App/app/repo/resource";
+import { Message } from "@Packages/message/server";
 
 export class ServiceWorkerClient extends Client {
-  constructor() {
-    super("serviceWorker");
+  constructor(msg: Message) {
+    super(msg, "serviceWorker");
   }
 
   preparationOffscreen() {
@@ -15,8 +16,8 @@ export class ServiceWorkerClient extends Client {
 }
 
 export class ScriptClient extends Client {
-  constructor() {
-    super("serviceWorker/script");
+  constructor(msg: Message) {
+    super(msg, "serviceWorker/script");
   }
 
   // 获取安装信息
@@ -50,8 +51,8 @@ export class ScriptClient extends Client {
 }
 
 export class ResourceClient extends Client {
-  constructor() {
-    super("serviceWorker/resource");
+  constructor(msg: Message) {
+    super(msg, "serviceWorker/resource");
   }
 
   getScriptResources(script: Script): Promise<{ [key: string]: Resource }> {
@@ -60,8 +61,8 @@ export class ResourceClient extends Client {
 }
 
 export class ValueClient extends Client {
-  constructor() {
-    super("serviceWorker/value");
+  constructor(msg: Message) {
+    super(msg, "serviceWorker/value");
   }
 
   getScriptValue(script: Script) {

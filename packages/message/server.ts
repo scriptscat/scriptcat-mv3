@@ -87,3 +87,28 @@ export class Group {
     this.server.on(`${this.name}${name}`, func);
   }
 }
+
+// 转发消息
+export function forwardMessage(path: string, from: Server, to: Message) {
+  from.on(path, (params, fromCon) => {
+    console.log(params, fromCon);
+    if (fromCon) {
+      to.connect({ action: path, data: params }).then((toCon) => {
+        fromCon.onMessage((data) => {
+          toCon.sendMessage(data);
+        });
+        toCon.onMessage((data) => {
+          fromCon.sendMessage(data);
+        });
+        fromCon.onDisconnect(() => {
+          toCon.disconnect();
+        });
+        toCon.onDisconnect(() => {
+          fromCon.disconnect();
+        });
+      });
+    } else {
+      return to.sendMessage({ action: path, data: params });
+    }
+  });
+}

@@ -1,5 +1,6 @@
 import { ScriptRunResouce } from "@App/app/repo/scripts";
 import ExecScript from "./exec_script";
+import { Message } from "@Packages/message/server";
 
 export class CATRetryError {
   msg: string;
@@ -21,7 +22,7 @@ export class BgExecScriptWarp extends ExecScript {
 
   setInterval: Map<number, boolean>;
 
-  constructor(scriptRes: ScriptRunResouce) {
+  constructor(scriptRes: ScriptRunResouce, message: Message) {
     const thisContext: { [key: string]: any } = {};
     const setTimeout = new Map<number, any>();
     const setInterval = new Map<number, any>();
@@ -62,7 +63,7 @@ export class BgExecScriptWarp extends ExecScript {
     };
     // @ts-ignore
     thisContext.CATRetryError = CATRetryError;
-    super(scriptRes, thisContext);
+    super(scriptRes, message, thisContext);
     this.setTimeout = setTimeout;
     this.setInterval = setInterval;
   }

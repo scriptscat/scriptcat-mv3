@@ -29,7 +29,7 @@ export default class ServiceWorkerManager {
     value.init();
     const script = new ScriptService(group.group("script"), this.mq, value, resource);
     script.init();
-    const runtime = new RuntimeService(group.group("runtime"), this.mq);
+    const runtime = new RuntimeService(group.group("runtime"), this.mq, value);
     runtime.init();
   }
 }

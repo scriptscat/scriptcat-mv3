@@ -277,7 +277,7 @@ export function prepareScriptByCode(
       let old: Script | undefined;
       let oldCode: string | undefined;
       if (uuid) {
-        old = await dao.findByUUID(uuid);
+        old = await dao.get(uuid);
         if (!old && override) {
           old = await dao.findByNameAndNamespace(script.name, script.namespace);
         }

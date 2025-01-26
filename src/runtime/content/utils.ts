@@ -2,6 +2,7 @@ import { ScriptRunResouce } from "@App/app/repo/scripts";
 import { v4 as uuidv4 } from "uuid";
 import GMApi, { ApiValue, GMContext } from "./gm_api";
 import { has } from "@App/pkg/utils/lodash";
+import { Message } from "@Packages/message/server";
 
 // 构建脚本运行代码
 export function compileScriptCode(scriptRes: ScriptRunResouce, code: string): string {
@@ -52,9 +53,10 @@ function setDepend(context: { [key: string]: any }, apiVal: ApiValue) {
 }
 
 // 构建沙盒上下文
-export function createContext(scriptRes: ScriptRunResouce, GMInfo: any): GMApi {
+export function createContext(scriptRes: ScriptRunResouce, GMInfo: any, message: Message): GMApi {
   // 按照GMApi构建
   const context: { [key: string]: any } = {
+    message: message,
     scriptRes,
     valueChangeListener: new Map<number, { name: string; listener: GMTypes.ValueChangeListener }>(),
     sendMessage: GMApi.prototype.sendMessage,

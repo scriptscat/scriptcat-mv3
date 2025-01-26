@@ -1,15 +1,5 @@
 import { Repo } from "./repo";
 
-export interface OldValue {
-  id: number;
-  scriptId: number;
-  storageName?: string;
-  key: string;
-  value: any;
-  createtime: number;
-  updatetime: number;
-}
-
 export interface Value {
   uuid: string;
   storageName?: string;
@@ -21,5 +11,9 @@ export interface Value {
 export class ValueDAO extends Repo<Value> {
   constructor() {
     super("value");
+  }
+
+  save(key: string, value: Value) {
+    return super._save(key, value);
   }
 }

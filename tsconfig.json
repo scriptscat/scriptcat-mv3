@@ -13,6 +13,7 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "moduleResolution": "bundler",
+    "experimentalDecorators": true,
     "useDefineForClassFields": true,
     "allowImportingTsExtensions": true,
     "baseUrl": ".",

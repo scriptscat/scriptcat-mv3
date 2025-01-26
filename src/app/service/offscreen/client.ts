@@ -1,6 +1,6 @@
 import { WindowMessage } from "@Packages/message/window_message";
-import { sendMessage } from "../utils";
 import { SCRIPT_RUN_STATUS } from "@App/app/repo/scripts";
+import { sendMessage } from "@Packages/message/client";
 
 export function preparationSandbox(msg: WindowMessage) {
   return sendMessage(msg, "preparationSandbox");

@@ -1,20 +1,23 @@
 import { MessageQueue } from "@Packages/message/message_queue";
 import { ScriptEnableCallbackValue } from "./client";
 import { Group } from "@Packages/message/server";
-import { Script, SCRIPT_STATUS_ENABLE, SCRIPT_TYPE_NORMAL, ScriptDAO } from "@App/app/repo/scripts";
+import { Script, SCRIPT_STATUS_ENABLE, SCRIPT_TYPE_NORMAL, ScriptAndCode, ScriptDAO } from "@App/app/repo/scripts";
+import GMApi from "@App/runtime/service_worker/gm_api";
+import { ValueService } from "./value";
 
 export class RuntimeService {
   scriptDAO: ScriptDAO = new ScriptDAO();
 
   constructor(
     private group: Group,
-    private mq: MessageQueue
+    private mq: MessageQueue,
+    private value: ValueService
   ) {}
 
   async init() {
     // 监听脚本开启
     this.mq.addListener("enableScript", async (data: ScriptEnableCallbackValue) => {
-      const script = await this.scriptDAO.get(data.uuid);
+      const script = await this.scriptDAO.getAndCode(data.uuid);
       if (!script) {
         return;
       }
@@ -48,9 +51,17 @@ export class RuntimeService {
         this.mq.publish("enableScript", { uuid: script.uuid, enable: true });
       });
     });
+
+    // 初始化gm api
+    const gmApi = new GMApi(this.value);
+    gmApi.start();
+    // 处理请求
+    this.group.on("gmApi", gmApi.handlerRequest);
   }
 
-  registryPageScript(script: Script) {}
+  registryPageScript(script: ScriptAndCode) {
+    console.log(script);
+  }
 
   unregistryPageScript(script: Script) {}
 }

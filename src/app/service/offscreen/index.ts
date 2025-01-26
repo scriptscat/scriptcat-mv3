@@ -1,4 +1,4 @@
-import { Server } from "@Packages/message/server";
+import { forwardMessage, Server } from "@Packages/message/server";
 import { ScriptService } from "./script";
 import { Broker, MessageQueue } from "@Packages/message/message_queue";
 import { Logger, LoggerDAO } from "@App/app/repo/logger";
@@ -21,6 +21,8 @@ export class OffscreenManager {
 
   private broker: Broker = new Broker(this.extensionMessage);
 
+  private serviceWorker = new ServiceWorkerClient(this.extensionMessage);
+
   logger(data: Logger) {
     const dao = new LoggerDAO();
     dao.save(data);
@@ -28,12 +30,11 @@ export class OffscreenManager {
 
   preparationSandbox() {
     // 通知初始化好环境了
-    const serviceWorker = new ServiceWorkerClient();
-    serviceWorker.preparationOffscreen();
+    this.serviceWorker.preparationOffscreen();
   }
 
   sendMessageToServiceWorker(data: { action: string; data: any }) {
-    return sendMessage(data.action, data.data);
+    return sendMessage(this.extensionMessage, data.action, data.data);
   }
 
   initManager() {
@@ -44,5 +45,7 @@ export class OffscreenManager {
     this.windowApi.on("sendMessageToServiceWorker", this.sendMessageToServiceWorker.bind(this));
     const script = new ScriptService(group.group("script"), this.mq, this.windowMessage, this.broker);
     script.init();
+    // 转发gm api请求
+    forwardMessage("serviceWorker/runtime/gmApi", this.windowApi, this.extensionMessage);
   }
 }
