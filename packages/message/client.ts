@@ -2,7 +2,8 @@ import { Message, MessageConnect } from "./server";
 
 export async function sendMessage(msg: Message, action: string, data?: any): Promise<any> {
   const res = await msg.sendMessage({ action, data });
-  if (res.code) {
+  console.log(action, data, res);
+  if (res && res.code) {
     console.error(res);
     return Promise.reject(res.message);
   } else {

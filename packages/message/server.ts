@@ -91,7 +91,6 @@ export class Group {
 // 转发消息
 export function forwardMessage(path: string, from: Server, to: Message) {
   from.on(path, (params, fromCon) => {
-    console.log(params, fromCon);
     if (fromCon) {
       to.connect({ action: path, data: params }).then((toCon) => {
         fromCon.onMessage((data) => {
