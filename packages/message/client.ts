@@ -1,8 +1,9 @@
+import LoggerCore from "@App/app/logger/core";
 import { Message, MessageConnect } from "./server";
 
 export async function sendMessage(msg: Message, action: string, data?: any): Promise<any> {
   const res = await msg.sendMessage({ action, data });
-  console.log(action, data, res);
+  LoggerCore.getInstance().logger().debug("sendMessage", { action, data, res });
   if (res && res.code) {
     console.error(res);
     return Promise.reject(res.message);

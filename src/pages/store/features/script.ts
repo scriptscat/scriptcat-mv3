@@ -3,6 +3,9 @@ import { createAppSlice } from "../hooks";
 import { Script, SCRIPT_STATUS_DISABLE, SCRIPT_STATUS_ENABLE, ScriptDAO } from "@App/app/repo/scripts";
 import { arrayMove } from "@dnd-kit/sortable";
 import { ScriptClient } from "@App/app/service/service_worker/client";
+import { message } from "../global";
+
+export const scriptClient = new ScriptClient(message);
 
 export const fetchAndSortScriptList = createAsyncThunk("script/fetchScriptList", async () => {
   // 排序
@@ -21,12 +24,12 @@ export const fetchAndSortScriptList = createAsyncThunk("script/fetchScriptList",
 export const requestEnableScript = createAsyncThunk(
   "script/enableScript",
   (param: { uuid: string; enable: boolean }) => {
-    return new ScriptClient().enable(param.uuid, param.enable);
+    return scriptClient.enable(param.uuid, param.enable);
   }
 );
 
 export const requestDeleteScript = createAsyncThunk("script/deleteScript", async (uuid: string) => {
-  return new ScriptClient().delete(uuid);
+  return scriptClient.delete(uuid);
 });
 
 export type ScriptLoading = Script & { enableLoading?: boolean; actionLoading?: boolean };

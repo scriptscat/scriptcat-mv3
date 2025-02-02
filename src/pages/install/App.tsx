@@ -7,7 +7,7 @@ import { i18nDescription, i18nName } from "@App/locales/locales";
 import { useTranslation } from "react-i18next";
 import { prepareScriptByCode, prepareSubscribeByCode, ScriptInfo } from "@App/pkg/utils/script";
 import { nextTime } from "@App/pkg/utils/utils";
-import { ScriptClient } from "@App/app/service/service_worker/client";
+import { scriptClient } from "../store/features/script";
 
 type Permission = { label: string; color?: string; value: string[] }[];
 
@@ -32,11 +32,12 @@ function App() {
   const [enable, setEnable] = useState<boolean>(false);
   // 按钮文案
   const [btnText, setBtnText] = useState<string>("");
+  // 是否是更新
+  const [isUpdate, setIsUpdate] = useState<boolean>(false);
   const { t } = useTranslation();
 
   const metadata: Metadata = scriptInfo?.metadata || {};
   const permission: Permission = [];
-  const isUpdate = scriptInfo?.update;
   const description = [];
   if (scriptInfo) {
     if (scriptInfo.userSubscribe) {
@@ -130,7 +131,7 @@ function App() {
     if (!uuid) {
       return;
     }
-    new ScriptClient()
+    scriptClient
       .getInstallInfo(uuid)
       .then(async (info: ScriptInfo) => {
         if (!info) {
@@ -147,6 +148,9 @@ function App() {
           setOldScript(prepare.oldSubscribe);
           setCode(prepare.subscribe.code);
           setDiffCode(prepare.oldSubscribe?.code);
+          if (prepare.oldSubscribe) {
+            setIsUpdate(true);
+          }
         } else {
           if (info.update) {
             prepare = await prepareScriptByCode(info.code, info.url, info.uuid);
@@ -157,22 +161,30 @@ function App() {
           setOldScript(prepare.oldScript);
           setCode(info.code);
           setDiffCode(prepare.oldScriptCode);
-        }
-        if (info.userSubscribe) {
-          setBtnText(isUpdate ? t("update_subscribe")! : t("install_subscribe"));
-        } else {
-          setBtnText(isUpdate ? t("update_script")! : t("install_script"));
+          if (prepare.oldScript) {
+            setIsUpdate(true);
+          }
         }
         setScriptInfo(info);
         setEnable(action.status === SCRIPT_STATUS_ENABLE);
         setUpsertScript(action);
-        // 修改网页显示title
-        document.title = `${!isUpdate ? t("install_script") : t("update_script")} - ${i18nName(action)} - ScriptCat`;
       })
-      .catch(() => {
-        Message.error(t("script_info_load_failed"));
+      .catch((e: any) => {
+        Message.error(t("script_info_load_failed") + " " + e.message);
       });
   }, [isUpdate, t]);
+
+  useEffect(() => {
+    if (scriptInfo?.userSubscribe) {
+      setBtnText(isUpdate ? t("update_subscribe")! : t("install_subscribe"));
+    } else {
+      setBtnText(isUpdate ? t("update_script")! : t("install_script"));
+    }
+    // 修改网页显示title
+    if (upsertScript) {
+      document.title = `${!isUpdate ? t("install_script") : t("update_script")} - ${i18nName(upsertScript)} - ScriptCat`;
+    }
+  }, [isUpdate, scriptInfo, upsertScript, t]);
 
   return (
     <div className="h-full">
@@ -255,7 +267,7 @@ function App() {
                         //   });
                         return;
                       }
-                      new ScriptClient()
+                      scriptClient
                         .install(upsertScript as Script, code)
                         .then(() => {
                           if (isUpdate) {

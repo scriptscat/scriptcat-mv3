@@ -64,7 +64,7 @@ export abstract class Repo<T> {
     });
   }
 
-  update(key: string, val: Partial<T>) {
+  update(key: string, val: Partial<T>): Promise<T | false> {
     return new Promise((resolve) => {
       this.get(key).then((result) => {
         if (result) {
@@ -72,6 +72,8 @@ export abstract class Repo<T> {
           this._save(key, result).then(() => {
             resolve(result);
           });
+        } else {
+          resolve(false);
         }
       });
     });
