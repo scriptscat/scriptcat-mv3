@@ -14,7 +14,6 @@ async function hasDocument() {
     contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
     documentUrls: [offscreenUrl],
   });
-
   return existingContexts.length > 0;
 }
 
@@ -28,6 +27,7 @@ async function setupOffscreenDocument() {
       creating = chrome.offscreen.createDocument({
         url: OFFSCREEN_DOCUMENT_PATH,
         reasons: [
+          chrome.offscreen.Reason.BLOBS,
           chrome.offscreen.Reason.CLIPBOARD,
           chrome.offscreen.Reason.DOM_SCRAPING,
           chrome.offscreen.Reason.LOCAL_STORAGE,

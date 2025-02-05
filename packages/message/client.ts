@@ -3,7 +3,7 @@ import { Message, MessageConnect } from "./server";
 
 export async function sendMessage(msg: Message, action: string, data?: any): Promise<any> {
   const res = await msg.sendMessage({ action, data });
-  LoggerCore.getInstance().logger().debug("sendMessage", { action, data, res });
+  LoggerCore.getInstance().logger().debug("sendMessage", { action, data, response: res });
   if (res && res.code) {
     console.error(res);
     return Promise.reject(res.message);

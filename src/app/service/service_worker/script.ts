@@ -236,12 +236,17 @@ export class ScriptService {
 
   async updateRunStatus(params: { uuid: string; runStatus: SCRIPT_RUN_STATUS; error?: string; nextruntime?: number }) {
     this.mq.publish("updateRunStatus", params);
-    return this.scriptDAO.update(params.uuid, {
-      runStatus: params.runStatus,
-      lastruntime: new Date().getTime(),
-      error: params.error,
-      nextruntime: params.nextruntime,
-    });
+    if (
+      (await this.scriptDAO.update(params.uuid, {
+        runStatus: params.runStatus,
+        lastruntime: new Date().getTime(),
+        error: params.error,
+        nextruntime: params.nextruntime,
+      })) === false
+    ) {
+      return Promise.reject("update error");
+    }
+    return Promise.resolve(true);
   }
 
   getCode(uuid: string) {

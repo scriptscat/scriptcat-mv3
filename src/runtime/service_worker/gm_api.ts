@@ -29,7 +29,8 @@ export default class GMApi {
   }
 
   handlerRequest(params: Request) {
-    console.log(params);
+    console.log(params, arguments);
+    return null;
   }
 
   @PermissionVerify.API()
@@ -41,6 +42,13 @@ export default class GMApi {
     const sender = <MessageSender & { runFlag: string }>request.sender;
     sender.runFlag = request.runFlag;
     return this.value.setValue(request.script.uuid, key, value);
+  }
+
+  @PermissionVerify.API()
+  GM_xmlhttpRequest(request: Request) {
+    // 发送到offscreen, 处理请求
+    console.log(request, arguments);
+    return null;
   }
 
   start() {}

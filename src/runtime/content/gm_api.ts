@@ -3,7 +3,7 @@ import { getMetadataStr, getUserConfigStr, parseUserConfig } from "@App/pkg/util
 import { ValueUpdateData } from "./exec_script";
 import { ExtVersion } from "@App/app/const";
 import { storageKey } from "../utils";
-import { Message } from "@Packages/message/server";
+import { Message, MessageConnect } from "@Packages/message/server";
 
 interface ApiParam {
   depend?: string[];
@@ -177,5 +177,54 @@ export default class GMApi {
       message = JSON.stringify(message);
     }
     return this.sendMessage("GM_log", [message, level, labels]);
+  }
+
+  // 用于脚本跨域请求,需要@connect domain指定允许的域名
+  @GMContext.API({
+    depend: ["CAT_fetchBlob", "CAT_createBlobUrl", "CAT_fetchDocument"],
+  })
+  public GM_xmlhttpRequest(details: GMTypes.XHRDetails) {
+    const u = new URL(details.url, window.location.href);
+    if (details.headers) {
+      Object.keys(details.headers).forEach((key) => {
+        if (key.toLowerCase() === "cookie") {
+          details.cookie = details.headers![key];
+          delete details.headers![key];
+        }
+      });
+    }
+
+    const param: GMSend.XHRDetails = {
+      method: details.method,
+      timeout: details.timeout,
+      url: u.href,
+      headers: details.headers,
+      cookie: details.cookie,
+      context: details.context,
+      responseType: details.responseType,
+      overrideMimeType: details.overrideMimeType,
+      anonymous: details.anonymous,
+      user: details.user,
+      password: details.password,
+      maxRedirects: details.maxRedirects,
+    };
+    if (!param.headers) {
+      param.headers = {};
+    }
+    if (details.nocache) {
+      param.headers["Cache-Control"] = "no-cache";
+    }
+    let connect: MessageConnect;
+    this.connect("GM_xmlhttpRequest", [param]).then((con) => {
+      connect = con;
+    });
+
+    return {
+      abort: () => {
+        if (connect) {
+          connect.disconnect();
+        }
+      },
+    };
   }
 }

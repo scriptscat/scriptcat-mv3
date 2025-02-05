@@ -1,3 +1,5 @@
+import LoggerCore from "@App/app/logger/core";
+
 export interface Message {
   onConnect(callback: (data: any, con: MessageConnect) => void): void;
   onMessage(callback: (data: any, sendResponse: (data: any) => void) => void): void;
@@ -50,6 +52,8 @@ export class Server {
   }
 
   private messageHandle(msg: string, params: any, sendResponse: (response: any) => void) {
+    const logger = LoggerCore.getInstance().logger({ env: this.env, msg });
+    logger.debug("messageHandle", { params });
     const func = this.apiFunctionMap.get(msg);
     if (func) {
       try {
@@ -65,6 +69,9 @@ export class Server {
       } catch (e: any) {
         sendResponse({ code: -1, message: e.message });
       }
+    } else {
+      sendResponse({ code: -1, message: "no such api" });
+      logger.error("no such api");
     }
   }
 }
