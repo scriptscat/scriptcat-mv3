@@ -1,10 +1,13 @@
 import EventEmitter from "eventemitter3";
-import { ApiFunction, Message, MessageConnect, Server } from "./server";
+import { ApiFunction, MessageConnect, MessageSend, Server } from "./server";
+import { sendMessage } from "./client";
+import Logger from "@App/app/logger/logger";
+import LoggerCore from "@App/app/logger/core";
 
 export type SubscribeCallback = (message: any) => void;
 
 export class Broker {
-  constructor(private msg: Message) {}
+  constructor(private msg: MessageSend) {}
 
   // 订阅
   async subscribe(topic: string, handler: SubscribeCallback): Promise<MessageConnect> {
@@ -19,7 +22,7 @@ export class Broker {
 
   // 发布
   publish(topic: string, message: any) {
-    chrome.runtime.sendMessage({ action: "publish", topic, message });
+    sendMessage(this.msg, "messageQueue", { action: "publish", topic, message });
   }
 }
 
@@ -29,12 +32,15 @@ export class MessageQueue {
 
   private EE: EventEmitter = new EventEmitter();
 
+  logger: Logger;
   constructor(api: Server) {
     api.on("messageQueue", this.handler());
+    this.logger = LoggerCore.getInstance().logger({ service: "messageQueue" });
   }
 
   handler(): ApiFunction {
     return ({ action, topic, message }: { action: string; topic: string; message: any }, con) => {
+      this.logger.trace("messageQueueHandler", { action, topic, message });
       if (!con) {
         throw new Error("con is required");
       }
@@ -66,6 +72,7 @@ export class MessageQueue {
       // 移除断开连接的con
       list = list!.filter((item) => item.con !== con);
       this.topicConMap.set(topic, list);
+      this.logger.debug("disconnect", { topic });
     });
   }
 
@@ -75,6 +82,7 @@ export class MessageQueue {
       item.con.sendMessage({ action: "message", topic, message });
     });
     this.EE.emit(topic, message);
+    this.logger.trace("publish", { topic, message, list: list?.length });
   }
 
   // 只发布给当前环境

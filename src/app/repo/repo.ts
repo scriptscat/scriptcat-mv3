@@ -9,7 +9,7 @@ export abstract class Repo<T> {
     return this.prefix + key;
   }
 
-  protected async _save(key: string, val: T) {
+  protected async _save(key: string, val: T):Promise<T> {
     return new Promise((resolve) => {
       const data = {
         [this.joinKey(key)]: val,

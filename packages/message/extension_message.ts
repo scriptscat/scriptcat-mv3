@@ -1,6 +1,25 @@
-import { Message, MessageConnect } from "./server";
+import { Message, MessageConnect, MessageSend } from "./server";
 
-export class ExtensionMessage implements Message {
+export class ExtensionMessageSend implements MessageSend {
+  connect(data: any): Promise<MessageConnect> {
+    return new Promise((resolve) => {
+      const con = chrome.runtime.connect();
+      con.postMessage(data);
+      resolve(new ExtensionMessageConnect(con));
+    });
+  }
+
+  // 发送消息 注意不进行回调的内存泄漏
+  sendMessage(data: any): Promise<any> {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage(data, (resp) => {
+        resolve(resp);
+      });
+    });
+  }
+}
+
+export class ExtensionMessage extends ExtensionMessageSend implements Message {
   onConnect(callback: (data: any, con: MessageConnect) => void) {
     chrome.runtime.onConnect.addListener((port) => {
       const handler = (msg: any) => {
@@ -11,27 +30,10 @@ export class ExtensionMessage implements Message {
     });
   }
 
-  connect(data: any): Promise<MessageConnect> {
-    return new Promise((resolve) => {
-      const con = chrome.runtime.connect();
-      con.postMessage(data);
-      resolve(new ExtensionMessageConnect(con));
-    });
-  }
-
   // 注意chrome.runtime.onMessage.addListener的回调函数需要返回true才能处理异步请求
   onMessage(callback: (data: any, sendResponse: (data: any) => void) => void) {
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return callback(msg, sendResponse);
-    });
-  }
-
-  // 发送消息 注意不进行回调的内存泄漏
-  sendMessage(data: any): Promise<any> {
-    return new Promise((resolve) => {
-      chrome.runtime.sendMessage(data, (resp) => {
-        resolve(resp);
-      });
     });
   }
 }

@@ -9,7 +9,6 @@ function main() {
 
   // 初始化日志组件
   const loggerCore = new LoggerCore({
-    debug: process.env.NODE_ENV === "development",
     writer: new MessageWriter(msg),
     labels: { env: "sandbox" },
   });

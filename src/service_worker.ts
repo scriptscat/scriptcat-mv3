@@ -46,7 +46,6 @@ async function main() {
   migrate();
   // 初始化日志组件
   const loggerCore = new LoggerCore({
-    debug: process.env.NODE_ENV === "development",
     writer: new DBWriter(new LoggerDAO()),
     labels: { env: "service_worker" },
   });

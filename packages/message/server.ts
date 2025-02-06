@@ -1,8 +1,12 @@
 import LoggerCore from "@App/app/logger/core";
+import { ExtensionMessageSend } from "./extension_message";
 
-export interface Message {
+export interface Message extends MessageSend {
   onConnect(callback: (data: any, con: MessageConnect) => void): void;
   onMessage(callback: (data: any, sendResponse: (data: any) => void) => void): void;
+}
+
+export interface MessageSend {
   connect(data: any): Promise<MessageConnect>;
   sendMessage(data: any): Promise<any>;
 }
@@ -53,7 +57,7 @@ export class Server {
 
   private messageHandle(msg: string, params: any, sendResponse: (response: any) => void) {
     const logger = LoggerCore.getInstance().logger({ env: this.env, msg });
-    logger.debug("messageHandle", { params });
+    logger.trace("messageHandle", { params });
     const func = this.apiFunctionMap.get(msg);
     if (func) {
       try {
@@ -96,7 +100,7 @@ export class Group {
 }
 
 // 转发消息
-export function forwardMessage(path: string, from: Server, to: Message) {
+export function forwardMessage(path: string, from: Server, to: ExtensionMessageSend) {
   from.on(path, (params, fromCon) => {
     if (fromCon) {
       to.connect({ action: path, data: params }).then((toCon) => {

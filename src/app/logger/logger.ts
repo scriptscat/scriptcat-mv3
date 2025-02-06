@@ -2,10 +2,11 @@ import dayjs from "dayjs";
 import LoggerCore, { LogLabel, LogLevel } from "./core";
 
 const levelNumber = {
-  debug: 10,
-  info: 100,
-  warn: 1000,
-  error: 10000,
+  trace: 10,
+  debug: 100,
+  info: 1000,
+  warn: 10000,
+  error: 100000,
 };
 
 function buildLabel(...label: LogLabel[][]): LogLabel {
@@ -34,7 +35,7 @@ export default class Logger {
     if (levelNumber[level] >= levelNumber[this.core.level]) {
       this.core.writer.write(level, message, buildLabel(this.label, label));
     }
-    if (this.core.debug) {
+    if (this.core.debug !== "none" && levelNumber[level] >= levelNumber[this.core.debug]) {
       if (typeof message === "object") {
         message = JSON.stringify(message);
       }
@@ -48,6 +49,9 @@ export default class Logger {
         case "warn":
           console.warn(msg);
           break;
+        case "trace":
+          console.trace(msg);
+          break;
         default:
           console.info(msg);
           break;
@@ -57,6 +61,10 @@ export default class Logger {
 
   with(...label: LogLabel[]) {
     return new Logger(this.core, ...this.label, ...label);
+  }
+
+  trace(message: string, ...label: LogLabel[]) {
+    this.log("trace", message, ...label);
   }
 
   debug(message: string, ...label: LogLabel[]) {

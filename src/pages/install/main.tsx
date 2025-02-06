@@ -16,7 +16,6 @@ import DBWriter from "@App/app/logger/db_writer.ts";
 migrate();
 // 初始化日志组件
 const loggerCore = new LoggerCore({
-  debug: process.env.NODE_ENV === "development",
   writer: new DBWriter(new LoggerDAO()),
   labels: { env: "install" },
 });
