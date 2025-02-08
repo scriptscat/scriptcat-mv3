@@ -65,6 +65,7 @@ export default class GMApi {
     return this.message.sendMessage({
       action: "serviceWorker/runtime/gmApi",
       data: {
+        uuid: this.scriptRes.uuid,
         api,
         params,
       },
@@ -76,6 +77,7 @@ export default class GMApi {
     return this.message.connect({
       action: "serviceWorker/runtime/gmApi",
       data: {
+        uuid: this.scriptRes.uuid,
         api,
         params,
       },

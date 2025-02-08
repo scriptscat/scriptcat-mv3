@@ -1,10 +1,11 @@
 // gm api 权限验证
 import Cache from "@App/app/cache";
-import { Permission, PermissionDAO } from "@App/app/repo/permission";
 import { Script } from "@App/app/repo/scripts";
 import { v4 as uuidv4 } from "uuid";
 import { Api, Request } from "./gm_api";
 import Queue from "@App/pkg/utils/queue";
+import CacheKey from "@App/app/cache_key";
+import { Permission, PermissionDAO } from "@App/app/repo/permission";
 
 export interface ConfirmParam {
   // 权限名
@@ -91,8 +92,6 @@ export default class PermissionVerify {
     };
   }
 
-  permissionDAO: PermissionDAO;
-
   // 确认队列
   confirmQueue: Queue<{
     request: Request;
@@ -101,108 +100,19 @@ export default class PermissionVerify {
     reject: (reason: any) => void;
   }> = new Queue();
 
-  removePermissionCache(scriptId: number) {
+  async removePermissionCache(scriptId: number) {
     // 先删除缓存
-    Cache.getInstance()
-      .list()
-      .forEach((key) => {
-        if (key.startsWith(`permission:${scriptId.toString()}:`)) {
-          Cache.getInstance().del(key);
-        }
-      });
+    (await Cache.getInstance().list()).forEach((key) => {
+      if (key.startsWith(`permission:${scriptId.toString()}:`)) {
+        Cache.getInstance().del(key);
+      }
+    });
   }
+
+  private permissionDAO: PermissionDAO;
 
   constructor() {
     this.permissionDAO = new PermissionDAO();
-    // 监听用户确认消息
-    const message = <MessageHander>IoC.instance(MessageHander);
-    message.setHandler("permissionConfirm", (_action, data: { uuid: string; userConfirm: UserConfirm }) => {
-      const confirm = this.confirmMap.get(data.uuid);
-      if (!confirm) {
-        if (data.userConfirm.type === 0) {
-          // 忽略
-          return Promise.resolve(undefined);
-        }
-        return Promise.reject(new Error("confirm not found"));
-      }
-      this.confirmMap.delete(data.uuid);
-      confirm.resolve(data.userConfirm);
-      return Promise.resolve(true);
-    });
-    // 监听获取用户确认消息
-    message.setHandler("getConfirm", (_action, uuid: string) => {
-      const data = this.confirmMap.get(uuid);
-      if (!data) {
-        return Promise.reject(new Error("uuid not found"));
-      }
-      // 查询允许统配的有多少个相同等待确认权限
-      let likeNum = 0;
-      if (data.confirm.wildcard) {
-        this.confirmQueue.list.forEach((value) => {
-          const confirm = value.confirm as ConfirmParam;
-          if (
-            confirm.wildcard &&
-            value.request.scriptId === data.script.id &&
-            confirm.permission === data.confirm.permission
-          ) {
-            likeNum += 1;
-          }
-        });
-      }
-      return Promise.resolve({
-        script: data.script,
-        confirm: data.confirm,
-        likeNum,
-      });
-    });
-    // 监听删除权限
-    message.setHandler("deletePermission", async (_action, data: { scriptId: number; confirm: ConfirmParam }) => {
-      // 先删除缓存
-      this.removePermissionCache(data.scriptId);
-      //  再删除数据库
-      const m = await this.permissionDAO.findOne({
-        scriptId: data.scriptId,
-        permission: data.confirm.permission,
-        permissionValue: data.confirm.permissionValue || "",
-      });
-      if (!m) {
-        return Promise.resolve(true);
-      }
-      await this.permissionDAO.delete(m.id);
-      return Promise.resolve(true);
-    });
-    // 监听添加权限
-    message.setHandler("addPermission", async (_action, data: { scriptId: number; permission: Permission }) => {
-      // 先删除缓存
-      this.removePermissionCache(data.scriptId);
-      // 从数据库中查询是否有此权限
-      const m = await this.permissionDAO.findOne({
-        scriptId: data.scriptId,
-        permission: data.permission.permission,
-        permissionValue: data.permission.permissionValue || "",
-      });
-      if (!m) {
-        // 没有添加
-        await this.permissionDAO.save(data.permission);
-        return Promise.resolve(true);
-      }
-      // 有则更新
-      data.permission.id = m.id;
-      data.permission.createtime = m.createtime;
-      data.permission.updatetime = new Date().getTime();
-      this.permissionDAO.update(m.id, data.permission);
-      return Promise.resolve(true);
-    });
-    // 监听重置权限
-    message.setHandler("resetPermission", async (_action, data: { scriptId: number }) => {
-      // 先删除缓存
-      this.removePermissionCache(data.scriptId);
-      // 从数据库中查询是否有此权限
-      await this.permissionDAO.delete({
-        scriptId: data.scriptId,
-      });
-      return Promise.resolve(true);
-    });
     this.dealConfirmQueue();
   }
 
@@ -266,22 +176,14 @@ export default class PermissionVerify {
     if (typeof confirm === "boolean") {
       return confirm;
     }
-    const cacheKey = CacheKey.permissionConfirm(request.script.id, confirm);
+    const cacheKey = CacheKey.permissionConfirm(request.script.uuid, confirm);
     // 从数据库中查询是否有此权限
     const ret = await Cache.getInstance().getOrSet(cacheKey, async () => {
-      let model = await this.permissionDAO.findOne({
-        scriptId: request.scriptId,
-        permission: confirm.permission,
-        permissionValue: confirm.permissionValue || "",
-      });
+      let model = await this.permissionDAO.findByKey(request.uuid, confirm.permission, confirm.permissionValue || "");
       if (!model) {
         // 允许通配
         if (confirm.wildcard) {
-          model = await this.permissionDAO.findOne({
-            scriptId: request.scriptId,
-            permission: confirm.permission,
-            permissionValue: "*",
-          });
+          model = await this.permissionDAO.findByKey(request.uuid, confirm.permission, confirm.permissionValue || "");
         }
       }
       return Promise.resolve(model);
@@ -297,9 +199,8 @@ export default class PermissionVerify {
     // 没有权限,则弹出页面让用户进行确认
     const userConfirm = await this.confirmWindow(request.script, confirm);
     // 成功存入数据库
-    const model = {
-      id: 0,
-      scriptId: request.scriptId,
+    const model: Permission = {
+      uuid: request.uuid,
       permission: confirm.permission,
       permissionValue: "",
       allow: userConfirm.allow,
@@ -327,15 +228,11 @@ export default class PermissionVerify {
     }
     // 总是 放入数据库
     if (userConfirm.type >= 4) {
-      const oldConfirm = await this.permissionDAO.findOne({
-        scriptId: request.scriptId,
-        permission: model.permission,
-        permissionValue: model.permissionValue,
-      });
+      const oldConfirm = await this.permissionDAO.findByKey(request.uuid, model.permission, model.permissionValue);
       if (!oldConfirm) {
         await this.permissionDAO.save(model);
       } else {
-        await this.permissionDAO.update(oldConfirm.id, model);
+        await this.permissionDAO.update(this.permissionDAO.key(model), model);
       }
     }
     if (userConfirm.allow) {
@@ -357,27 +254,9 @@ export default class PermissionVerify {
 
   // 弹出窗口让用户进行确认
   async confirmWindow(script: Script, confirm: ConfirmParam): Promise<UserConfirm> {
-    return new Promise((resolve, reject) => {
-      const uuid = uuidv4();
-      // 超时处理
-      const timeout = setTimeout(() => {
-        this.confirmMap.delete(uuid);
-        reject(new Error("permission confirm timeout"));
-      }, 40 * 1000);
-      // 保存到map中
-      this.confirmMap.set(uuid, {
-        confirm,
-        script,
-        resolve: (value: UserConfirm) => {
-          clearTimeout(timeout);
-          resolve(value);
-        },
-        reject,
-      });
-      // 打开窗口
-      chrome.tabs.create({
-        url: chrome.runtime.getURL(`src/confirm.html?uuid=${uuid}`),
-      });
+    return Promise.resolve({
+      allow: true,
+      type: 1,
     });
   }
 }

@@ -44,7 +44,7 @@ export default class ExecScript {
     // 构建脚本资源
     this.scriptFunc = compileScript(this.scriptRes.code);
     const grantMap: { [key: string]: boolean } = {};
-    scriptRes.metadata.grant.forEach((key) => {
+    scriptRes.metadata.grant?.forEach((key) => {
       grantMap[key] = true;
     });
     if (grantMap.none) {

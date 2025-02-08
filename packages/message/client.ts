@@ -19,7 +19,7 @@ export function connect(msg: Message, action: string, data?: any): Promise<Messa
 
 export class Client {
   constructor(
-    private msg: ExtensionMessageSend,
+    private msg: MessageSend,
     private prefix: string
   ) {
     if (!this.prefix.endsWith("/")) {

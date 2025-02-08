@@ -99,7 +99,7 @@ const PermissionManager: React.FC<{
           if (permissionValue) {
             permission.push({
               id: 0,
-              scriptId: script.id,
+              uuid: script.id,
               permission: permissionValue.permission,
               permissionValue: permissionValue.permissionValue,
               allow: permissionValue.allow,
@@ -157,7 +157,7 @@ const PermissionManager: React.FC<{
             onClick={() => {
               setPermissionValue({
                 id: 0,
-                scriptId: script.id,
+                uuid: script.id,
                 permission: "cors",
                 permissionValue: "",
                 allow: true,

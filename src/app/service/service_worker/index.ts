@@ -12,7 +12,7 @@ export type InstallSource = "user" | "system" | "sync" | "subscribe" | "vscode";
 export default class ServiceWorkerManager {
   constructor() {}
 
-  private api: Server = new Server("service_worker", new ExtensionMessage());
+  private api: Server = new Server("service_worker", new ExtensionMessage("service_worker"));
 
   private mq: MessageQueue = new MessageQueue(this.api);
 
@@ -82,7 +82,7 @@ export default class ServiceWorkerManager {
     //               },
     //               condition: {
     //                 resourceTypes: [chrome.declarativeNetRequest.ResourceType.XMLHTTPREQUEST],
-    //                 urlFilter: "https://scriptcat.org/zh-CN",
+    //                 urlFilter: "^https://scriptcat.org/zh-CN$",
     //                 excludedTabIds: excludedTabIds,
     //               },
     //             },

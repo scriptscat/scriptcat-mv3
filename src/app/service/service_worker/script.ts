@@ -157,7 +157,7 @@ export class ScriptService {
     const logger = this.logger.with({
       name: script.name,
       uuid: script.uuid,
-      version: script.metadata.version[0],
+      version: script.metadata.version![0],
       upsertBy,
     });
     let update = false;

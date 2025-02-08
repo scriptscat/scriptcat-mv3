@@ -3,10 +3,10 @@ import { Client } from "@Packages/message/client";
 import { InstallSource } from ".";
 import { Broker } from "@Packages/message/message_queue";
 import { Resource } from "@App/app/repo/resource";
-import { ExtensionMessageSend } from "@Packages/message/extension_message";
+import { MessageSend } from "@Packages/message/server";
 
 export class ServiceWorkerClient extends Client {
-  constructor(msg: ExtensionMessageSend) {
+  constructor(msg: MessageSend) {
     super(msg, "serviceWorker");
   }
 
@@ -16,7 +16,7 @@ export class ServiceWorkerClient extends Client {
 }
 
 export class ScriptClient extends Client {
-  constructor(msg: ExtensionMessageSend) {
+  constructor(msg: MessageSend) {
     super(msg, "serviceWorker/script");
   }
 
@@ -51,7 +51,7 @@ export class ScriptClient extends Client {
 }
 
 export class ResourceClient extends Client {
-  constructor(msg: ExtensionMessageSend) {
+  constructor(msg: MessageSend) {
     super(msg, "serviceWorker/resource");
   }
 
@@ -61,7 +61,7 @@ export class ResourceClient extends Client {
 }
 
 export class ValueClient extends Client {
-  constructor(msg: ExtensionMessageSend) {
+  constructor(msg: MessageSend) {
     super(msg, "serviceWorker/value");
   }
 

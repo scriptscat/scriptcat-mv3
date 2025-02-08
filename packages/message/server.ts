@@ -22,7 +22,7 @@ export type MessageSender = {
   tabId: number;
 };
 
-export type ApiFunction = (params: any, con: MessageConnect | null) => any;
+export type ApiFunction = (params: any, con: MessageConnect | null) => Promise<any> | void;
 
 export class Server {
   private apiFunctionMap: Map<string, ApiFunction> = new Map();
@@ -32,10 +32,17 @@ export class Server {
     message: Message
   ) {
     message.onConnect((msg: any, con: MessageConnect) => {
+      if (msg.serverEnv !== this.env) {
+        con.disconnect();
+        return;
+      }
       this.connectHandle(msg.action, msg.data, con);
     });
 
     message.onMessage((msg, sendResponse) => {
+      if (msg.serverEnv !== this.env) {
+        return;
+      }
       return this.messageHandle(msg.action, msg.data, sendResponse);
     });
   }
@@ -100,7 +107,7 @@ export class Group {
 }
 
 // 转发消息
-export function forwardMessage(path: string, from: Server, to: ExtensionMessageSend) {
+export function forwardMessage(path: string, from: Server, to: MessageSend) {
   from.on(path, (params, fromCon) => {
     if (fromCon) {
       to.connect({ action: path, data: params }).then((toCon) => {

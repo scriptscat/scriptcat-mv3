@@ -18,7 +18,7 @@ export const SCRIPT_RUN_STATUS_RUNNING: SCRIPT_RUN_STATUS = "running";
 export const SCRIPT_RUN_STATUS_COMPLETE: SCRIPT_RUN_STATUS = "complete";
 export const SCRIPT_RUN_STATUS_ERROR: SCRIPT_RUN_STATUS = "error";
 
-export type Metadata = { [key: string]: string[] };
+export type Metadata = { [key: string]: string[] | undefined };
 
 export type ConfigType = "text" | "checkbox" | "select" | "mult-select" | "number" | "textarea" | "time";
 
@@ -91,7 +91,7 @@ export class ScriptDAO extends Repo<Script> {
     return super._save(val.uuid, val);
   }
 
-  getAndCode(uuid: string): Promise<ScriptAndCode|undefined> {
+  getAndCode(uuid: string): Promise<ScriptAndCode | undefined> {
     return Promise.all([this.get(uuid), this.scriptCodeDAO.get(uuid)]).then(([script, code]) => {
       if (!script || !code) {
         return undefined;

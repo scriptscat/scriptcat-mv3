@@ -52,11 +52,9 @@ export class RuntimeService {
       });
     });
 
-    // 初始化gm api
-    const gmApi = new GMApi(this.value);
+    // 启动gm api
+    const gmApi = new GMApi(this.group, this.value);
     gmApi.start();
-    // 处理请求
-    this.group.on("gmApi", gmApi.handlerRequest);
   }
 
   registryPageScript(script: ScriptAndCode) {

@@ -1,22 +1,109 @@
+export interface CacheStorage {
+  get(key: string): Promise<any>;
+  set(key: string, value: any): Promise<void>;
+  has(key: string): Promise<boolean>;
+  del(key: string): Promise<void>;
+  list(): Promise<string[]>;
+}
+
+export class ExtCache implements CacheStorage {
+  get(key: string): Promise<any> {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(key, (value) => {
+        resolve(value);
+      });
+    });
+  }
+
+  set(key: string, value: any): Promise<void> {
+    return new Promise((resolve) => {
+      chrome.storage.local.set(
+        {
+          [key]: value,
+        },
+        () => {
+          resolve();
+        }
+      );
+    });
+  }
+
+  has(key: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(key, (value) => {
+        resolve(value[key] !== undefined);
+      });
+    });
+  }
+
+  del(key: string): Promise<void> {
+    return new Promise((resolve) => {
+      chrome.storage.local.remove(key, () => {
+        resolve();
+      });
+    });
+  }
+
+  list(): Promise<string[]> {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(null, (value) => {
+        resolve(Object.keys(value));
+      });
+    });
+  }
+}
+
+export class MapCache {
+  private map: Map<string, any> = new Map();
+
+  get(key: string): Promise<any> {
+    return new Promise((resolve) => {
+      resolve(this.map.get(key));
+    });
+  }
+
+  set(key: string, value: any): Promise<void> {
+    return new Promise((resolve) => {
+      this.map.set(key, value);
+      resolve();
+    });
+  }
+
+  has(key: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      resolve(this.map.has(key));
+    });
+  }
+
+  del(key: string): Promise<void> {
+    return new Promise((resolve) => {
+      this.map.delete(key);
+      resolve();
+    });
+  }
+
+  list(): Promise<string[]> {
+    return new Promise((resolve) => {
+      resolve(Array.from(this.map.keys()));
+    });
+  }
+}
+
 export default class Cache {
-  static instance: Cache = new Cache();
+  static instance: Cache = new Cache(new ExtCache());
 
   static getInstance(): Cache {
     return Cache.instance;
   }
 
-  map: Map<string, unknown>;
+  private constructor(private storage: CacheStorage) {}
 
-  private constructor() {
-    this.map = new Map<string, unknown>();
+  public get(key: string): Promise<any> {
+    return this.storage.get(key);
   }
 
-  public get(key: string): unknown {
-    return this.map.get(key);
-  }
-
-  public async getOrSet(key: string, set: () => Promise<unknown>): Promise<unknown> {
-    let ret = this.get(key);
+  public async getOrSet(key: string, set: () => Promise<any>): Promise<any> {
+    let ret = await this.get(key);
     if (!ret) {
       ret = await set();
       this.set(key, ret);
@@ -24,19 +111,19 @@ export default class Cache {
     return Promise.resolve(ret);
   }
 
-  public set(key: string, value: unknown): void {
-    this.map.set(key, value);
+  public set(key: string, value: any): Promise<void> {
+    return this.storage.set(key, value);
   }
 
-  public has(key: string): boolean {
-    return this.map.has(key);
+  public has(key: string): Promise<boolean> {
+    return this.storage.has(key);
   }
 
-  public del(key: string): void {
-    this.map.delete(key);
+  public del(key: string): Promise<void> {
+    return this.storage.del(key);
   }
 
-  public list(): string[] {
-    return Array.from(this.map.keys());
+  public list(): Promise<string[]> {
+    return this.storage.list();
   }
 }

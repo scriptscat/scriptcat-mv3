@@ -1,6 +1,10 @@
 import { Message, MessageConnect, MessageSend } from "./server";
 
 export class ExtensionMessageSend implements MessageSend {
+  constructor(private serverEnv: string) {
+    // 由于service_worker和offscren同时监听消息的话,都会同时收到,用serverEnv于区分不同的环墨
+  }
+
   connect(data: any): Promise<MessageConnect> {
     return new Promise((resolve) => {
       const con = chrome.runtime.connect();
@@ -12,9 +16,14 @@ export class ExtensionMessageSend implements MessageSend {
   // 发送消息 注意不进行回调的内存泄漏
   sendMessage(data: any): Promise<any> {
     return new Promise((resolve) => {
-      chrome.runtime.sendMessage(data, (resp) => {
-        resolve(resp);
-      });
+      chrome.runtime.sendMessage(
+        Object.assign(data, {
+          serverEnv: this.serverEnv,
+        }),
+        (resp) => {
+          resolve(resp);
+        }
+      );
     });
   }
 }

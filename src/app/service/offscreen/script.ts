@@ -11,7 +11,7 @@ import {
 } from "../service_worker/client";
 import { SCRIPT_STATUS_ENABLE, SCRIPT_TYPE_NORMAL } from "@App/app/repo/scripts";
 import { disableScript, enableScript } from "../sandbox/client";
-import { ExtensionMessageSend } from "@Packages/message/extension_message";
+import { MessageSend } from "@Packages/message/server";
 
 export class ScriptService {
   logger: Logger;
@@ -21,7 +21,7 @@ export class ScriptService {
   valueClient: ValueClient = new ValueClient(this.extensionMessage);
 
   constructor(
-    private extensionMessage: ExtensionMessageSend,
+    private extensionMessage: MessageSend,
     private windowMessage: WindowMessage,
     private broker: Broker
   ) {

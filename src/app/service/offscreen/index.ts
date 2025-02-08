@@ -1,15 +1,18 @@
-import { forwardMessage, Server } from "@Packages/message/server";
+import { forwardMessage, Message, Server } from "@Packages/message/server";
 import { ScriptService } from "./script";
 import { Broker } from "@Packages/message/message_queue";
 import { Logger, LoggerDAO } from "@App/app/repo/logger";
 import { WindowMessage } from "@Packages/message/window_message";
-import { ExtensionMessageSend } from "@Packages/message/extension_message";
+import { ExtensionMessage } from "@Packages/message/extension_message";
 import { ServiceWorkerClient } from "../service_worker/client";
 import { sendMessage } from "@Packages/message/client";
+import { GMApi } from "./gm_api";
 
 // offscreen环境的管理器
 export class OffscreenManager {
-  private extensionMessage = new ExtensionMessageSend();
+  private extensionMessage: Message = new ExtensionMessage("service_worker");
+
+  private api: Server = new Server("offscreen", this.extensionMessage);
 
   private windowMessage = new WindowMessage(window, sandbox);
 
@@ -42,6 +45,9 @@ export class OffscreenManager {
     script.init();
     // 转发gm api请求
     forwardMessage("serviceWorker/runtime/gmApi", this.windowApi, this.extensionMessage);
+    // 处理gm请求
+    const gmApi = new GMApi(this.api.group("gmApi"));
+    gmApi.init();
 
     // // 处理gm xhr请求
     // this.api.on("gmXhr", (data) => {

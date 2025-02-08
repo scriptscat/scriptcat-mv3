@@ -184,10 +184,10 @@ export default class Runtime extends Manager {
           tabMap = new Map();
           scriptMenu.set(senderId, tabMap);
         }
-        let menuArr = tabMap.get(request.scriptId);
+        let menuArr = tabMap.get(request.uuid);
         if (!menuArr) {
           menuArr = [];
-          tabMap.set(request.scriptId, menuArr);
+          tabMap.set(request.uuid, menuArr);
         }
         // 查询菜单是否已经存在
         for (let i = 0; i < menuArr.length; i += 1) {
@@ -212,7 +212,7 @@ export default class Runtime extends Manager {
       }
       const tabMap = scriptMenu.get(senderId);
       if (tabMap) {
-        const menuArr = tabMap.get(request.scriptId);
+        const menuArr = tabMap.get(request.uuid);
         if (menuArr) {
           // 从菜单数组中遍历删除
           for (let i = 0; i < menuArr.length; i += 1) {
@@ -222,7 +222,7 @@ export default class Runtime extends Manager {
             }
           }
           if (menuArr.length === 0) {
-            tabMap.delete(request.scriptId);
+            tabMap.delete(request.uuid);
           }
         }
         if (!tabMap.size) {
