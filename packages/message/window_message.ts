@@ -23,6 +23,7 @@ export class WindowMessage implements Message {
   ) {
     // 监听消息
     this.source.addEventListener("message", (e) => {
+      console.log(e);
       if (e.source === this.target || e.source === this.source) {
         this.messageHandle(e.data);
       }
@@ -35,6 +36,11 @@ export class WindowMessage implements Message {
       // 接收到消息
       this.EE.emit("message", data.data, (resp: any) => {
         // 发送响应消息
+        // 无消息id则不发送响应消息
+        console.log("data", data, "resp", resp);
+        if (!data.messageId) {
+          return;
+        }
         const body: WindowMessageBody = {
           messageId: data.messageId,
           type: "respMessage",

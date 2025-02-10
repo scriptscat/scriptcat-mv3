@@ -2,8 +2,8 @@ import { MessageQueue } from "@Packages/message/message_queue";
 import { ScriptEnableCallbackValue } from "./client";
 import { Group } from "@Packages/message/server";
 import { Script, SCRIPT_STATUS_ENABLE, SCRIPT_TYPE_NORMAL, ScriptAndCode, ScriptDAO } from "@App/app/repo/scripts";
-import GMApi from "@App/runtime/service_worker/gm_api";
 import { ValueService } from "./value";
+import GMApi from "./gm_api";
 
 export class RuntimeService {
   scriptDAO: ScriptDAO = new ScriptDAO();

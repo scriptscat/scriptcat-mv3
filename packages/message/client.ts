@@ -1,6 +1,5 @@
 import LoggerCore from "@App/app/logger/core";
 import { Message, MessageConnect, MessageSend } from "./server";
-import { ExtensionMessageSend } from "./extension_message";
 
 export async function sendMessage(msg: MessageSend, action: string, data?: any): Promise<any> {
   const res = await msg.sendMessage({ action, data });

@@ -1,5 +1,4 @@
 import LoggerCore from "@App/app/logger/core";
-import { ExtensionMessageSend } from "./extension_message";
 
 export interface Message extends MessageSend {
   onConnect(callback: (data: any, con: MessageConnect) => void): void;
@@ -27,22 +26,16 @@ export type ApiFunction = (params: any, con: MessageConnect | null) => Promise<a
 export class Server {
   private apiFunctionMap: Map<string, ApiFunction> = new Map();
 
-  constructor(
-    private env: string,
-    message: Message
-  ) {
+  private logger = LoggerCore.getInstance().logger({ service: "messageServer" });
+
+  constructor(message: Message) {
     message.onConnect((msg: any, con: MessageConnect) => {
-      if (msg.serverEnv !== this.env) {
-        con.disconnect();
-        return;
-      }
+      this.logger.trace("server onConnect", { msg });
       this.connectHandle(msg.action, msg.data, con);
     });
 
     message.onMessage((msg, sendResponse) => {
-      if (msg.serverEnv !== this.env) {
-        return;
-      }
+      this.logger.trace("server onMessage", { msg });
       return this.messageHandle(msg.action, msg.data, sendResponse);
     });
   }
@@ -63,8 +56,6 @@ export class Server {
   }
 
   private messageHandle(msg: string, params: any, sendResponse: (response: any) => void) {
-    const logger = LoggerCore.getInstance().logger({ env: this.env, msg });
-    logger.trace("messageHandle", { params });
     const func = this.apiFunctionMap.get(msg);
     if (func) {
       try {
@@ -82,7 +73,7 @@ export class Server {
       }
     } else {
       sendResponse({ code: -1, message: "no such api" });
-      logger.error("no such api");
+      this.logger.error("no such api", { msg });
     }
   }
 }

@@ -76,12 +76,40 @@ export default class GMApi {
 
   @PermissionVerify.API()
   GM_xmlhttpRequest(request: Request, con: MessageConnect) {
-    console.log("xml", request, con);
+    console.log("xml request", request, con);
     // 先处理unsafe hearder
     // 再发送到offscreen, 处理请求
+    sendMessageToOffsreen("offscreen/gmApi/requestXhr", request.params);
   }
 
   start() {
     this.group.on("gmApi", this.handlerRequest.bind(this));
   }
+}
+
+export async function sendMessageToOffsreen(action: string, data?: any) {
+  // service_worker通过chrome.scripting.executeScript调用window.postMessage主动发送消息
+  // service_worker和offscreen同时监听消息,会导致消息被两边同时接收,但是返回结果时会产生问题,导致报错
+  // 不进行监听的话又无法从service_worker主动发送消息
+  const ctx = await chrome.runtime.getContexts({
+    contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
+    documentUrls: [chrome.runtime.getURL("src/offscreen.html")],
+  });
+  chrome.scripting.executeScript({
+    target: {
+      documentIds: [ctx[0]!.documentId!],
+      tabId: -1,
+    },
+    func: (message) => {
+      // 在页面上下文中执行的代码
+      window.postMessage(
+        {
+          type: "sendMessage",
+          daat: message,
+        },
+        "*"
+      );
+    },
+    args: [{ action, data }],
+  });
 }

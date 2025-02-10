@@ -12,13 +12,13 @@ export type InstallSource = "user" | "system" | "sync" | "subscribe" | "vscode";
 export default class ServiceWorkerManager {
   constructor() {}
 
-  private api: Server = new Server("service_worker", new ExtensionMessage("service_worker"));
+  private api: Server = new Server(new ExtensionMessage("service_worker"));
 
   private mq: MessageQueue = new MessageQueue(this.api);
 
-  initManager() {
+  async initManager() {
     const group = this.api.group("serviceWorker");
-    group.on("preparationOffscreen", () => {
+    group.on("preparationOffscreen", async () => {
       // 准备好环境
       this.mq.emit("preparationOffscreen", {});
     });

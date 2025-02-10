@@ -1,14 +1,16 @@
 import { Message, MessageConnect, MessageSend } from "./server";
 
 export class ExtensionMessageSend implements MessageSend {
-  constructor(private serverEnv: string) {
-    // 由于service_worker和offscren同时监听消息的话,都会同时收到,用serverEnv于区分不同的环墨
-  }
+  constructor(protected serverEnv: string) {}
 
   connect(data: any): Promise<MessageConnect> {
     return new Promise((resolve) => {
       const con = chrome.runtime.connect();
-      con.postMessage(data);
+      con.postMessage(
+        Object.assign(data, {
+          serverEnv: this.serverEnv,
+        })
+      );
       resolve(new ExtensionMessageConnect(con));
     });
   }
@@ -33,6 +35,10 @@ export class ExtensionMessage extends ExtensionMessageSend implements Message {
     chrome.runtime.onConnect.addListener((port) => {
       const handler = (msg: any) => {
         port.onMessage.removeListener(handler);
+        if (msg.serverEnv !== this.serverEnv) {
+          port.disconnect();
+          return false;
+        }
         callback(msg, new ExtensionMessageConnect(port));
       };
       port.onMessage.addListener(handler);
@@ -42,6 +48,9 @@ export class ExtensionMessage extends ExtensionMessageSend implements Message {
   // 注意chrome.runtime.onMessage.addListener的回调函数需要返回true才能处理异步请求
   onMessage(callback: (data: any, sendResponse: (data: any) => void) => void) {
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+      if (msg.serverEnv !== this.serverEnv) {
+        return false;
+      }
       return callback(msg, sendResponse);
     });
   }

@@ -5,7 +5,7 @@ import { Runtime } from "./runtime";
 
 // sandbox环境的管理器
 export class SandboxManager {
-  api: Server = new Server("sandbox", this.windowMessage);
+  api: Server = new Server(this.windowMessage);
 
   constructor(private windowMessage: WindowMessage) {}
 
