@@ -5,7 +5,7 @@ declare module "*.yaml";
 
 declare const sandbox: Window;
 
-declare const clients: Clients;
+declare const self: ServiceWorkerGlobalScope;
 
 declare namespace GMSend {
   interface XHRDetails {
