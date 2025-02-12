@@ -14,7 +14,6 @@ export class Broker {
     LoggerCore.getInstance().logger({ service: "messageQueue" }).debug("subscribe", { topic });
     const con = await this.msg.connect({ action: "messageQueue", data: { action: "subscribe", topic } });
     con.onMessage((msg: { action: string; topic: string; message: any }) => {
-      console.log(msg);
       if (msg.action === "message") {
         handler(msg.message);
       }

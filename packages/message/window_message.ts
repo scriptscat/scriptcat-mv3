@@ -36,7 +36,6 @@ export class WindowMessage implements Message {
   ) {
     // 监听消息
     this.source.addEventListener("message", (e) => {
-      console.log(e);
       if (e.source === this.target || e.source === this.source) {
         this.messageHandle(e.data, new WindowPostMessage(this.target));
       }
@@ -169,11 +168,10 @@ export class ServiceWorkerMessageSend implements MessageSend {
   constructor() {}
 
   async init() {
-    const list = await clients.matchAll();
+    const list = await self.clients.matchAll({ includeUncontrolled: true, type: "window" });
     this.target = list[0];
-    console.log(this.target);
-    addEventListener("message", (e) => {
-      console.log(e);
+    self.addEventListener("message", (e) => {
+      console.log("serviceWorker", e);
       this.messageHandle(e.data);
     });
   }
