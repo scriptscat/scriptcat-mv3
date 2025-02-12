@@ -3,7 +3,9 @@ declare module "*.tpl";
 declare module "*.json";
 declare module "*.yaml";
 
-declare let sandbox: Window;
+declare const sandbox: Window;
+
+declare const clients: Clients;
 
 declare namespace GMSend {
   interface XHRDetails {

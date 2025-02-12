@@ -21,6 +21,30 @@ export default class ServiceWorkerManager {
     group.on("preparationOffscreen", async () => {
       // 准备好环境
       this.mq.emit("preparationOffscreen", {});
+
+      const ctx = await chrome.runtime.getContexts({
+        contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
+        documentUrls: [chrome.runtime.getURL("src/offscreen.html")],
+      });
+      console.log("ctx", ctx, chrome.runtime.getURL("src/offscreen.html"));
+      chrome.scripting.executeScript({
+        target: {
+          documentIds: [ctx[0]!.documentId!],
+          tabId: -1,
+        },
+        func: (message) => {
+          // 在页面上下文中执行的代码
+          console.log("tesss");
+          window.postMessage(
+            {
+              type: "sendMessage",
+              daat: message,
+            },
+            "*"
+          );
+        },
+        args: [{ action: "test", data: "test" }],
+      });
     });
 
     const resource = new ResourceService(group.group("resource"), this.mq);

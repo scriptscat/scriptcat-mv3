@@ -79,7 +79,7 @@ export default class GMApi {
     console.log("xml request", request, con);
     // 先处理unsafe hearder
     // 再发送到offscreen, 处理请求
-    sendMessageToOffsreen("offscreen/gmApi/requestXhr", request.params);
+    sendMessageToOffscreen("offscreen/gmApi/requestXhr", request.params);
   }
 
   start() {
@@ -87,29 +87,14 @@ export default class GMApi {
   }
 }
 
-export async function sendMessageToOffsreen(action: string, data?: any) {
-  // service_worker通过chrome.scripting.executeScript调用window.postMessage主动发送消息
+
+export async function sendMessageToOffscreen(action: string, data?: any) {
   // service_worker和offscreen同时监听消息,会导致消息被两边同时接收,但是返回结果时会产生问题,导致报错
   // 不进行监听的话又无法从service_worker主动发送消息
-  const ctx = await chrome.runtime.getContexts({
-    contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
-    documentUrls: [chrome.runtime.getURL("src/offscreen.html")],
-  });
-  chrome.scripting.executeScript({
-    target: {
-      documentIds: [ctx[0]!.documentId!],
-      tabId: -1,
-    },
-    func: (message) => {
-      // 在页面上下文中执行的代码
-      window.postMessage(
-        {
-          type: "sendMessage",
-          daat: message,
-        },
-        "*"
-      );
-    },
-    args: [{ action, data }],
+  // 所以这里通过clients.matchAll()获取到所有的client,然后通过postMessage发送消息
+  const list = await clients.matchAll();
+  list[0].postMessage({
+    type: "sendMessage",
+    data: { action, data },
   });
 }
