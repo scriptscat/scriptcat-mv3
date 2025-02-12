@@ -12,7 +12,7 @@ import { GMApi } from "./gm_api";
 export class OffscreenManager {
   private extensionMessage: MessageSend = new ExtensionMessageSend("service_worker");
 
-  private windowMessage = new WindowMessage(window, sandbox);
+  private windowMessage = new WindowMessage(window, sandbox, true);
 
   private windowApi: Server = new Server(this.windowMessage);
 
@@ -35,6 +35,11 @@ export class OffscreenManager {
   }
 
   async initManager() {
+    navigator.serviceWorker.ready.then((registration) => {
+      // 通知service worker已经准备好了
+      registration.active?.postMessage("okkkk");
+    });
+
     // 监听消息
     this.windowApi.on("logger", this.logger.bind(this));
     this.windowApi.on("preparationSandbox", this.preparationSandbox.bind(this));

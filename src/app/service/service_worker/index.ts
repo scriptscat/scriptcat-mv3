@@ -5,24 +5,27 @@ import { ExtensionMessage } from "@Packages/message/extension_message";
 import { ResourceService } from "./resource";
 import { ValueService } from "./value";
 import { RuntimeService } from "./runtime";
+import { ServiceWorkerMessageSend } from "@Packages/message/window_message";
+import { sendMessageToOffscreen } from "./gm_api";
 
 export type InstallSource = "user" | "system" | "sync" | "subscribe" | "vscode";
 
 // service worker的管理器
 export default class ServiceWorkerManager {
-  constructor() {}
-
   private api: Server = new Server(new ExtensionMessage("service_worker"));
 
   private mq: MessageQueue = new MessageQueue(this.api);
+
+  private sender: ServiceWorkerMessageSend = new ServiceWorkerMessageSend();
 
   async initManager() {
     const group = this.api.group("serviceWorker");
     group.on("preparationOffscreen", async () => {
       // 准备好环境
+      sendMessageToOffscreen("aa", "aa");
+      await this.sender.init();
       this.mq.emit("preparationOffscreen", {});
-
-      // sendMessageToOffscreen("preparationOffscreen", {});
+      this.sender.sendMessage("test");
     });
 
     const resource = new ResourceService(group.group("resource"), this.mq);
