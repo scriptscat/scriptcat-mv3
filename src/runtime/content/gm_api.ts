@@ -63,7 +63,7 @@ export default class GMApi {
   // 单次回调使用
   public sendMessage(api: string, params: any[]) {
     return this.message.sendMessage({
-      action: "serviceWorker/runtime/gmApi",
+      action: "runtime/gmApi",
       data: {
         uuid: this.scriptRes.uuid,
         api,
@@ -75,7 +75,7 @@ export default class GMApi {
   // 长连接使用,connect只用于接受消息,不发送消息
   public connect(api: string, params: any[]) {
     return this.message.connect({
-      action: "serviceWorker/runtime/gmApi",
+      action: "runtime/gmApi",
       data: {
         uuid: this.scriptRes.uuid,
         api,

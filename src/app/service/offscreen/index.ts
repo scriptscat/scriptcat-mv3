@@ -10,7 +10,7 @@ import { GMApi } from "./gm_api";
 
 // offscreen环境的管理器
 export class OffscreenManager {
-  private extensionMessage: MessageSend = new ExtensionMessageSend("service_worker");
+  private extensionMessage: MessageSend = new ExtensionMessageSend();
 
   private windowMessage = new WindowMessage(window, sandbox, true);
 
@@ -35,11 +35,6 @@ export class OffscreenManager {
   }
 
   async initManager() {
-    navigator.serviceWorker.ready.then((registration) => {
-      // 通知service worker已经准备好了
-      registration.active?.postMessage("okkkk");
-    });
-
     // 监听消息
     this.windowApi.on("logger", this.logger.bind(this));
     this.windowApi.on("preparationSandbox", this.preparationSandbox.bind(this));
@@ -47,7 +42,7 @@ export class OffscreenManager {
     const script = new ScriptService(this.extensionMessage, this.windowMessage, this.broker);
     script.init();
     // 转发gm api请求
-    forwardMessage("serviceWorker/runtime/gmApi", this.windowApi, this.extensionMessage);
+    forwardMessage("runtime/gmApi", this.windowApi, this.extensionMessage);
     const gmApi = new GMApi(this.windowApi.group("gmApi"));
     gmApi.init();
 

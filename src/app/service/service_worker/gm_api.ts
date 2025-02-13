@@ -5,6 +5,9 @@ import { Group, MessageConnect, MessageSender } from "@Packages/message/server";
 import { ValueService } from "@App/app/service/service_worker/value";
 import PermissionVerify from "./permission_verify";
 import { ServiceWorkerMessageSend } from "@Packages/message/window_message";
+import { connect, sendMessage } from "@Packages/message/client";
+import Cache, { incr } from "@App/app/cache";
+import { unsafeHeaders } from "@App/runtime/utils";
 
 // GMApi,处理脚本的GM API调用请求
 
@@ -76,25 +79,75 @@ export default class GMApi {
     return this.value.setValue(request.script.uuid, key, value);
   }
 
+  // 根据header生成dnr规则
+  async buildDNRRule(params: GMSend.XHRDetails) {
+    // 检查是否有unsafe header,有则生成dnr规则
+    const headers = params.headers;
+    if (!headers) {
+      return;
+    }
+    const requestHeaders = [] as chrome.declarativeNetRequest.ModifyHeaderInfo[];
+    Object.keys(headers).forEach((key) => {
+      const lowKey = key.toLowerCase();
+      if (unsafeHeaders[lowKey] || lowKey.startsWith("sec-") || lowKey.startsWith("proxy-")) {
+        requestHeaders.push({
+          header: key,
+          operation: chrome.declarativeNetRequest.HeaderOperation.SET,
+          value: headers[key],
+        });
+      }
+    });
+    if (requestHeaders.length === 0) {
+      return;
+    }
+    const ruleId = 1000 + (await incr(Cache.getInstance(), "dnrRuleId", 1));
+    const rule = {} as chrome.declarativeNetRequest.Rule;
+    rule.id = ruleId;
+    rule.action = {
+      type: chrome.declarativeNetRequest.RuleActionType.MODIFY_HEADERS,
+      requestHeaders: requestHeaders,
+    };
+    rule.priority = 1;
+    const tabs = await chrome.tabs.query({});
+    const excludedTabIds: number[] = [];
+    tabs.forEach((tab) => {
+      if (tab.id) {
+        excludedTabIds.push(tab.id);
+      }
+    });
+    rule.condition = {
+      resourceTypes: [chrome.declarativeNetRequest.ResourceType.XMLHTTPREQUEST],
+      urlFilter: "^" + params.url + "$",
+      excludedTabIds: excludedTabIds,
+    };
+    return chrome.declarativeNetRequest.updateSessionRules({
+      removeRuleIds: [ruleId],
+      addRules: [rule],
+    });
+  }
+
   @PermissionVerify.API()
-  GM_xmlhttpRequest(request: Request, con: MessageConnect) {
+  async GM_xmlhttpRequest(request: Request, con: MessageConnect) {
     console.log("xml request", request, con);
     // 先处理unsafe hearder
+    await this.buildDNRRule(request.params[0]);
     // 再发送到offscreen, 处理请求
-    sendMessageToOffscreen(this.sender, "offscreen/gmApi/requestXhr", request.params);
+    connect(this.sender, "gmApi/xmlHttpRequest", request.params);
   }
 
   start() {
     this.group.on("gmApi", this.handlerRequest.bind(this));
-  }
-}
 
-export async function sendMessageToOffscreen(sender: ServiceWorkerMessageSend, action: string, data?: any) {
-  // service_worker和offscreen同时监听消息,会导致消息被两边同时接收,但是返回结果时会产生问题,导致报错
-  // 不进行监听的话又无法从service_worker主动发送消息
-  // 所以这里通过clients.matchAll()获取到所有的client,然后通过postMessage发送消息
-  sender.sendMessage({
-    type: "sendMessage",
-    data: { action, data },
-  });
+    // 处理收到的header
+    chrome.webRequest.onHeadersReceived.addListener(
+      (details) => {
+        console.log(details);
+      },
+      {
+        urls: ["<all_urls>"],
+        types: ["xmlhttprequest"],
+      },
+      ["responseHeaders", "extraHeaders"]
+    );
+  }
 }

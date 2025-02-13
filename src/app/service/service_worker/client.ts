@@ -7,7 +7,7 @@ import { MessageSend } from "@Packages/message/server";
 
 export class ServiceWorkerClient extends Client {
   constructor(msg: MessageSend) {
-    super(msg, "serviceWorker");
+    super(msg);
   }
 
   preparationOffscreen() {
@@ -17,7 +17,7 @@ export class ServiceWorkerClient extends Client {
 
 export class ScriptClient extends Client {
   constructor(msg: MessageSend) {
-    super(msg, "serviceWorker/script");
+    super(msg, "script");
   }
 
   // 获取安装信息
@@ -52,7 +52,7 @@ export class ScriptClient extends Client {
 
 export class ResourceClient extends Client {
   constructor(msg: MessageSend) {
-    super(msg, "serviceWorker/resource");
+    super(msg, "resource");
   }
 
   getScriptResources(script: Script): Promise<{ [key: string]: Resource }> {
@@ -62,7 +62,7 @@ export class ResourceClient extends Client {
 
 export class ValueClient extends Client {
   constructor(msg: MessageSend) {
-    super(msg, "serviceWorker/value");
+    super(msg, "value");
   }
 
   getScriptValue(script: Script) {

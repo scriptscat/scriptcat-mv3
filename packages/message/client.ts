@@ -1,5 +1,5 @@
 import LoggerCore from "@App/app/logger/core";
-import { Message, MessageConnect, MessageSend } from "./server";
+import { MessageConnect, MessageSend } from "./server";
 
 export async function sendMessage(msg: MessageSend, action: string, data?: any): Promise<any> {
   const res = await msg.sendMessage({ action, data });
@@ -12,17 +12,19 @@ export async function sendMessage(msg: MessageSend, action: string, data?: any):
   }
 }
 
-export function connect(msg: Message, action: string, data?: any): Promise<MessageConnect> {
+export function connect(msg: MessageSend, action: string, data?: any): Promise<MessageConnect> {
   return msg.connect({ action, data });
 }
 
 export class Client {
   constructor(
     private msg: MessageSend,
-    private prefix: string
+    private prefix?: string
   ) {
-    if (!this.prefix.endsWith("/")) {
+    if (this.prefix && !this.prefix.endsWith("/")) {
       this.prefix += "/";
+    } else {
+      this.prefix = "";
     }
   }
 

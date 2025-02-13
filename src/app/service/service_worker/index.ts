@@ -11,27 +11,26 @@ export type InstallSource = "user" | "system" | "sync" | "subscribe" | "vscode";
 
 // service worker的管理器
 export default class ServiceWorkerManager {
-  private api: Server = new Server(new ExtensionMessage("service_worker"));
+  private api: Server = new Server(new ExtensionMessage());
 
   private mq: MessageQueue = new MessageQueue(this.api);
 
   private sender: ServiceWorkerMessageSend = new ServiceWorkerMessageSend();
 
   async initManager() {
-    const group = this.api.group("serviceWorker");
-    group.on("preparationOffscreen", async () => {
+    this.api.on("preparationOffscreen", async () => {
       // 准备好环境
       await this.sender.init();
       this.mq.emit("preparationOffscreen", {});
     });
 
-    const resource = new ResourceService(group.group("resource"), this.mq);
+    const resource = new ResourceService(this.api.group("resource"), this.mq);
     resource.init();
-    const value = new ValueService(group.group("value"), this.mq);
+    const value = new ValueService(this.api.group("value"), this.mq);
     value.init();
-    const script = new ScriptService(group.group("script"), this.mq, value, resource);
+    const script = new ScriptService(this.api.group("script"), this.mq, value, resource);
     script.init();
-    const runtime = new RuntimeService(group.group("runtime"), this.sender, this.mq, value);
+    const runtime = new RuntimeService(this.api.group("runtime"), this.sender, this.mq, value);
     runtime.init();
 
     // 测试xhr

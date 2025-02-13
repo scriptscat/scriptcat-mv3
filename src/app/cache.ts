@@ -10,7 +10,7 @@ export class ExtCache implements CacheStorage {
   get(key: string): Promise<any> {
     return new Promise((resolve) => {
       chrome.storage.local.get(key, (value) => {
-        resolve(value);
+        resolve(value[key]);
       });
     });
   }
@@ -87,6 +87,14 @@ export class MapCache {
       resolve(Array.from(this.map.keys()));
     });
   }
+}
+
+export async function incr(cache: Cache, key: string, increase: number): Promise<number> {
+  const value = await cache.get(key);
+  let num = value || 0;
+  num += increase;
+  await cache.set(key, num);
+  return num;
 }
 
 export default class Cache {

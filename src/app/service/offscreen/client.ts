@@ -20,5 +20,5 @@ export function proxyUpdateRunStatus(
   msg: WindowMessage,
   data: { uuid: string; runStatus: SCRIPT_RUN_STATUS; error?: any; nextruntime?: number }
 ) {
-  return sendMessageToServiceWorker(msg, "serviceWorker/script/updateRunStatus", data);
+  return sendMessageToServiceWorker(msg, "script/updateRunStatus", data);
 }
