@@ -6,7 +6,6 @@ import { ResourceService } from "./resource";
 import { ValueService } from "./value";
 import { RuntimeService } from "./runtime";
 import { ServiceWorkerMessageSend } from "@Packages/message/window_message";
-import { sendMessageToOffscreen } from "./gm_api";
 
 export type InstallSource = "user" | "system" | "sync" | "subscribe" | "vscode";
 
@@ -22,10 +21,8 @@ export default class ServiceWorkerManager {
     const group = this.api.group("serviceWorker");
     group.on("preparationOffscreen", async () => {
       // 准备好环境
-      sendMessageToOffscreen("aa", "aa");
       await this.sender.init();
       this.mq.emit("preparationOffscreen", {});
-      this.sender.sendMessage("test");
     });
 
     const resource = new ResourceService(group.group("resource"), this.mq);
@@ -34,7 +31,7 @@ export default class ServiceWorkerManager {
     value.init();
     const script = new ScriptService(group.group("script"), this.mq, value, resource);
     script.init();
-    const runtime = new RuntimeService(group.group("runtime"), this.mq, value);
+    const runtime = new RuntimeService(group.group("runtime"), this.sender, this.mq, value);
     runtime.init();
 
     // 测试xhr

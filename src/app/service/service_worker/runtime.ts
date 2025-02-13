@@ -4,12 +4,14 @@ import { Group } from "@Packages/message/server";
 import { Script, SCRIPT_STATUS_ENABLE, SCRIPT_TYPE_NORMAL, ScriptAndCode, ScriptDAO } from "@App/app/repo/scripts";
 import { ValueService } from "./value";
 import GMApi from "./gm_api";
+import { ServiceWorkerMessageSend } from "@Packages/message/window_message";
 
 export class RuntimeService {
   scriptDAO: ScriptDAO = new ScriptDAO();
 
   constructor(
     private group: Group,
+    private sender: ServiceWorkerMessageSend,
     private mq: MessageQueue,
     private value: ValueService
   ) {}
@@ -53,7 +55,7 @@ export class RuntimeService {
     });
 
     // 启动gm api
-    const gmApi = new GMApi(this.group, this.value);
+    const gmApi = new GMApi(this.group, this.sender, this.value);
     gmApi.start();
   }
 

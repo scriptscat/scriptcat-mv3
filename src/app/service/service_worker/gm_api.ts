@@ -4,6 +4,7 @@ import { Script, ScriptDAO } from "@App/app/repo/scripts";
 import { Group, MessageConnect, MessageSender } from "@Packages/message/server";
 import { ValueService } from "@App/app/service/service_worker/value";
 import PermissionVerify from "./permission_verify";
+import { ServiceWorkerMessageSend } from "@Packages/message/window_message";
 
 // GMApi,处理脚本的GM API调用请求
 
@@ -30,6 +31,7 @@ export default class GMApi {
 
   constructor(
     private group: Group,
+    private sender: ServiceWorkerMessageSend,
     private value: ValueService
   ) {
     this.logger = LoggerCore.logger().with({ service: "runtime/gm_api" });
@@ -79,7 +81,7 @@ export default class GMApi {
     console.log("xml request", request, con);
     // 先处理unsafe hearder
     // 再发送到offscreen, 处理请求
-    sendMessageToOffscreen("offscreen/gmApi/requestXhr", request.params);
+    sendMessageToOffscreen(this.sender, "offscreen/gmApi/requestXhr", request.params);
   }
 
   start() {
@@ -87,12 +89,11 @@ export default class GMApi {
   }
 }
 
-export async function sendMessageToOffscreen(action: string, data?: any) {
+export async function sendMessageToOffscreen(sender: ServiceWorkerMessageSend, action: string, data?: any) {
   // service_worker和offscreen同时监听消息,会导致消息被两边同时接收,但是返回结果时会产生问题,导致报错
   // 不进行监听的话又无法从service_worker主动发送消息
   // 所以这里通过clients.matchAll()获取到所有的client,然后通过postMessage发送消息
-  const list = await clients.matchAll({ includeUncontrolled: true, type: "window" });
-  list[0].postMessage({
+  sender.sendMessage({
     type: "sendMessage",
     data: { action, data },
   });
