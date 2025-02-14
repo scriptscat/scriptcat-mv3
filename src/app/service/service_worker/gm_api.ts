@@ -80,13 +80,18 @@ export default class GMApi {
   }
 
   // 根据header生成dnr规则
-  async buildDNRRule(params: GMSend.XHRDetails) {
+  async buildDNRRule(reqeustId: number, params: GMSend.XHRDetails) {
     // 检查是否有unsafe header,有则生成dnr规则
     const headers = params.headers;
     if (!headers) {
       return;
     }
-    const requestHeaders = [] as chrome.declarativeNetRequest.ModifyHeaderInfo[];
+    const requestHeaders = [
+      {
+        header: "X-Scriptcat-GM-XHR-Request-Id",
+        operation: chrome.declarativeNetRequest.HeaderOperation.REMOVE,
+      },
+    ] as chrome.declarativeNetRequest.ModifyHeaderInfo[];
     Object.keys(headers).forEach((key) => {
       const lowKey = key.toLowerCase();
       if (unsafeHeaders[lowKey] || lowKey.startsWith("sec-") || lowKey.startsWith("proxy-")) {
@@ -97,10 +102,7 @@ export default class GMApi {
         });
       }
     });
-    if (requestHeaders.length === 0) {
-      return;
-    }
-    const ruleId = 1000 + (await incr(Cache.getInstance(), "dnrRuleId", 1));
+    const ruleId = reqeustId;
     const rule = {} as chrome.declarativeNetRequest.Rule;
     rule.id = ruleId;
     rule.action = {
@@ -120,25 +122,67 @@ export default class GMApi {
       urlFilter: "^" + params.url + "$",
       excludedTabIds: excludedTabIds,
     };
-    return chrome.declarativeNetRequest.updateSessionRules({
+    await chrome.declarativeNetRequest.updateSessionRules({
       removeRuleIds: [ruleId],
       addRules: [rule],
     });
+    return ruleId;
   }
 
   @PermissionVerify.API()
   async GM_xmlhttpRequest(request: Request, con: MessageConnect) {
+    if (request.params.length === 0) {
+      return Promise.reject(new Error("param is failed"));
+    }
+    const params = request.params[0] as GMSend.XHRDetails;
     console.log("xml request", request, con);
     // 先处理unsafe hearder
-    await this.buildDNRRule(request.params[0]);
+    // 关联自己生成的请求id与chrome.webRequest的请求id
+    const requestId = 10000 + (await incr(Cache.getInstance(), "gmXhrRequestId", 1));
+    // 添加请求header
+    if (!params.headers) {
+      params.headers = {};
+    }
+    params.headers["X-Scriptcat-GM-XHR-Request-Id"] = requestId.toString();
+    await this.buildDNRRule(requestId, request.params[0]);
+
     // 再发送到offscreen, 处理请求
-    connect(this.sender, "gmApi/xmlHttpRequest", request.params);
+    connect(this.sender, "gmApi/xmlHttpRequest", request.params[0]);
   }
 
   start() {
     this.group.on("gmApi", this.handlerRequest.bind(this));
 
     // 处理收到的header
+    console.log("123");
+    chrome.webRequest.onSendHeaders.addListener(
+      (details) => {
+        console.log("onSendHeaders", details);
+      },
+      {
+        urls: ["<all_urls>"],
+        types: ["xmlhttprequest"],
+      },
+      ["requestHeaders", "extraHeaders"]
+    );
+    chrome.webRequest.onBeforeSendHeaders.addListener(
+      (details) => {
+        console.log("onBeforeSendHeaders", details);
+        return {
+          requestHeaders: [
+            {
+              name: "X-Scriptcat-GM-XHR-Request-Id",
+              value: "123",
+            },
+          ],
+        };
+      },
+      {
+        urls: ["<all_urls>"],
+        types: ["xmlhttprequest"],
+      },
+      ["requestHeaders"]
+    );
     chrome.webRequest.onHeadersReceived.addListener(
       (details) => {
         console.log(details);
