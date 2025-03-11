@@ -5,9 +5,10 @@ import { Group, MessageConnect, MessageSender } from "@Packages/message/server";
 import { ValueService } from "@App/app/service/service_worker/value";
 import PermissionVerify from "./permission_verify";
 import { ServiceWorkerMessageSend } from "@Packages/message/window_message";
-import { connect, sendMessage } from "@Packages/message/client";
+import { connect } from "@Packages/message/client";
 import Cache, { incr } from "@App/app/cache";
 import { unsafeHeaders } from "@App/runtime/utils";
+import EventEmitter from "eventemitter3";
 
 // GMApi,处理脚本的GM API调用请求
 
@@ -129,6 +130,8 @@ export default class GMApi {
     return ruleId;
   }
 
+  gmXhrHeadersReceived: EventEmitter = new EventEmitter();
+
   @PermissionVerify.API()
   async GM_xmlhttpRequest(request: Request, con: MessageConnect) {
     if (request.params.length === 0) {
@@ -145,19 +148,28 @@ export default class GMApi {
     }
     params.headers["X-Scriptcat-GM-XHR-Request-Id"] = requestId.toString();
     await this.buildDNRRule(requestId, request.params[0]);
-
+    // 等待response
+    this.gmXhrHeadersReceived.addListener("headersReceived:" + requestId, (details) => {
+      console.log("处理", details);
+    });
     // 再发送到offscreen, 处理请求
     connect(this.sender, "gmApi/xmlHttpRequest", request.params[0]);
   }
 
   start() {
     this.group.on("gmApi", this.handlerRequest.bind(this));
-
-    // 处理收到的header
-    console.log("123");
-    chrome.webRequest.onSendHeaders.addListener(
+    chrome.webRequest.onBeforeSendHeaders.addListener(
       (details) => {
-        console.log("onSendHeaders", details);
+        if (details.tabId === -1) {
+          // 判断是否存在X-Scriptcat-GM-XHR-Request-Id
+          // 讲请求id与chrome.webRequest的请求id关联
+          if (details.requestHeaders) {
+            const requestId = details.requestHeaders.find((header) => header.name === "X-Scriptcat-GM-XHR-Request-Id");
+            if (requestId) {
+              Cache.getInstance().set("gmXhrRequest:" + details.requestId, requestId.value);
+            }
+          }
+        }
       },
       {
         urls: ["<all_urls>"],
@@ -165,27 +177,23 @@ export default class GMApi {
       },
       ["requestHeaders", "extraHeaders"]
     );
-    chrome.webRequest.onBeforeSendHeaders.addListener(
-      (details) => {
-        console.log("onBeforeSendHeaders", details);
-        return {
-          requestHeaders: [
-            {
-              name: "X-Scriptcat-GM-XHR-Request-Id",
-              value: "123",
-            },
-          ],
-        };
-      },
-      {
-        urls: ["<all_urls>"],
-        types: ["xmlhttprequest"],
-      },
-      ["requestHeaders"]
-    );
     chrome.webRequest.onHeadersReceived.addListener(
       (details) => {
-        console.log(details);
+        if (details.tabId === -1) {
+          // 判断请求是否与gmXhrRequest关联
+          Cache.getInstance()
+            .get("gmXhrRequest:" + details.requestId)
+            .then((requestId) => {
+              if (requestId) {
+                this.gmXhrHeadersReceived.emit("headersReceived:" + requestId, details);
+                // 删除关联与DNR
+                Cache.getInstance().del("gmXhrRequest:" + details.requestId);
+                chrome.declarativeNetRequest.updateSessionRules({
+                  removeRuleIds: [parseInt(requestId)],
+                });
+              }
+            });
+        }
       },
       {
         urls: ["<all_urls>"],

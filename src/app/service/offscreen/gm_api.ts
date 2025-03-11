@@ -7,6 +7,12 @@ export class GMApi {
     console.log(params);
     const xhr = new XMLHttpRequest();
     xhr.open(params.method || "GET", params.url);
+    // 添加header
+    if (params.headers) {
+      for (const key in params.headers) {
+        xhr.setRequestHeader(key, params.headers[key]);
+      }
+    }
     xhr.onload = function () {
       console.log(xhr, xhr.getAllResponseHeaders());
     };
