@@ -91,6 +91,10 @@ export class ScriptDAO extends Repo<Script> {
     return super._save(val.uuid, val);
   }
 
+  findByUUID(uuid: string) {
+    return this.get(uuid);
+  }
+
   getAndCode(uuid: string): Promise<ScriptAndCode | undefined> {
     return Promise.all([this.get(uuid), this.scriptCodeDAO.get(uuid)]).then(([script, code]) => {
       if (!script || !code) {
@@ -129,6 +133,10 @@ export class ScriptDAO extends Repo<Script> {
 export class ScriptCodeDAO extends Repo<ScriptCode> {
   constructor() {
     super("scriptCode");
+  }
+
+  findByUUID(uuid: string) {
+    return this.get(uuid);
   }
 
   public save(val: ScriptCode) {

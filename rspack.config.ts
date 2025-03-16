@@ -92,12 +92,12 @@ export default defineConfig({
         ],
       },
       {
-        type: "asset",
+        type: "asset/source",
         test: /\.d\.ts$/,
         exclude: /node_modules/,
       },
       {
-        type: "asset",
+        type: "asset/source",
         test: /\.tpl$/,
         exclude: /node_modules/,
       },

@@ -194,7 +194,7 @@ const Sider: React.FC = () => {
         <Routes>
           <Route index element={<ScriptList />} />
           <Route path="/script/editor">
-            <Route path=":id" element={<ScriptEditor />} />
+            <Route path=":uuid" element={<ScriptEditor />} />
             <Route path="" element={<ScriptEditor />} />
           </Route>
           <Route path="/subscribe" element={<SubscribeList />} />

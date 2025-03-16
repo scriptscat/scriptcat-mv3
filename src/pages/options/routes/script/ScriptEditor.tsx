@@ -1,4 +1,4 @@
-import { Script, ScriptDAO } from "@App/app/repo/scripts";
+import { Script, ScriptCodeDAO, ScriptDAO } from "@App/app/repo/scripts";
 import CodeEditor from "@App/pages/components/CodeEditor";
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -143,8 +143,7 @@ const popstate = () => {
 
 function ScriptEditor() {
   const scriptDAO = new ScriptDAO();
-  const scriptCtrl = IoC.instance(ScriptController) as ScriptController;
-  const runtimeCtrl = IoC.instance(RuntimeController) as RuntimeController;
+  const scriptCodeDAO = new ScriptCodeDAO();
   const template = useSearchParams()[0].get("template") || "";
   const target = useSearchParams()[0].get("target") || "";
   const navigate = useNavigate();
@@ -167,6 +166,8 @@ function ScriptEditor() {
     uuid: string;
     selectSciptButtonAndTab: string;
   }>();
+  const { uuid } = useParams();
+
   const setShow = (key: visibleItem, show: boolean) => {
     Object.keys(visible).forEach((k) => {
       visible[k] = false;
@@ -174,8 +175,6 @@ function ScriptEditor() {
     visible[key] = show;
     setVisible({ ...visible });
   };
-
-  const { id } = useParams();
   const save = (script: Script, e: editor.IStandaloneCodeEditor): Promise<Script> => {
     // 解析code生成新的script并更新
     return new Promise((resolve) => {
@@ -363,31 +362,29 @@ function ScriptEditor() {
       });
   });
   useEffect(() => {
-    scriptDAO.table
-      .orderBy("sort")
-      .toArray()
-      .then((scripts) => {
-        setScriptList(scripts);
-        // 如果有id则打开对应的脚本
-        if (id) {
-          const iId = parseInt(id, 10);
-          for (let i = 0; i < scripts.length; i += 1) {
-            if (scripts[i].id === iId) {
-              editors.push({
-                script: scripts[i],
-                code: scripts[i].code,
-                active: true,
-                hotKeys,
-                isChanged: false,
-              });
-              setSelectSciptButtonAndTab(scripts[i].uuid);
-              setEditors([...editors]);
-              break;
-            }
+    scriptDAO.all().then(async (scripts) => {
+      scripts.sort((a, b) => a.sort - b.sort);
+      setScriptList(scripts);
+      // 如果有id则打开对应的脚本
+      if (uuid) {
+        for (let i = 0; i < scripts.length; i += 1) {
+          if (scripts[i].uuid === uuid) {
+            const code = await scriptCodeDAO.findByUUID(uuid);
+            editors.push({
+              script: scripts[i],
+              code: code!.code,
+              active: true,
+              hotKeys,
+              isChanged: false,
+            });
+            setSelectSciptButtonAndTab(scripts[i].uuid);
+            setEditors([...editors]);
+            break;
           }
         }
-      });
-    if (!id) {
+      }
+    });
+    if (!uuid) {
       emptyScript(template || "", hotKeys, target).then((e) => {
         editors.push(e);
         setEditors([...editors]);
