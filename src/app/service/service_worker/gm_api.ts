@@ -153,7 +153,10 @@ export default class GMApi {
       console.log("处理", details);
     });
     // 再发送到offscreen, 处理请求
-    connect(this.sender, "gmApi/xmlHttpRequest", request.params[0]);
+    const offscreenCon = await connect(this.sender, "gmApi/xmlHttpRequest", request.params[0]);
+    offscreenCon.onMessage((msg) => {
+      console.log("offscreenCon", msg);
+    });
   }
 
   start() {

@@ -1,10 +1,9 @@
-import { Group } from "@Packages/message/server";
+import { Group, MessageConnect } from "@Packages/message/server";
 
 export class GMApi {
   constructor(private group: Group) {}
 
-  xmlHttpRequest(params: GMSend.XHRDetails) {
-    console.log(params);
+  xmlHttpRequest(params: GMSend.XHRDetails, con: MessageConnect | null) {
     const xhr = new XMLHttpRequest();
     xhr.open(params.method || "GET", params.url);
     // 添加header
@@ -14,7 +13,14 @@ export class GMApi {
       }
     }
     xhr.onload = function () {
-      console.log(xhr, xhr.getAllResponseHeaders());
+      con?.sendMessage({
+        action: "onload",
+        data: {
+          status: xhr.status,
+          statusText: xhr.statusText,
+          response: xhr.responseText,
+        },
+      });
     };
     xhr.send();
   }
