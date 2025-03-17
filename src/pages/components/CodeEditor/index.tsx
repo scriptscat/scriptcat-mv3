@@ -2,7 +2,7 @@ import Cache from "@App/app/cache";
 import { LinterWorker } from "@App/pkg/utils/monaco-editor";
 import { useAppSelector } from "@App/pages/store/hooks";
 import { editor, Range } from "monaco-editor";
-import React, { useEffect, useImperativeHandle, useState } from "react";
+import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
 
 type Props = {
   className?: string;
@@ -18,60 +18,59 @@ const CodeEditor: React.ForwardRefRenderFunction<{ editor: editor.ICodeEditor | 
 ) => {
   const settings = useAppSelector((state) => state.setting);
   const [monacoEditor, setEditor] = useState<editor.ICodeEditor>();
+  const div = useRef<HTMLDivElement>(null);
   useImperativeHandle(ref, () => ({
     editor: monacoEditor,
   }));
   useEffect(() => {
-    if (diffCode === undefined || code === undefined) {
+    if (diffCode === undefined || code === undefined || !div.current) {
       return () => {};
     }
     let edit: editor.IStandaloneDiffEditor | editor.IStandaloneCodeEditor;
+    const inlineDiv = document.getElementById(id) as HTMLDivElement;
     // @ts-ignore
-    const ts = window.tsUrl ? 0 : 200;
-    setTimeout(() => {
-      const div = document.getElementById(id) as HTMLDivElement;
-      if (diffCode) {
-        edit = editor.createDiffEditor(div, {
-          enableSplitViewResizing: false,
-          renderSideBySide: false,
-          folding: true,
-          foldingStrategy: "indentation",
-          automaticLayout: true,
-          overviewRulerBorder: false,
-          scrollBeyondLastLine: false,
-          readOnly: true,
-          diffWordWrap: "off",
-          glyphMargin: true,
-        });
-        edit.setModel({
-          original: editor.createModel(diffCode, "javascript"),
-          modified: editor.createModel(code, "javascript"),
-        });
-      } else {
-        edit = editor.create(div, {
-          language: "javascript",
-          theme: document.body.getAttribute("arco-theme") === "dark" ? "vs-dark" : "vs",
-          folding: true,
-          foldingStrategy: "indentation",
-          automaticLayout: true,
-          overviewRulerBorder: false,
-          scrollBeyondLastLine: false,
-          readOnly: !editable,
-          glyphMargin: true,
-        });
-        edit.setValue(code);
+    if (diffCode) {
+      edit = editor.createDiffEditor(inlineDiv, {
+        enableSplitViewResizing: false,
+        renderSideBySide: false,
+        folding: true,
+        foldingStrategy: "indentation",
+        automaticLayout: true,
+        overviewRulerBorder: false,
+        scrollBeyondLastLine: false,
+        readOnly: true,
+        diffWordWrap: "off",
+        glyphMargin: true,
+      });
+      edit.setModel({
+        original: editor.createModel(diffCode, "javascript"),
+        modified: editor.createModel(code, "javascript"),
+      });
+    } else {
+      edit = editor.create(inlineDiv, {
+        language: "javascript",
+        theme: document.body.getAttribute("arco-theme") === "dark" ? "vs-dark" : "vs",
+        folding: true,
+        foldingStrategy: "indentation",
+        automaticLayout: true,
+        overviewRulerBorder: false,
+        scrollBeyondLastLine: false,
+        readOnly: !editable,
+        glyphMargin: true,
+      });
+      edit.setValue(code);
 
-        setEditor(edit);
-      }
-    }, ts);
+      setEditor(edit);
+    }
     return () => {
       if (edit) {
         edit.dispose();
       }
     };
-  }, [code, diffCode, editable, id]);
+  }, [div, code, diffCode, editable, id]);
 
   useEffect(() => {
+    return () => {};
     if (!settings.eslint.enable) {
       return () => {};
     }
@@ -218,6 +217,7 @@ const CodeEditor: React.ForwardRefRenderFunction<{ editor: editor.ICodeEditor | 
         overflow: "hidden",
       }}
       className={className}
+      ref={div}
     />
   );
 };

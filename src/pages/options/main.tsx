@@ -12,9 +12,11 @@ import migrate from "@App/app/migrate.ts";
 import LoggerCore from "@App/app/logger/core.ts";
 import { LoggerDAO } from "@App/app/repo/logger.ts";
 import DBWriter from "@App/app/logger/db_writer.ts";
+import registerEditor from "@App/pkg/utils/monaco-editor.ts";
 
 // 初始化数据库
 migrate();
+registerEditor();
 // 初始化日志组件
 const loggerCore = new LoggerCore({
   writer: new DBWriter(new LoggerDAO()),

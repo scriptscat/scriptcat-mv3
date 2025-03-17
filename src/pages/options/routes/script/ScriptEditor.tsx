@@ -1,4 +1,4 @@
-import { Script, ScriptCodeDAO, ScriptDAO } from "@App/app/repo/scripts";
+import { Script, ScriptAndCode, ScriptCodeDAO, ScriptDAO } from "@App/app/repo/scripts";
 import CodeEditor from "@App/pages/components/CodeEditor";
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -30,7 +30,7 @@ type HotKey = {
 
 const Editor: React.FC<{
   id: string;
-  script: Script;
+  script: ScriptAndCode;
   hotKeys: HotKey[];
   callbackEditor: (e: editor.IStandaloneCodeEditor) => void;
   onChange: (code: string) => void;
@@ -41,11 +41,9 @@ const Editor: React.FC<{
   ScriptMap.set(script.uuid, script);
   useEffect(() => {
     if (!codeEditor.current || !codeEditor.current.editor) {
-      setTimeout(() => {
-        setInit(true);
-      }, 200);
       return () => {};
     }
+    console.log(codeEditor);
     // 初始化editor时将Script的uuid绑定到editor上
     // @ts-ignore
     if (!codeEditor.current.editor.uuid) {
@@ -72,7 +70,7 @@ const Editor: React.FC<{
     });
     callbackEditor(codeEditor.current.editor);
     return () => {};
-  }, [init]);
+  }, []);
 
   return <CodeEditor id={id} ref={codeEditor} code={script.code} diffCode="" editable />;
 };
@@ -150,8 +148,7 @@ function ScriptEditor() {
   const [visible, setVisible] = useState<{ [key: string]: boolean }>({});
   const [editors, setEditors] = useState<
     {
-      script: Script;
-      code: string;
+      script: ScriptAndCode;
       active: boolean;
       hotKeys: HotKey[];
       editor?: editor.IStandaloneCodeEditor;
@@ -378,7 +375,6 @@ function ScriptEditor() {
                   return prev.map((item) => {
                     if (item.script.uuid === scripts[i].uuid) {
                       item.active = true;
-                      item.code = code!.code;
                     } else {
                       item.active = false;
                     }
@@ -386,8 +382,7 @@ function ScriptEditor() {
                   });
                 }
                 prev.push({
-                  script: scripts[i],
-                  code: code!.code,
+                  script: Object.assign(scripts[i], code),
                   active: true,
                   hotKeys,
                   isChanged: false,
@@ -870,7 +865,7 @@ function ScriptEditor() {
                       });
                     }}
                     onChange={(code) => {
-                      const isChanged = !(item.code === code);
+                      const isChanged = !(item.script.code === code);
                       if (isChanged !== item.isChanged) {
                         setEditors((prev) => {
                           prev.forEach((v) => {

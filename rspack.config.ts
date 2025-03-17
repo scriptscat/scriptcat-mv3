@@ -2,9 +2,12 @@ import * as path from "path";
 import { defineConfig } from "@rspack/cli";
 import { rspack } from "@rspack/core";
 import { version } from "./package.json";
+import CompressionPlugin from "compression-webpack-plugin";
 
 const isDev = process.env.NODE_ENV === "development";
 const isBeta = version.includes("-");
+
+console.log(CompressionPlugin);
 
 // Target browsers, see: https://github.com/browserslist/browserslist
 const targets = ["chrome >= 87", "edge >= 88", "firefox >= 78", "safari >= 14"];
@@ -29,6 +32,8 @@ export default defineConfig({
     popup: `${src}/pages/popup/main.tsx`,
     install: `${src}/pages/install/main.tsx`,
     options: `${src}/pages/options/main.tsx`,
+    "editor.worker": "monaco-editor/esm/vs/editor/editor.worker.js",
+    "ts.worker": "monaco-editor/esm/vs/language/typescript/ts.worker.js",
   },
   output: {
     path: `${dist}/ext/src`,
@@ -167,6 +172,11 @@ export default defineConfig({
       inject: "head",
       minify: true,
       chunks: ["sandbox"],
+    }),
+    new CompressionPlugin({
+      test: /ts.worker.js$/,
+      filename: () => "ts.worker.js",
+      deleteOriginalAssets: true,
     }),
   ].filter(Boolean),
   optimization: {
