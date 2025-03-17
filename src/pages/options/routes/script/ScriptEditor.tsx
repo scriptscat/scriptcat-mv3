@@ -175,6 +175,7 @@ function ScriptEditor() {
     visible[key] = show;
     setVisible({ ...visible });
   };
+
   const save = (script: Script, e: editor.IStandaloneCodeEditor): Promise<Script> => {
     // 解析code生成新的script并更新
     return new Promise((resolve) => {
@@ -369,27 +370,42 @@ function ScriptEditor() {
       if (uuid) {
         for (let i = 0; i < scripts.length; i += 1) {
           if (scripts[i].uuid === uuid) {
-            const code = await scriptCodeDAO.findByUUID(uuid);
-            editors.push({
-              script: scripts[i],
-              code: code!.code,
-              active: true,
-              hotKeys,
-              isChanged: false,
+            // 如果已经打开则激活
+            scriptCodeDAO.findByUUID(uuid).then((code) => {
+              setEditors((prev) => {
+                const flag = prev.some((item) => item.script.uuid === scripts[i].uuid);
+                if (flag) {
+                  return prev.map((item) => {
+                    if (item.script.uuid === scripts[i].uuid) {
+                      item.active = true;
+                      item.code = code!.code;
+                    } else {
+                      item.active = false;
+                    }
+                    return item;
+                  });
+                }
+                prev.push({
+                  script: scripts[i],
+                  code: code!.code,
+                  active: true,
+                  hotKeys,
+                  isChanged: false,
+                });
+                return prev;
+              });
+              setSelectSciptButtonAndTab(scripts[i].uuid);
             });
-            setSelectSciptButtonAndTab(scripts[i].uuid);
-            setEditors([...editors]);
             break;
           }
         }
+      } else {
+        emptyScript(template || "", hotKeys, target).then((e) => {
+          editors.push(e);
+          setEditors([...editors]);
+        });
       }
     });
-    if (!uuid) {
-      emptyScript(template || "", hotKeys, target).then((e) => {
-        editors.push(e);
-        setEditors([...editors]);
-      });
-    }
   }, []);
 
   // 控制onbeforeunload
