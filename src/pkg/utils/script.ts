@@ -8,12 +8,14 @@ import {
   SCRIPT_TYPE_BACKGROUND,
   SCRIPT_TYPE_CRONTAB,
   SCRIPT_TYPE_NORMAL,
+  ScriptAndCode,
+  ScriptCode,
   ScriptCodeDAO,
   ScriptDAO,
   UserConfig,
 } from "@App/app/repo/scripts";
 import YAML from "yaml";
-import { Subscribe, SUBSCRIBE_STATUS_ENABLE, SubscribeDAO } from "@App/app/repo/subscribe";
+import { Subscribe, SUBSCRIBE_STATUS_ENABLE, SubscribeDAO, Metadata as SubMetadata } from "@App/app/repo/subscribe";
 import { nextTime } from "./utils";
 import { InstallSource } from "@App/app/service/service_worker";
 
@@ -137,7 +139,7 @@ export async function fetchScriptInfo(
   return ret;
 }
 
-export function copyScript(script: Script, old: Script): Script {
+export function copyScript(script: ScriptAndCode, old: Script): ScriptAndCode {
   const ret = script;
   ret.uuid = old.uuid;
   ret.createtime = old.createtime;
@@ -204,7 +206,7 @@ export function prepareScriptByCode(
   url: string,
   uuid?: string,
   override?: boolean
-): Promise<{ script: Script; oldScript?: Script; oldScriptCode?: string }> {
+): Promise<{ script: ScriptAndCode; oldScript?: ScriptAndCode }> {
   const dao = new ScriptDAO();
   return new Promise((resolve, reject) => {
     const metadata = parseMetadata(code);
@@ -253,9 +255,10 @@ export function prepareScriptByCode(
     } else {
       newUUID = uuidv4();
     }
-    let script: Script = {
+    let script: ScriptAndCode = {
       uuid: newUUID,
       name: metadata.name[0],
+      code: code,
       author: metadata.author && metadata.author[0],
       namespace: metadata.namespace && metadata.namespace[0],
       originDomain: domain,
@@ -275,7 +278,7 @@ export function prepareScriptByCode(
     };
     const handler = async () => {
       let old: Script | undefined;
-      let oldCode: string | undefined;
+      let oldCode: ScriptCode | undefined;
       if (uuid) {
         old = await dao.get(uuid);
         if (!old && override) {
@@ -293,11 +296,11 @@ export function prepareScriptByCode(
           return;
         }
         const scriptCode = await new ScriptCodeDAO().get(old.uuid);
-        if(!scriptCode) {
+        if (!scriptCode) {
           reject(new Error("旧的脚本代码不存在"));
           return;
         }
-        oldCode = scriptCode.code;
+        oldCode = scriptCode;
         script = copyScript(script, old);
       } else {
         // 前台脚本默认开启
@@ -306,7 +309,7 @@ export function prepareScriptByCode(
         }
         script.checktime = new Date().getTime();
       }
-      resolve({ script, oldScript: old, oldScriptCode: oldCode });
+      resolve({ script, oldScript: old ? Object.assign(old, oldCode) : undefined });
     };
     handler();
   });
@@ -317,8 +320,8 @@ export async function prepareSubscribeByCode(
   url: string
 ): Promise<{ subscribe: Subscribe; oldSubscribe?: Subscribe }> {
   const dao = new SubscribeDAO();
-  const metadata = parseMetadata(code);
-  if (metadata == null) {
+  const metadata = parseMetadata(code) as SubMetadata;
+  if (!metadata) {
     throw new Error("MetaData信息错误");
   }
   if (metadata.name === undefined) {
@@ -329,9 +332,9 @@ export async function prepareSubscribeByCode(
     url,
     name: metadata.name[0],
     code,
-    author: metadata.author && metadata.author[0],
+    author: (metadata.author && metadata.author[0]) || "",
     scripts: {},
-    metadata,
+    metadata: metadata,
     status: SUBSCRIBE_STATUS_ENABLE,
     createtime: Date.now(),
     updatetime: Date.now(),

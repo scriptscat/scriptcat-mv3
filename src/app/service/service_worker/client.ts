@@ -25,7 +25,7 @@ export class ScriptClient extends Client {
     return this.do("getInstallInfo", uuid);
   }
 
-  install(script: Script, code: string, upsertBy: InstallSource = "user") {
+  install(script: Script, code: string, upsertBy: InstallSource = "user"): Promise<{ update: boolean }> {
     return this.do("install", { script, code, upsertBy });
   }
 

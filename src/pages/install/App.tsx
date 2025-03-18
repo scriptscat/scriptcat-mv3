@@ -44,7 +44,7 @@ function App() {
       permission.push({
         label: t("subscribe_install_label"),
         color: "#ff0000",
-        value: metadata.scripturl,
+        value: metadata.scripturl!,
       });
     }
     if (metadata.match) {
@@ -311,8 +311,8 @@ function App() {
               <div>
                 <Space>
                   {oldScript && (
-                    <Tooltip content={`${t("current_version")}: v${oldScript.metadata.version[0]}`}>
-                      <Tag bordered>{oldScript.metadata.version[0]}</Tag>
+                    <Tooltip content={`${t("current_version")}: v${oldScript.metadata.version![0]}`}>
+                      <Tag bordered>{oldScript.metadata.version![0]}</Tag>
                     </Tooltip>
                   )}
                   {metadata.version && (

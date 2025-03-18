@@ -2,12 +2,11 @@ import * as path from "path";
 import { defineConfig } from "@rspack/cli";
 import { rspack } from "@rspack/core";
 import { version } from "./package.json";
-import CompressionPlugin from "compression-webpack-plugin";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const CompressionPlugin = require("compression-webpack-plugin");
 
 const isDev = process.env.NODE_ENV === "development";
 const isBeta = version.includes("-");
-
-console.log(CompressionPlugin);
 
 // Target browsers, see: https://github.com/browserslist/browserslist
 const targets = ["chrome >= 87", "edge >= 88", "firefox >= 78", "safari >= 14"];

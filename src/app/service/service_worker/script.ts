@@ -178,7 +178,7 @@ export class ScriptService {
         logger.info("install success");
         // 广播一下
         this.mq.publish("installScript", { script, update });
-        return Promise.resolve(true);
+        return Promise.resolve({ update });
       })
       .catch((e: any) => {
         logger.error("install error", Logger.E(e));

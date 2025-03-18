@@ -12,12 +12,12 @@ type Props = {
   code?: string;
 };
 
-const CodeEditor: React.ForwardRefRenderFunction<{ editor: editor.ICodeEditor | undefined }, Props> = (
+const CodeEditor: React.ForwardRefRenderFunction<{ editor: editor.IStandaloneCodeEditor | undefined }, Props> = (
   { id, className, code, diffCode, editable },
   ref
 ) => {
   const settings = useAppSelector((state) => state.setting);
-  const [monacoEditor, setEditor] = useState<editor.ICodeEditor>();
+  const [monacoEditor, setEditor] = useState<editor.IStandaloneCodeEditor>();
   const div = useRef<HTMLDivElement>(null);
   useImperativeHandle(ref, () => ({
     editor: monacoEditor,
