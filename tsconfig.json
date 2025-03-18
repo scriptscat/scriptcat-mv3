@@ -24,12 +24,16 @@
       ],
       "@Packages/*": [
         "packages/*"
+      ],
+      "@Tests/*": [
+        "tests/*"
       ]
     },
   },
   "include": [
     "src",
-    "packages"
+    "packages",
+    "tests"
   ],
   "ts-node": {
     "compilerOptions": {

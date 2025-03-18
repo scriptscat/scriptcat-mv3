@@ -83,6 +83,7 @@ export class Runtime {
       return this.execScript(script);
     } else {
       // 定时脚本加入定时任务
+      await this.stopCronJob(script.uuid);
       return this.crontabScript(script);
     }
   }

@@ -148,10 +148,17 @@ export default class GMApi {
     }
     params.headers["X-Scriptcat-GM-XHR-Request-Id"] = requestId.toString();
     await this.buildDNRRule(requestId, request.params[0]);
+    let responseHeader = "";
     // 等待response
-    this.gmXhrHeadersReceived.addListener("headersReceived:" + requestId, (details) => {
-      console.log("处理", details);
-    });
+    this.gmXhrHeadersReceived.addListener(
+      "headersReceived:" + requestId,
+      (details: chrome.webRequest.WebResponseHeadersDetails) => {
+        details.responseHeaders?.forEach((header) => {
+          responseHeader += header.name + ": " + header.value + "\n";
+        });
+        console.log("处理", details, responseHeader);
+      }
+    );
     // 再发送到offscreen, 处理请求
     const offscreenCon = await connect(this.sender, "gmApi/xmlHttpRequest", request.params[0]);
     offscreenCon.onMessage((msg) => {

@@ -219,6 +219,9 @@ export default class GMApi {
     let connect: MessageConnect;
     this.connect("GM_xmlhttpRequest", [param]).then((con) => {
       connect = con;
+      con.onMessage((data) => {
+        console.log("data", data);
+      });
     });
 
     return {

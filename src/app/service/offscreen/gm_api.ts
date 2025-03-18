@@ -13,6 +13,7 @@ export class GMApi {
       }
     }
     xhr.onload = function () {
+      console.log(xhr.getAllResponseHeaders());
       con?.sendMessage({
         action: "onload",
         data: {
