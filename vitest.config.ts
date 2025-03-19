@@ -10,6 +10,7 @@ export default defineConfig({
     },
   },
   test: {
+    environment: "jsdom",
     // List setup file
     setupFiles: ["./tests/vitest.setup.ts"],
   },

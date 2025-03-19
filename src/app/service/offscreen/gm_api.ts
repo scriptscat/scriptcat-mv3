@@ -1,6 +1,6 @@
 import { Group, MessageConnect } from "@Packages/message/server";
 
-export class GMApi {
+export default class GMApi {
   constructor(private group: Group) {}
 
   xmlHttpRequest(params: GMSend.XHRDetails, con: MessageConnect | null) {

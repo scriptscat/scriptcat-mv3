@@ -6,7 +6,7 @@ import { WindowMessage } from "@Packages/message/window_message";
 import { ExtensionMessageSend } from "@Packages/message/extension_message";
 import { ServiceWorkerClient } from "../service_worker/client";
 import { sendMessage } from "@Packages/message/client";
-import { GMApi } from "./gm_api";
+import GMApi from "./gm_api";
 
 // offscreen环境的管理器
 export class OffscreenManager {

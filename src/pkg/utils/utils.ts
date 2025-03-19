@@ -1,3 +1,4 @@
+import { Metadata } from "@App/app/repo/scripts";
 import { CronTime } from "cron";
 import dayjs from "dayjs";
 import semver from "semver";
@@ -185,4 +186,28 @@ export function openInCurrentTab(url: string) {
 
 export function isDebug() {
   return process.env.NODE_ENV === "development";
+}
+
+// 检查订阅规则是否改变,是否能够静默更新
+export function checkSilenceUpdate(oldMeta: Metadata, newMeta: Metadata): boolean {
+  // 判断connect是否改变
+  const oldConnect: { [key: string]: boolean } = {};
+  const newConnect: { [key: string]: boolean } = {};
+  oldMeta.connect &&
+    oldMeta.connect.forEach((val) => {
+      oldConnect[val] = true;
+    });
+  newMeta.connect &&
+    newMeta.connect.forEach((val) => {
+      newConnect[val] = true;
+    });
+  // 老的里面没有新的就需要用户确认了
+  const keys = Object.keys(newConnect);
+  for (let i = 0; i < keys.length; i += 1) {
+    const key = keys[i];
+    if (!oldConnect[key]) {
+      return false;
+    }
+  }
+  return true;
 }

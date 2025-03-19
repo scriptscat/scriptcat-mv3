@@ -1,17 +1,16 @@
 import { MessageQueue } from "@Packages/message/message_queue";
 import { ScriptEnableCallbackValue } from "./client";
-import { Group } from "@Packages/message/server";
+import { Group, MessageSend } from "@Packages/message/server";
 import { Script, SCRIPT_STATUS_ENABLE, SCRIPT_TYPE_NORMAL, ScriptAndCode, ScriptDAO } from "@App/app/repo/scripts";
 import { ValueService } from "./value";
 import GMApi from "./gm_api";
-import { ServiceWorkerMessageSend } from "@Packages/message/window_message";
 
 export class RuntimeService {
   scriptDAO: ScriptDAO = new ScriptDAO();
 
   constructor(
     private group: Group,
-    private sender: ServiceWorkerMessageSend,
+    private sender: MessageSend,
     private mq: MessageQueue,
     private value: ValueService
   ) {}

@@ -3,8 +3,15 @@ import LoggerCore from "@App/app/logger/core";
 import DBWriter from "@App/app/logger/db_writer";
 import migrate from "@App/app/migrate";
 import { LoggerDAO } from "@App/app/repo/logger";
+import { MockMessage } from "@Packages/message/mock_message";
+import { Message, Server } from "@Packages/message/server";
+import { MessageQueue } from "@Packages/message/message_queue";
+import { ValueService } from "@App/app/service/service_worker/value";
+import GMApi from "@App/app/service/service_worker/gm_api";
+import OffscreenGMApi from "@App/app/service/offscreen/gm_api";
+import EventEmitter from "eventemitter3";
 
-export default function initTestEnv() {
+export function initTestEnv() {
   // @ts-ignore
   if (global.initTest) {
     return;
@@ -42,3 +49,27 @@ export default function initTestEnv() {
   });
   logger.logger().debug("test start");
 }
+
+export function initTestGMApi(): Message {
+  const wsEE = new EventEmitter();
+  const wsMessage = new MockMessage(wsEE);
+  const osEE = new EventEmitter();
+  const osMessage = new MockMessage(osEE);
+
+  const serviceWorkerServer = new Server(wsMessage);
+  const mq = new MessageQueue(serviceWorkerServer);
+  const valueService = new ValueService(serviceWorkerServer.group("value"), mq);
+  const swGMApi = new GMApi(serviceWorkerServer.group("runtime"), osMessage, valueService);
+
+  valueService.init();
+  swGMApi.start();
+
+  // offscreen
+  const offscreenServer = new Server(osMessage);
+  const osGMApi = new OffscreenGMApi(offscreenServer.group("gmApi"));
+  osGMApi.init();
+
+  return wsMessage;
+}
+
+export function initTestOffscreen() {}

@@ -1,3 +1,3 @@
-import { vi } from "vitest";
+import chromeMock from "@Packages/chrome-extension-mock";
 
-vi.mock("webextension-polyfill");
+chromeMock.init();

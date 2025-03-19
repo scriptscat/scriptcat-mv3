@@ -9,7 +9,7 @@ export interface CacheStorage {
 export class ExtCache implements CacheStorage {
   get(key: string): Promise<any> {
     return new Promise((resolve) => {
-      chrome.storage.local.get(key, (value) => {
+      chrome.storage.session.get(key, (value) => {
         resolve(value[key]);
       });
     });
@@ -17,7 +17,7 @@ export class ExtCache implements CacheStorage {
 
   set(key: string, value: any): Promise<void> {
     return new Promise((resolve) => {
-      chrome.storage.local.set(
+      chrome.storage.session.set(
         {
           [key]: value,
         },
@@ -30,7 +30,7 @@ export class ExtCache implements CacheStorage {
 
   has(key: string): Promise<boolean> {
     return new Promise((resolve) => {
-      chrome.storage.local.get(key, (value) => {
+      chrome.storage.session.get(key, (value) => {
         resolve(value[key] !== undefined);
       });
     });
@@ -38,7 +38,7 @@ export class ExtCache implements CacheStorage {
 
   del(key: string): Promise<void> {
     return new Promise((resolve) => {
-      chrome.storage.local.remove(key, () => {
+      chrome.storage.session.remove(key, () => {
         resolve();
       });
     });
@@ -46,7 +46,7 @@ export class ExtCache implements CacheStorage {
 
   list(): Promise<string[]> {
     return new Promise((resolve) => {
-      chrome.storage.local.get(null, (value) => {
+      chrome.storage.session.get(null, (value) => {
         resolve(Object.keys(value));
       });
     });

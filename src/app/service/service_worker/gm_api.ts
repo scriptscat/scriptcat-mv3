@@ -1,10 +1,9 @@
 import LoggerCore from "@App/app/logger/core";
 import Logger from "@App/app/logger/logger";
 import { Script, ScriptDAO } from "@App/app/repo/scripts";
-import { Group, MessageConnect, MessageSender } from "@Packages/message/server";
+import { Group, MessageConnect, MessageSend, MessageSender } from "@Packages/message/server";
 import { ValueService } from "@App/app/service/service_worker/value";
 import PermissionVerify from "./permission_verify";
-import { ServiceWorkerMessageSend } from "@Packages/message/window_message";
 import { connect } from "@Packages/message/client";
 import Cache, { incr } from "@App/app/cache";
 import { unsafeHeaders } from "@App/runtime/utils";
@@ -35,7 +34,7 @@ export default class GMApi {
 
   constructor(
     private group: Group,
-    private sender: ServiceWorkerMessageSend,
+    private sender: MessageSend,
     private value: ValueService
   ) {
     this.logger = LoggerCore.logger().with({ service: "runtime/gm_api" });

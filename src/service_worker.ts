@@ -3,6 +3,10 @@ import migrate from "./app/migrate";
 import LoggerCore from "./app/logger/core";
 import DBWriter from "./app/logger/db_writer";
 import { LoggerDAO } from "./app/repo/logger";
+import { ExtensionMessage } from "@Packages/message/extension_message";
+import { Server } from "@Packages/message/server";
+import { MessageQueue } from "@Packages/message/message_queue";
+import { ServiceWorkerMessageSend } from "@Packages/message/window_message";
 
 const OFFSCREEN_DOCUMENT_PATH = "src/offscreen.html";
 
@@ -51,7 +55,8 @@ async function main() {
   });
   loggerCore.logger().debug("service worker start");
   // 初始化管理器
-  const manager = new ServiceWorkerManager();
+  const server = new Server(new ExtensionMessage());
+  const manager = new ServiceWorkerManager(server, new MessageQueue(server), new ServiceWorkerMessageSend());
   manager.initManager();
   // 初始化沙盒环境
   await setupOffscreenDocument();
