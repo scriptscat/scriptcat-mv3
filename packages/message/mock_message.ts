@@ -1,5 +1,6 @@
 import EventEmitter from "eventemitter3";
 import { Message, MessageConnect, MessageSend } from "./server";
+import { sleep } from "@App/pkg/utils/utils";
 
 export class MockMessageConnect implements MessageConnect {
   constructor(protected EE: EventEmitter) {}
@@ -24,16 +25,16 @@ export class MockMessageConnect implements MessageConnect {
 }
 
 export class MockMessageSend implements MessageSend {
-  constructor(
-    protected EE: EventEmitter,
-  ) {}
+  constructor(protected EE: EventEmitter) {}
 
   connect(data: any): Promise<MessageConnect> {
     return new Promise((resolve) => {
       const EE = new EventEmitter();
       const con = new MockMessageConnect(EE);
-      this.EE.emit("connect", data, con);
       resolve(con);
+      sleep(1).then(() => {
+        this.EE.emit("connect", data, con);
+      });
     });
   }
 

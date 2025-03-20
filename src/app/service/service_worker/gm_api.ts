@@ -137,7 +137,6 @@ export default class GMApi {
       return Promise.reject(new Error("param is failed"));
     }
     const params = request.params[0] as GMSend.XHRDetails;
-    console.log("xml request", request, con);
     // 先处理unsafe hearder
     // 关联自己生成的请求id与chrome.webRequest的请求id
     const requestId = 10000 + (await incr(Cache.getInstance(), "gmXhrRequestId", 1));
@@ -155,13 +154,15 @@ export default class GMApi {
         details.responseHeaders?.forEach((header) => {
           responseHeader += header.name + ": " + header.value + "\n";
         });
-        console.log("处理", details, responseHeader);
       }
     );
     // 再发送到offscreen, 处理请求
     const offscreenCon = await connect(this.sender, "gmApi/xmlHttpRequest", request.params[0]);
-    offscreenCon.onMessage((msg) => {
-      console.log("offscreenCon", msg);
+    offscreenCon.onMessage((msg: { action: string; data: any }) => {
+      // 发送到content
+      // 替换msg.data.responseHeaders
+      msg.data.responseHeaders = responseHeader;
+      con.sendMessage(msg);
     });
   }
 

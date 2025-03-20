@@ -211,3 +211,9 @@ export function checkSilenceUpdate(oldMeta: Metadata, newMeta: Metadata): boolea
   }
   return true;
 }
+
+export function sleep(time: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, time);
+  });
+}

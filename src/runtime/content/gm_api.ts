@@ -219,8 +219,37 @@ export default class GMApi {
     let connect: MessageConnect;
     this.connect("GM_xmlhttpRequest", [param]).then((con) => {
       connect = con;
-      con.onMessage((data) => {
-        console.log("data", data);
+      con.onMessage((data: { action: string; data: any }) => {
+        // 处理返回
+        switch (data.action) {
+          case "onload":
+            details.onload?.(data.data);
+            break;
+          case "onloadend":
+            details.onloadend?.(data.data);
+            break;
+          case "onloadstart":
+            details.onloadstart?.(data.data);
+            break;
+          case "onprogress":
+            details.onprogress?.(data.data);
+            break;
+          case "onreadystatechange":
+            details.onreadystatechange && details.onreadystatechange(data.data);
+            break;
+          case "ontimeout":
+            details.ontimeout?.();
+            break;
+          case "onerror":
+            details.onerror?.("");
+            break;
+          case "onabort":
+            details.onabort?.();
+            break;
+          case "onstream":
+            // controller?.enqueue(new Uint8Array(resp.data));
+            break;
+        }
       });
     });
 
