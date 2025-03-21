@@ -13,6 +13,7 @@ import LoggerCore from "@App/app/logger/core.ts";
 import { LoggerDAO } from "@App/app/repo/logger.ts";
 import DBWriter from "@App/app/logger/db_writer.ts";
 import registerEditor from "@App/pkg/utils/monaco-editor.ts";
+import storeSubscribe from "../store/subscribe.ts";
 
 // 初始化数据库
 migrate();
@@ -24,6 +25,8 @@ const loggerCore = new LoggerCore({
 });
 
 loggerCore.logger().debug("page start");
+
+storeSubscribe();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

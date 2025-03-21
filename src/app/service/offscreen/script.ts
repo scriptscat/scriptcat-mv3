@@ -1,17 +1,12 @@
 import LoggerCore from "@App/app/logger/core";
 import Logger from "@App/app/logger/logger";
-import { Broker } from "@Packages/message/message_queue";
+import { MessageQueue } from "@Packages/message/message_queue";
 import { WindowMessage } from "@Packages/message/window_message";
-import {
-  ResourceClient,
-  ScriptClient,
-  subscribeScriptEnable,
-  subscribeScriptInstall,
-  ValueClient,
-} from "../service_worker/client";
-import { SCRIPT_STATUS_ENABLE, SCRIPT_TYPE_NORMAL } from "@App/app/repo/scripts";
-import { disableScript, enableScript } from "../sandbox/client";
-import { MessageSend } from "@Packages/message/server";
+import { ResourceClient, ScriptClient, ValueClient } from "../service_worker/client";
+import { SCRIPT_STATUS_ENABLE, SCRIPT_TYPE_NORMAL, ScriptRunResouce } from "@App/app/repo/scripts";
+import { disableScript, enableScript, runScript, stopScript } from "../sandbox/client";
+import { Group, MessageSend } from "@Packages/message/server";
+import { subscribeScriptEnable, subscribeScriptInstall } from "../queue";
 
 export class ScriptService {
   logger: Logger;
@@ -21,15 +16,25 @@ export class ScriptService {
   valueClient: ValueClient = new ValueClient(this.extensionMessage);
 
   constructor(
+    private group: Group,
     private extensionMessage: MessageSend,
     private windowMessage: WindowMessage,
-    private broker: Broker
+    private messageQueue: MessageQueue
   ) {
     this.logger = LoggerCore.logger().with({ service: "script" });
   }
 
+  runScript(script: ScriptRunResouce) {
+    runScript(this.windowMessage, script);
+  }
+
+  stopScript(uuid: string) {
+    stopScript(this.windowMessage, uuid);
+  }
+
   async init() {
-    subscribeScriptEnable(this.broker, async (data) => {
+    subscribeScriptEnable(this.messageQueue, async (data) => {
+      console.log("subscribeScriptEnable", data);
       const script = await this.scriptClient.info(data.uuid);
       if (script.type === SCRIPT_TYPE_NORMAL) {
         return;
@@ -42,7 +47,8 @@ export class ScriptService {
         disableScript(this.windowMessage, script.uuid);
       }
     });
-    subscribeScriptInstall(this.broker, async (data) => {
+    subscribeScriptInstall(this.messageQueue, async (data) => {
+      console.log("subscribeScriptInstall", data);
       // 判断是开启还是关闭
       if (data.script.status === SCRIPT_STATUS_ENABLE) {
         // 构造脚本运行资源,发送给沙盒运行
@@ -52,5 +58,8 @@ export class ScriptService {
         disableScript(this.windowMessage, data.script.uuid);
       }
     });
+
+    this.group.on("runScript", this.runScript.bind(this));
+    this.group.on("stopScript", this.stopScript.bind(this));
   }
 }

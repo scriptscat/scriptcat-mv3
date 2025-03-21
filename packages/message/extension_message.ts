@@ -35,6 +35,9 @@ export class ExtensionMessage extends ExtensionMessageSend implements Message {
   // 注意chrome.runtime.onMessage.addListener的回调函数需要返回true才能处理异步请求
   onMessage(callback: (data: any, sendResponse: (data: any) => void) => void) {
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+      if (msg.action === "messageQueue") {
+        return false;
+      }
       return callback(msg, sendResponse);
     });
   }

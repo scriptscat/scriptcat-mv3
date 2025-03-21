@@ -5,7 +5,6 @@ import migrate from "@App/app/migrate";
 import { LoggerDAO } from "@App/app/repo/logger";
 import { MockMessage } from "@Packages/message/mock_message";
 import { Message, Server } from "@Packages/message/server";
-import { MessageQueue } from "@Packages/message/message_queue";
 import { ValueService } from "@App/app/service/service_worker/value";
 import GMApi from "@App/app/service/service_worker/gm_api";
 import OffscreenGMApi from "@App/app/service/offscreen/gm_api";
@@ -57,8 +56,7 @@ export function initTestGMApi(): Message {
   const osMessage = new MockMessage(osEE);
 
   const serviceWorkerServer = new Server(wsMessage);
-  const mq = new MessageQueue(serviceWorkerServer);
-  const valueService = new ValueService(serviceWorkerServer.group("value"), mq);
+  const valueService = new ValueService(serviceWorkerServer.group("value"));
   const swGMApi = new GMApi(serviceWorkerServer.group("runtime"), osMessage, valueService);
 
   valueService.init();

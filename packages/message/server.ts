@@ -28,15 +28,21 @@ export class Server {
 
   private logger = LoggerCore.getInstance().logger({ service: "messageServer" });
 
-  constructor(message: Message) {
+  constructor(prefix: string, message: Message) {
     message.onConnect((msg: any, con: MessageConnect) => {
       this.logger.trace("server onConnect", { msg });
-      this.connectHandle(msg.action, msg.data, con);
+      if (msg.action.startsWith(prefix)) {
+        return this.connectHandle(msg.action.slice(prefix.length + 1), msg.data, con);
+      }
+      return false;
     });
 
-    message.onMessage((msg, sendResponse) => {
-      this.logger.trace("server onMessage", { msg });
-      return this.messageHandle(msg.action, msg.data, sendResponse);
+    message.onMessage((msg: { action: string; data: any }, sendResponse) => {
+      this.logger.trace("server onMessage", { msg: msg as any });
+      if (msg.action.startsWith(prefix)) {
+        return this.messageHandle(msg.action.slice(prefix.length + 1), msg.data, sendResponse);
+      }
+      return false;
     });
   }
 
@@ -98,10 +104,11 @@ export class Group {
 }
 
 // 转发消息
-export function forwardMessage(path: string, from: Server, to: MessageSend) {
+export function forwardMessage(prefix: string, path: string, from: Server, to: MessageSend) {
   from.on(path, (params, fromCon) => {
+    console.log("forwardMessage", path, prefix, params);
     if (fromCon) {
-      to.connect({ action: path, data: params }).then((toCon) => {
+      to.connect({ action: prefix + "/" + path, data: params }).then((toCon) => {
         fromCon.onMessage((data) => {
           toCon.sendMessage(data);
         });
@@ -116,7 +123,7 @@ export function forwardMessage(path: string, from: Server, to: MessageSend) {
         });
       });
     } else {
-      return to.sendMessage({ action: path, data: params });
+      return to.sendMessage({ action: prefix + "/" + path, data: params });
     }
   });
 }

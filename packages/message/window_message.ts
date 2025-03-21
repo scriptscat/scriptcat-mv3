@@ -171,7 +171,6 @@ export class ServiceWorkerMessageSend implements MessageSend {
     const list = await self.clients.matchAll({ includeUncontrolled: true, type: "window" });
     this.target = list[0];
     self.addEventListener("message", (e) => {
-      console.log("serviceWorker", e);
       this.messageHandle(e.data);
     });
   }

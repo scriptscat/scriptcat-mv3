@@ -235,7 +235,6 @@ export class ScriptService {
   }
 
   async updateRunStatus(params: { uuid: string; runStatus: SCRIPT_RUN_STATUS; error?: string; nextruntime?: number }) {
-    this.mq.publish("updateRunStatus", params);
     if (
       (await this.scriptDAO.update(params.uuid, {
         runStatus: params.runStatus,
@@ -246,6 +245,7 @@ export class ScriptService {
     ) {
       return Promise.reject("update error");
     }
+    this.mq.publish("scriptRunStatus", params);
     return Promise.resolve(true);
   }
 

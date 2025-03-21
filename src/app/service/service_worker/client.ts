@@ -1,13 +1,12 @@
 import { Script, ScriptCode, ScriptRunResouce } from "@App/app/repo/scripts";
 import { Client } from "@Packages/message/client";
 import { InstallSource } from ".";
-import { Broker } from "@Packages/message/message_queue";
 import { Resource } from "@App/app/repo/resource";
 import { MessageSend } from "@Packages/message/server";
 
 export class ServiceWorkerClient extends Client {
   constructor(msg: MessageSend) {
-    super(msg);
+    super(msg, "serviceWorker");
   }
 
   preparationOffscreen() {
@@ -17,7 +16,7 @@ export class ServiceWorkerClient extends Client {
 
 export class ScriptClient extends Client {
   constructor(msg: MessageSend) {
-    super(msg, "script");
+    super(msg, "serviceWorker/script");
   }
 
   // 获取安装信息
@@ -52,7 +51,7 @@ export class ScriptClient extends Client {
 
 export class ResourceClient extends Client {
   constructor(msg: MessageSend) {
-    super(msg, "resource");
+    super(msg, "serviceWorker/resource");
   }
 
   getScriptResources(script: Script): Promise<{ [key: string]: Resource }> {
@@ -62,7 +61,7 @@ export class ResourceClient extends Client {
 
 export class ValueClient extends Client {
   constructor(msg: MessageSend) {
-    super(msg, "value");
+    super(msg, "serviceWorker/value");
   }
 
   getScriptValue(script: Script) {
@@ -70,19 +69,16 @@ export class ValueClient extends Client {
   }
 }
 
-export function subscribeScriptInstall(
-  border: Broker,
-  callback: (message: { script: Script; update: boolean }) => void
-) {
-  return border.subscribe("installScript", callback);
-}
+export class RuntimeClient extends Client {
+  constructor(msg: MessageSend) {
+    super(msg, "serviceWorker/runtime");
+  }
 
-export function subscribeScriptDelete(border: Broker, callback: (message: { uuid: string }) => void) {
-  return border.subscribe("deleteScript", callback);
-}
+  runScript(uuid: string) {
+    return this.do("runScript", uuid);
+  }
 
-export type ScriptEnableCallbackValue = { uuid: string; enable: boolean };
-
-export function subscribeScriptEnable(border: Broker, callback: (message: ScriptEnableCallbackValue) => void) {
-  return border.subscribe("enableScript", callback);
+  stopScript(uuid: string) {
+    return this.do("stopScript", uuid);
+  }
 }

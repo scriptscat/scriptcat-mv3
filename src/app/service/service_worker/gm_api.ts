@@ -44,7 +44,7 @@ export default class GMApi {
     this.logger.trace("GM API request", { api: data.api, uuid: data.uuid, param: data.params });
     const api = PermissionVerify.apis.get(data.api);
     if (!api) {
-      return Promise.reject(new Error("api is not found"));
+      return Promise.reject(new Error("gm api is not found"));
     }
     const req = await this.parseRequest(data, { tabId: 0 });
     try {

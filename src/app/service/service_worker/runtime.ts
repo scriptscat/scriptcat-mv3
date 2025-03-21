@@ -1,9 +1,11 @@
 import { MessageQueue } from "@Packages/message/message_queue";
-import { ScriptEnableCallbackValue } from "./client";
 import { Group, MessageSend } from "@Packages/message/server";
 import { Script, SCRIPT_STATUS_ENABLE, SCRIPT_TYPE_NORMAL, ScriptAndCode, ScriptDAO } from "@App/app/repo/scripts";
 import { ValueService } from "./value";
 import GMApi from "./gm_api";
+import { subscribeScriptEnable } from "../queue";
+import { ScriptService } from "./script";
+import { runScript, stopScript } from "../offscreen/client";
 
 export class RuntimeService {
   scriptDAO: ScriptDAO = new ScriptDAO();
@@ -12,12 +14,13 @@ export class RuntimeService {
     private group: Group,
     private sender: MessageSend,
     private mq: MessageQueue,
-    private value: ValueService
+    private value: ValueService,
+    private script: ScriptService
   ) {}
 
   async init() {
     // 监听脚本开启
-    this.mq.addListener("enableScript", async (data: ScriptEnableCallbackValue) => {
+    subscribeScriptEnable(this.mq, async (data) => {
       const script = await this.scriptDAO.getAndCode(data.uuid);
       if (!script) {
         return;
@@ -44,7 +47,7 @@ export class RuntimeService {
       this.mq.publish("enableScript", { uuid: script.uuid, enable: true });
     });
     // 监听offscreen环境初始化, 初始化完成后, 再将后台脚本运行起来
-    this.mq.addListener("preparationOffscreen", () => {
+    this.mq.subscribe("preparationOffscreen", () => {
       list.forEach((script) => {
         if (script.status !== SCRIPT_STATUS_ENABLE || script.type === SCRIPT_TYPE_NORMAL) {
           return;
@@ -56,6 +59,24 @@ export class RuntimeService {
     // 启动gm api
     const gmApi = new GMApi(this.group, this.sender, this.value);
     gmApi.start();
+
+    this.group.on("stopScript", this.stopScript.bind(this));
+    this.group.on("runScript", this.runScript.bind(this));
+  }
+
+  // 停止脚本
+  stopScript(uuid: string) {
+    return stopScript(this.sender, uuid);
+  }
+
+  // 运行脚本
+  async runScript(uuid: string) {
+    const script = await this.scriptDAO.get(uuid);
+    if (!script) {
+      return;
+    }
+    const res = await this.script.buildScriptRunResource(script);
+    return runScript(this.sender, res);
   }
 
   registryPageScript(script: ScriptAndCode) {

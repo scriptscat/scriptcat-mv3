@@ -55,8 +55,8 @@ async function main() {
   });
   loggerCore.logger().debug("service worker start");
   // 初始化管理器
-  const server = new Server(new ExtensionMessage());
-  const manager = new ServiceWorkerManager(server, new MessageQueue(server), new ServiceWorkerMessageSend());
+  const server = new Server("serviceWorker", new ExtensionMessage());
+  const manager = new ServiceWorkerManager(server, new MessageQueue(), new ServiceWorkerMessageSend());
   manager.initManager();
   // 初始化沙盒环境
   await setupOffscreenDocument();

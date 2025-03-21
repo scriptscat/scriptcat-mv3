@@ -1,12 +1,12 @@
 import { forwardMessage, MessageSend, Server } from "@Packages/message/server";
 import { ScriptService } from "./script";
-import { Broker } from "@Packages/message/message_queue";
 import { Logger, LoggerDAO } from "@App/app/repo/logger";
 import { WindowMessage } from "@Packages/message/window_message";
 import { ExtensionMessageSend } from "@Packages/message/extension_message";
 import { ServiceWorkerClient } from "../service_worker/client";
 import { sendMessage } from "@Packages/message/client";
 import GMApi from "./gm_api";
+import { MessageQueue } from "@Packages/message/message_queue";
 
 // offscreen环境的管理器
 export class OffscreenManager {
@@ -14,9 +14,9 @@ export class OffscreenManager {
 
   private windowMessage = new WindowMessage(window, sandbox, true);
 
-  private windowApi: Server = new Server(this.windowMessage);
+  private windowApi: Server = new Server("offscreen", this.windowMessage);
 
-  private broker: Broker = new Broker(this.extensionMessage);
+  private messageQueue: MessageQueue = new MessageQueue();
 
   private serviceWorker = new ServiceWorkerClient(this.extensionMessage);
 
@@ -31,7 +31,7 @@ export class OffscreenManager {
   }
 
   sendMessageToServiceWorker(data: { action: string; data: any }) {
-    return sendMessage(this.extensionMessage, data.action, data.data);
+    return sendMessage(this.extensionMessage, "serviceWorker/" + data.action, data.data);
   }
 
   async initManager() {
@@ -39,10 +39,17 @@ export class OffscreenManager {
     this.windowApi.on("logger", this.logger.bind(this));
     this.windowApi.on("preparationSandbox", this.preparationSandbox.bind(this));
     this.windowApi.on("sendMessageToServiceWorker", this.sendMessageToServiceWorker.bind(this));
-    const script = new ScriptService(this.extensionMessage, this.windowMessage, this.broker);
+    const script = new ScriptService(
+      this.windowApi.group("script"),
+      this.extensionMessage,
+      this.windowMessage,
+      this.messageQueue
+    );
     script.init();
-    // 转发gm api请求
-    forwardMessage("runtime/gmApi", this.windowApi, this.extensionMessage);
+    // 转发从sandbox来的gm api请求
+    forwardMessage("serviceWorker", "runtime/gmApi", this.windowApi, this.extensionMessage);
+    // 转发message queue请求
+
     const gmApi = new GMApi(this.windowApi.group("gmApi"));
     gmApi.init();
 

@@ -269,18 +269,32 @@ export class Runtime {
     }
   }
 
-  stopScript(uuid: string) {
+  async stopScript(uuid: string) {
     const exec = this.execScripts.get(uuid);
     if (!exec) {
+      proxyUpdateRunStatus(this.windowMessage, { uuid: uuid, runStatus: SCRIPT_RUN_STATUS_COMPLETE });
       return Promise.resolve(false);
     }
     exec.stop();
     this.execScripts.delete(uuid);
+    proxyUpdateRunStatus(this.windowMessage, { uuid: uuid, runStatus: SCRIPT_RUN_STATUS_COMPLETE });
     return Promise.resolve(true);
+  }
+
+  async runScript(script: ScriptRunResouce) {
+    console.log("runScript", script);
+    const exec = this.execScripts.get(script.uuid);
+    // 如果正在运行,先释放
+    if (exec) {
+      await this.stopScript(script.uuid);
+    }
+    return this.execScript(script, true);
   }
 
   init() {
     this.api.on("enableScript", this.enableScript.bind(this));
     this.api.on("disableScript", this.disableScript.bind(this));
+    this.api.on("runScript", this.runScript.bind(this));
+    this.api.on("stopScript", this.stopScript.bind(this));
   }
 }

@@ -3,7 +3,6 @@ import Logger from "@App/app/logger/logger";
 import { Script, ScriptDAO } from "@App/app/repo/scripts";
 import { ValueDAO } from "@App/app/repo/value";
 import { storageKey } from "@App/runtime/utils";
-import { MessageQueue } from "@Packages/message/message_queue";
 import { Group } from "@Packages/message/server";
 
 export class ValueService {
@@ -11,10 +10,7 @@ export class ValueService {
   scriptDAO: ScriptDAO = new ScriptDAO();
   valueDAO: ValueDAO = new ValueDAO();
 
-  constructor(
-    private group: Group,
-    private mq: MessageQueue
-  ) {
+  constructor(private group: Group) {
     this.logger = LoggerCore.logger().with({ service: "value" });
   }
 

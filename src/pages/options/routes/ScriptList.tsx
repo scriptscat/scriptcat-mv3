@@ -79,12 +79,14 @@ import {
   selectScripts,
   sortScript,
   upsertScript,
+  requestStopScript,
+  requestRunScript,
 } from "@App/pages/store/features/script";
 import { selectScriptListColumnWidth } from "@App/pages/store/features/setting";
-import { Broker } from "@Packages/message/message_queue";
-import { subscribeScriptDelete, subscribeScriptInstall } from "@App/app/service/service_worker/client";
-import { ExtensionMessageSend } from "@Packages/message/extension_message";
-import { MessageConnect } from "@Packages/message/server";
+import { MessageQueue, Unsubscribe } from "@Packages/message/message_queue";
+import { subscribeScriptDelete, subscribeScriptInstall, subscribeScriptRunStatus } from "@App/app/service/queue";
+import { RuntimeClient } from "@App/app/service/service_worker/client";
+import { ExtensionMessage, ExtensionMessageSend } from "@Packages/message/extension_message";
 
 type ListType = Script & { loading?: boolean };
 
@@ -105,43 +107,10 @@ function ScriptList() {
   const [action, setAction] = useState("");
   const [select, setSelect] = useState<Script[]>([]);
   const [selectColumn, setSelectColumn] = useState(0);
-
   const { t } = useTranslation();
 
   useEffect(() => {
     dispatch(fetchAndSortScriptList());
-    // 监听脚本安装/运行
-    const msg = new ExtensionMessageSend();
-    const border = new Broker(msg);
-    const subCon: MessageConnect[] = [];
-
-    subscribeScriptInstall(border, (message) => {
-      dispatch(upsertScript(message.script));
-    }).then((con) => subCon.push(con));
-
-    subscribeScriptDelete(border, (message) => {
-      dispatch(deleteScript(message.uuid));
-    }).then((con) => subCon.push(con));
-
-    return () => {
-      subCon.forEach((con) => {
-        con.disconnect();
-      });
-    };
-    // const channel = runtimeCtrl.watchRunStatus();
-    // channel.setHandler(([id, status]: any) => {
-    //   setScriptList((list) => {
-    //     return list.map((item) => {
-    //       if (item.id === id) {
-    //         item.runStatus = status;
-    //       }
-    //       return item;
-    //     });
-    //   });
-    // });
-    // return () => {
-    //   channel.disChannel();
-    // };
   }, [dispatch]);
 
   const columns: ColumnProps[] = [
@@ -314,7 +283,7 @@ function ScriptList() {
         if (item.type === SCRIPT_TYPE_BACKGROUND) {
           tooltip = t("background_script_tooltip");
         } else {
-          tooltip = `${t("scheduled_script_tooltip")} ${nextTime(item.metadata.crontab[0])}`;
+          tooltip = `${t("scheduled_script_tooltip")} ${nextTime(item.metadata!.crontab![0])}`;
         }
         return (
           <Tooltip content={tooltip}>
@@ -532,19 +501,28 @@ function ScriptList() {
                 onClick={async () => {
                   if (item.runStatus === SCRIPT_RUN_STATUS_RUNNING) {
                     // Stop script
+                    Message.loading({
+                      id: "script-stop",
+                      content: t("stopping_script"),
+                    });
+                    await dispatch(requestStopScript(item.uuid));
+                    Message.success({
+                      id: "script-stop",
+                      content: t("script_stopped"),
+                      duration: 3000,
+                    });
+                  } else {
+                    Message.loading({
+                      id: "script-run",
+                      content: t("starting_script"),
+                    });
+                    await dispatch(requestRunScript(item.uuid));
+                    Message.success({
+                      id: "script-run",
+                      content: t("script_started"),
+                      duration: 3000,
+                    });
                   }
-                  console.log(item.runStatus);
-                  // Stop script
-                  // Message.loading({
-                  //   id: "script-stop",
-                  //   content: t("stopping_script"),
-                  // });
-                  // await runtimeCtrl.stopScript(item.id);
-                  // Message.success({
-                  //   id: "script-stop",
-                  //   content: t("script_stopped"),
-                  //   duration: 3000,
-                  // });
                 }}
                 style={{
                   color: "var(--color-text-2)",

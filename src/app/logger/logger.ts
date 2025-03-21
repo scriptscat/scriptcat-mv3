@@ -50,7 +50,7 @@ export default class Logger {
           console.warn(msg);
           break;
         case "trace":
-          console.trace(msg);
+          console.info(msg);
           break;
         default:
           console.info(msg);
