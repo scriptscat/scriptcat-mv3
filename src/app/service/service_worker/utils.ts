@@ -4,3 +4,8 @@ export function isExtensionRequest(details: chrome.webRequest.ResourceRequest & 
     (details.originUrl && details.originUrl.startsWith(chrome.runtime.getURL("")))
   );
 }
+
+// 处理油猴的match和include为chrome的matches
+export function dealMatches(matches: string[]) {
+  return matches;
+}

@@ -37,9 +37,9 @@ export default class LoggerCore {
     this.writer = config.writer;
     this.level = config.level || this.level;
     this.labels = config.labels || {};
-    // 获取日志debug等级, 如果是开发环境, 则默认为trace
+    // 获取日志debug等级, 如果是开发环境, 则默认为debug
     if (process.env.NODE_ENV === "development") {
-      this.debug = "trace";
+      this.debug = "debug";
     }
     if (!LoggerCore.instance) {
       LoggerCore.instance = this;

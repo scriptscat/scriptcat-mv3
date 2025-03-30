@@ -1,16 +1,16 @@
-import { WindowMessage } from "@Packages/message/window_message";
 import { LogLabel, LogLevel, Writer } from "./core";
+import { MessageSend } from "@Packages/message/server";
 
 // 通过通讯机制写入日志
 export default class MessageWriter implements Writer {
-  connect: WindowMessage;
+  send: MessageSend;
 
-  constructor(connect: WindowMessage) {
-    this.connect = connect;
+  constructor(connect: MessageSend) {
+    this.send = connect;
   }
 
   write(level: LogLevel, message: string, label: LogLabel): void {
-    this.connect.sendMessage({
+    this.send.sendMessage({
       action: "logger",
       data: {
         id: 0,
