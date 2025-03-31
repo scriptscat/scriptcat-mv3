@@ -5,7 +5,7 @@ import { has } from "@App/pkg/utils/lodash";
 import { Message } from "@Packages/message/server";
 
 // 构建脚本运行代码
-export function compileScriptCode(scriptRes: ScriptRunResouce, code: string): string {
+export function compileScriptCode(scriptRes: ScriptRunResouce): string {
   let require = "";
   if (scriptRes.metadata.require) {
     scriptRes.metadata.require.forEach((val) => {
@@ -15,7 +15,7 @@ export function compileScriptCode(scriptRes: ScriptRunResouce, code: string): st
       }
     });
   }
-  code = require + code;
+  const code = require + scriptRes.code;
   return `with (context) return (async ()=>{\n${code}\n//# sourceURL=${chrome.runtime.getURL(
     `/${encodeURI(scriptRes.name)}.user.js`
   )}\n})()`;

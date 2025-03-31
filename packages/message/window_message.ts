@@ -5,7 +5,7 @@ import { Message, MessageConnect, MessageSend } from "./server";
 
 import EventEmitter from "eventemitter3";
 
-interface PostMessage {
+export interface PostMessage {
   postMessage(message: any): void;
 }
 

@@ -273,7 +273,8 @@ export class ScriptService {
     if (!code) {
       throw new Error("code is null");
     }
-    ret.code = compileScriptCode(ret, code.code);
+    ret.code = code.code;
+    ret.code = compileScriptCode(ret);
 
     return Promise.resolve(ret);
   }

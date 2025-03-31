@@ -1,15 +1,28 @@
 import { MessageQueue } from "@Packages/message/message_queue";
 import { Group, MessageSend } from "@Packages/message/server";
-import { Script, SCRIPT_STATUS_ENABLE, SCRIPT_TYPE_NORMAL, ScriptAndCode, ScriptDAO } from "@App/app/repo/scripts";
+import {
+  Script,
+  SCRIPT_STATUS_ENABLE,
+  SCRIPT_TYPE_NORMAL,
+  ScriptDAO,
+  ScriptRunResouce,
+} from "@App/app/repo/scripts";
 import { ValueService } from "./value";
 import GMApi from "./gm_api";
-import { subscribeScriptEnable } from "../queue";
+import { subscribeScriptDelete, subscribeScriptEnable, subscribeScriptInstall } from "../queue";
 import { ScriptService } from "./script";
 import { runScript, stopScript } from "../offscreen/client";
-import { dealMatches } from "./utils";
+import { dealMatches, getRunAt } from "./utils";
+import { randomString } from "@App/pkg/utils/utils";
+import { compileInjectScript, compileScriptCode } from "@App/runtime/content/utils";
 
 export class RuntimeService {
   scriptDAO: ScriptDAO = new ScriptDAO();
+
+  scriptFlag: string = randomString(8);
+
+  // 运行中的页面脚本
+  runningPageScript = new Map<string, ScriptRunResouce>();
 
   constructor(
     private group: Group,
@@ -20,6 +33,8 @@ export class RuntimeService {
   ) {}
 
   async init() {
+    // 读取inject.js注入页面
+    this.registerInjectScript();
     // 监听脚本开启
     subscribeScriptEnable(this.mq, async (data) => {
       const script = await this.scriptDAO.getAndCode(data.uuid);
@@ -35,6 +50,26 @@ export class RuntimeService {
         } else {
           this.unregistryPageScript(script);
         }
+      }
+    });
+    // 监听脚本安装
+    subscribeScriptInstall(this.mq, async (data) => {
+      const script = await this.scriptDAO.get(data.script.uuid);
+      if (!script) {
+        return;
+      }
+      if (script.type === SCRIPT_TYPE_NORMAL) {
+        this.registryPageScript(script);
+      }
+    });
+    // 监听脚本删除
+    subscribeScriptDelete(this.mq, async (data) => {
+      const script = await this.scriptDAO.get(data.uuid);
+      if (!script) {
+        return;
+      }
+      if (script.type === SCRIPT_TYPE_NORMAL) {
+        this.unregistryPageScript(script);
       }
     });
 
@@ -63,6 +98,11 @@ export class RuntimeService {
 
     this.group.on("stopScript", this.stopScript.bind(this));
     this.group.on("runScript", this.runScript.bind(this));
+    this.group.on("pageLoad", this.pageLoad.bind(this));
+  }
+
+  pageLoad() {
+    return Promise.resolve({ flag: this.scriptFlag });
   }
 
   // 停止脚本
@@ -80,16 +120,41 @@ export class RuntimeService {
     return runScript(this.sender, res);
   }
 
-  registryPageScript(script: ScriptAndCode) {
-    console.log(script);
+  registerInjectScript() {
+    fetch("inject.js")
+      .then((res) => res.text())
+      .then((injectJs) => {
+        // 替换ScriptFlag
+        const code = `(function (ScriptFlag) {\n${injectJs}\n})('${this.scriptFlag}')`;
+        chrome.userScripts.register([
+          {
+            id: "scriptcat-inject",
+            js: [{ code }],
+            matches: ["<all_urls>"],
+            allFrames: true,
+            world: "MAIN",
+            runAt: "document_start",
+          },
+        ]);
+      });
+  }
+
+  async registryPageScript(script: Script) {
     const matches = script.metadata["match"];
     if (!matches) {
       return;
     }
+    const scriptRes = await this.script.buildScriptRunResource(script);
+
+    scriptRes.code = compileScriptCode(scriptRes);
+    scriptRes.code = compileInjectScript(scriptRes);
+
+    this.runningPageScript.set(scriptRes.uuid, scriptRes);
+
     matches.push(...(script.metadata["include"] || []));
     const registerScript: chrome.userScripts.RegisteredUserScript = {
-      id: script.uuid,
-      js: [{ code: script.code }],
+      id: scriptRes.uuid,
+      js: [{ code: scriptRes.code }],
       matches: dealMatches(matches),
       world: "MAIN",
     };
@@ -102,7 +167,7 @@ export class RuntimeService {
       registerScript.excludeMatches = dealMatches(excludeMatches);
     }
     if (script.metadata["run-at"]) {
-      registerScript.runAt = script.metadata["run-at"][0] as chrome.userScripts.RunAt;
+      registerScript.runAt = getRunAt(script.metadata["run-at"]);
     }
     chrome.userScripts.register([registerScript]);
   }

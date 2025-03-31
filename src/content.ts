@@ -1,24 +1,25 @@
 import LoggerCore from "./app/logger/core";
 import MessageWriter from "./app/logger/message_writer";
-import { SandboxManager } from "./app/service/sandbox";
 import { ExtensionMessageSend } from "@Packages/message/extension_message";
+import { CustomEventMessage } from "@Packages/message/custom_event_message";
+import { RuntimeClient } from "./app/service/service_worker/client";
 import ContentRuntime from "./runtime/content/content";
 
-function main() {
-  // 建立与service_worker页面的连接
-  const msg = new ExtensionMessageSend();
+// 建立与service_worker页面的连接
+const send = new ExtensionMessageSend();
 
-  // 初始化日志组件
-  const loggerCore = new LoggerCore({
-    writer: new MessageWriter(msg),
-    labels: { env: "content" },
-  });
+// 初始化日志组件
+const loggerCore = new LoggerCore({
+  writer: new MessageWriter(send),
+  labels: { env: "content" },
+});
+
+const client = new RuntimeClient(send);
+client.pageLoad().then((data) => {
   loggerCore.logger().debug("content start");
-
+  console.log("content", data);
+  const msg = new CustomEventMessage(data.flag, true);
   // 初始化运行环境
-  const contentMessage = new MessageContent(scriptFlag, true);
-  const runtime = new ContentRuntime(contentMessage, internalMessage);
-  runtime.start();
-}
-
-main();
+  const runtime = new ContentRuntime(send, msg);
+  runtime.start(data.scripts);
+});

@@ -6,7 +6,7 @@ import { ResourceClient, ScriptClient, ValueClient } from "../service_worker/cli
 import { SCRIPT_STATUS_ENABLE, SCRIPT_TYPE_NORMAL, ScriptRunResouce } from "@App/app/repo/scripts";
 import { disableScript, enableScript, runScript, stopScript } from "../sandbox/client";
 import { Group, MessageSend } from "@Packages/message/server";
-import { subscribeScriptEnable, subscribeScriptInstall } from "../queue";
+import { subscribeScriptDelete, subscribeScriptEnable, subscribeScriptInstall } from "../queue";
 
 export class ScriptService {
   logger: Logger;
@@ -34,7 +34,6 @@ export class ScriptService {
 
   async init() {
     subscribeScriptEnable(this.messageQueue, async (data) => {
-      console.log("subscribeScriptEnable", data);
       const script = await this.scriptClient.info(data.uuid);
       if (script.type === SCRIPT_TYPE_NORMAL) {
         return;
@@ -48,7 +47,6 @@ export class ScriptService {
       }
     });
     subscribeScriptInstall(this.messageQueue, async (data) => {
-      console.log("subscribeScriptInstall", data);
       // 判断是开启还是关闭
       if (data.script.status === SCRIPT_STATUS_ENABLE) {
         // 构造脚本运行资源,发送给沙盒运行
@@ -57,6 +55,9 @@ export class ScriptService {
         // 发送给沙盒停止
         disableScript(this.windowMessage, data.script.uuid);
       }
+    });
+    subscribeScriptDelete(this.messageQueue, async (data) => {
+      disableScript(this.windowMessage, data.uuid);
     });
 
     this.group.on("runScript", this.runScript.bind(this));

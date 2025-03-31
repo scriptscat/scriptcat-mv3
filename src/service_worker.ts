@@ -55,7 +55,8 @@ async function main() {
   });
   loggerCore.logger().debug("service worker start");
   // 初始化管理器
-  const server = new Server("serviceWorker", new ExtensionMessage());
+  const message = new ExtensionMessage();
+  const server = new Server("serviceWorker", message);
   const manager = new ServiceWorkerManager(server, new MessageQueue(), new ServiceWorkerMessageSend());
   manager.initManager();
   // 初始化沙盒环境

@@ -28,6 +28,8 @@ export default defineConfig({
     service_worker: `${src}/service_worker.ts`,
     offscreen: `${src}/offscreen.ts`,
     sandbox: `${src}/sandbox.ts`,
+    content: `${src}/content.ts`,
+    inject: `${src}/inject.ts`,
     popup: `${src}/pages/popup/main.tsx`,
     install: `${src}/pages/install/main.tsx`,
     options: `${src}/pages/options/main.tsx`,
