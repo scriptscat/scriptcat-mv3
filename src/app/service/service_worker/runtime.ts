@@ -1,12 +1,6 @@
 import { MessageQueue } from "@Packages/message/message_queue";
 import { Group, MessageSend } from "@Packages/message/server";
-import {
-  Script,
-  SCRIPT_STATUS_ENABLE,
-  SCRIPT_TYPE_NORMAL,
-  ScriptDAO,
-  ScriptRunResouce,
-} from "@App/app/repo/scripts";
+import { Script, SCRIPT_STATUS_ENABLE, SCRIPT_TYPE_NORMAL, ScriptDAO, ScriptRunResouce } from "@App/app/repo/scripts";
 import { ValueService } from "./value";
 import GMApi from "./gm_api";
 import { subscribeScriptDelete, subscribeScriptEnable, subscribeScriptInstall } from "../queue";
@@ -15,11 +9,12 @@ import { runScript, stopScript } from "../offscreen/client";
 import { dealMatches, getRunAt } from "./utils";
 import { randomString } from "@App/pkg/utils/utils";
 import { compileInjectScript, compileScriptCode } from "@App/runtime/content/utils";
+import Cache from "@App/app/cache";
 
 export class RuntimeService {
   scriptDAO: ScriptDAO = new ScriptDAO();
 
-  scriptFlag: string = randomString(8);
+  scriptFlag: string = "";
 
   // 运行中的页面脚本
   runningPageScript = new Map<string, ScriptRunResouce>();
@@ -33,6 +28,9 @@ export class RuntimeService {
   ) {}
 
   async init() {
+    this.scriptFlag = await Cache.getInstance().getOrSet("scriptInjectFlag", () => {
+      return Promise.resolve(randomString(16));
+    });
     // 读取inject.js注入页面
     this.registerInjectScript();
     // 监听脚本开启

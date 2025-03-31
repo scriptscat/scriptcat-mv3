@@ -217,3 +217,13 @@ export function sleep(time: number) {
     setTimeout(resolve, time);
   });
 }
+
+// 使service_worker长时间存活
+export async function waitUntil(promise: Promise<any>) {
+  const keepAlive = setInterval(chrome.runtime.getPlatformInfo, 25 * 1000);
+  try {
+    await promise;
+  } finally {
+    clearInterval(keepAlive);
+  }
+}
