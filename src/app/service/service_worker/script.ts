@@ -279,7 +279,7 @@ export class ScriptService {
     return Promise.resolve(ret);
   }
 
-  async init() {
+  init() {
     this.listenerScriptInstall();
 
     this.group.on("getInstallInfo", this.getInstallInfo);

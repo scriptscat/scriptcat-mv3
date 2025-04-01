@@ -15,11 +15,6 @@ import { dealMatches } from "@App/pkg/utils/match";
 export class RuntimeService {
   scriptDAO: ScriptDAO = new ScriptDAO();
 
-  scriptFlag: string = "";
-
-  // 运行中的页面脚本
-  runningPageScript = new Map<string, ScriptRunResouce>();
-
   constructor(
     private group: Group,
     private sender: MessageSend,
@@ -29,9 +24,14 @@ export class RuntimeService {
   ) {}
 
   async init() {
-    this.scriptFlag = await Cache.getInstance().getOrSet("scriptInjectFlag", () => {
-      return Promise.resolve(randomString(16));
-    });
+    // 启动gm api
+    const gmApi = new GMApi(this.group, this.sender, this.value);
+    gmApi.start();
+
+    this.group.on("stopScript", this.stopScript.bind(this));
+    this.group.on("runScript", this.runScript.bind(this));
+    this.group.on("pageLoad", this.pageLoad.bind(this));
+
     // 读取inject.js注入页面
     this.registerInjectScript();
     // 监听脚本开启
@@ -90,21 +90,20 @@ export class RuntimeService {
         this.mq.publish("enableScript", { uuid: script.uuid, enable: true });
       });
     });
-
-    // 启动gm api
-    const gmApi = new GMApi(this.group, this.sender, this.value);
-    gmApi.start();
-
-    this.group.on("stopScript", this.stopScript.bind(this));
-    this.group.on("runScript", this.runScript.bind(this));
-    this.group.on("pageLoad", this.pageLoad.bind(this));
   }
 
-  pageLoad(_, sender: GetSender) {
+  scriptFlag() {
+    return Cache.getInstance().getOrSet("scriptInjectFlag", () => {
+      return Promise.resolve(randomString(16));
+    });
+  }
+
+  async pageLoad(_, sender: GetSender) {
+    const scriptFlag = await this.scriptFlag();
     const chromeSender = sender.getSender() as chrome.runtime.MessageSender;
     // 匹配当前页面的脚本
 
-    return Promise.resolve({ flag: this.scriptFlag });
+    return Promise.resolve({ flag: scriptFlag });
   }
 
   // 停止脚本
@@ -127,9 +126,9 @@ export class RuntimeService {
       if (res.length == 0) {
         fetch("inject.js")
           .then((res) => res.text())
-          .then((injectJs) => {
+          .then(async (injectJs) => {
             // 替换ScriptFlag
-            const code = `(function (ScriptFlag) {\n${injectJs}\n})('${this.scriptFlag}')`;
+            const code = `(function (ScriptFlag) {\n${injectJs}\n})('${await this.scriptFlag()}')`;
             chrome.userScripts.register([
               {
                 id: "scriptcat-inject",
@@ -166,8 +165,6 @@ export class RuntimeService {
 
     scriptRes.code = compileScriptCode(scriptRes);
     scriptRes.code = compileInjectScript(scriptRes);
-
-    this.runningPageScript.set(scriptRes.uuid, scriptRes);
 
     matches.push(...(script.metadata["include"] || []));
     const registerScript: chrome.userScripts.RegisteredUserScript = {

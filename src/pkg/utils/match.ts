@@ -44,8 +44,10 @@ export function dealMatches(matches: string[]) {
           // 删除开头的*号
           url.host = url.host.slice(1);
         }
+      } else if (url.host.endsWith("*")) {
+        url.host = url.host.slice(0, -1);
       }
-      result.push(`${url.scheme}://${url.host}${url.path}` + (url.search ? "?" + url.search : ""));
+      result.push(`${url.scheme}://${url.host}/${url.path}` + (url.search ? "?" + url.search : ""));
     }
   }
   return result;
