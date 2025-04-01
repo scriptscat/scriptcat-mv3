@@ -1,4 +1,4 @@
-import { Message, MessageConnect, MessageSend } from "./server";
+import { Message, MessageConnect, MessageSend, MessageSender } from "./server";
 
 export class ExtensionMessageSend implements MessageSend {
   constructor() {}
@@ -21,6 +21,28 @@ export class ExtensionMessageSend implements MessageSend {
   }
 }
 
+// 由于service worker的限制，特殊处理chrome.runtime.onConnect/Message
+export class ServiceWorkerMessage extends ExtensionMessageSend implements Message {
+  onConnect(callback: (data: any, con: MessageConnect) => void): void {
+    chrome.runtime.onConnect.addListener((port) => {
+      const handler = (msg: any) => {
+        port.onMessage.removeListener(handler);
+        callback(msg, new ExtensionMessageConnect(port));
+      };
+      port.onMessage.addListener(handler);
+    });
+  }
+
+  onMessage(callback: (data: any, sendResponse: (data: any) => void, sender: MessageSender) => void): void {
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+      if (msg.action === "messageQueue") {
+        return false;
+      }
+      return callback(msg, sendResponse, sender);
+    });
+  }
+}
+
 export class ExtensionMessage extends ExtensionMessageSend implements Message {
   onConnect(callback: (data: any, con: MessageConnect) => void) {
     chrome.runtime.onConnect.addListener((port) => {
@@ -33,12 +55,12 @@ export class ExtensionMessage extends ExtensionMessageSend implements Message {
   }
 
   // 注意chrome.runtime.onMessage.addListener的回调函数需要返回true才能处理异步请求
-  onMessage(callback: (data: any, sendResponse: (data: any) => void) => void) {
+  onMessage(callback: (data: any, sendResponse: (data: any) => void, sender: MessageSender) => void): void {
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (msg.action === "messageQueue") {
         return false;
       }
-      return callback(msg, sendResponse);
+      return callback(msg, sendResponse, sender);
     });
   }
 }

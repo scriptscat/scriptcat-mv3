@@ -1,7 +1,7 @@
 import LoggerCore from "@App/app/logger/core";
 import Logger from "@App/app/logger/logger";
 import { Script, ScriptDAO } from "@App/app/repo/scripts";
-import { Group, MessageConnect, MessageSend, MessageSender } from "@Packages/message/server";
+import { GetSender, Group, MessageConnect, MessageSend, MessageSender } from "@Packages/message/server";
 import { ValueService } from "@App/app/service/service_worker/value";
 import PermissionVerify from "./permission_verify";
 import { connect } from "@Packages/message/client";
@@ -40,7 +40,7 @@ export default class GMApi {
     this.logger = LoggerCore.logger().with({ service: "runtime/gm_api" });
   }
 
-  async handlerRequest(data: MessageRequest, con: MessageConnect | null) {
+  async handlerRequest(data: MessageRequest, con: GetSender) {
     this.logger.trace("GM API request", { api: data.api, uuid: data.uuid, param: data.params });
     const api = PermissionVerify.apis.get(data.api);
     if (!api) {
@@ -53,7 +53,7 @@ export default class GMApi {
       this.logger.error("verify error", { api: data.api }, Logger.E(e));
       return Promise.reject(e);
     }
-    return api.api.call(this, req, con);
+    return api.api.call(this, req, con.getConnect());
   }
 
   // 解析请求

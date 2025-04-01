@@ -2,7 +2,7 @@ import LoggerCore from "@App/app/logger/core";
 
 export interface Message extends MessageSend {
   onConnect(callback: (data: any, con: MessageConnect) => void): void;
-  onMessage(callback: (data: any, sendResponse: (data: any) => void) => void): void;
+  onMessage(callback: (data: any, sendResponse: (data: any) => void, sender?: MessageSender) => void): void;
 }
 
 export interface MessageSend {
@@ -17,11 +17,21 @@ export interface MessageConnect {
   onDisconnect(callback: () => void): void;
 }
 
-export type MessageSender = {
-  tabId: number;
-};
+export type MessageSender = any;
 
-export type ApiFunction = (params: any, con: MessageConnect | null) => Promise<any> | void;
+export class GetSender {
+  constructor(private sender: MessageConnect | MessageSender) {}
+
+  getSender(): MessageSender {
+    return this.sender as MessageSender;
+  }
+
+  getConnect(): MessageConnect {
+    return this.sender as MessageConnect;
+  }
+}
+
+export type ApiFunction = (params: any, con: GetSender) => Promise<any> | void;
 
 export class Server {
   private apiFunctionMap: Map<string, ApiFunction> = new Map();
@@ -37,10 +47,10 @@ export class Server {
       return false;
     });
 
-    message.onMessage((msg: { action: string; data: any }, sendResponse) => {
+    message.onMessage((msg: { action: string; data: any }, sendResponse, sender) => {
       this.logger.trace("server onMessage", { msg: msg as any });
       if (msg.action.startsWith(prefix)) {
-        return this.messageHandle(msg.action.slice(prefix.length + 1), msg.data, sendResponse);
+        return this.messageHandle(msg.action.slice(prefix.length + 1), msg.data, sendResponse, sender);
       }
       return false;
     });
@@ -57,15 +67,15 @@ export class Server {
   private connectHandle(msg: string, params: any, con: MessageConnect) {
     const func = this.apiFunctionMap.get(msg);
     if (func) {
-      func(params, con);
+      func(params, new GetSender(con));
     }
   }
 
-  private messageHandle(msg: string, params: any, sendResponse: (response: any) => void) {
+  private messageHandle(msg: string, params: any, sendResponse: (response: any) => void, sender?: MessageSender) {
     const func = this.apiFunctionMap.get(msg);
     if (func) {
       try {
-        const ret = func(params, null);
+        const ret = func(params, new GetSender(sender!));
         if (ret instanceof Promise) {
           ret.then((data) => {
             sendResponse({ code: 0, data });
@@ -108,18 +118,19 @@ export function forwardMessage(prefix: string, path: string, from: Server, to: M
   from.on(path, (params, fromCon) => {
     console.log("forwardMessage", path, prefix, params);
     if (fromCon) {
+      const fromConnect = fromCon.getConnect();
       to.connect({ action: prefix + "/" + path, data: params }).then((toCon) => {
-        fromCon.onMessage((data) => {
+        fromConnect.onMessage((data) => {
           toCon.sendMessage(data);
         });
         toCon.onMessage((data) => {
-          fromCon.sendMessage(data);
+          fromConnect.sendMessage(data);
         });
-        fromCon.onDisconnect(() => {
+        fromConnect.onDisconnect(() => {
           toCon.disconnect();
         });
         toCon.onDisconnect(() => {
-          fromCon.disconnect();
+          fromConnect.disconnect();
         });
       });
     } else {

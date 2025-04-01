@@ -5,11 +5,6 @@ export function isExtensionRequest(details: chrome.webRequest.ResourceRequest & 
   );
 }
 
-// 处理油猴的match和include为chrome的matches
-export function dealMatches(matches: string[]) {
-  return matches;
-}
-
 export function getRunAt(runAts: string[]): chrome.userScripts.RunAt {
   if (runAts.length === 0) {
     return "document_idle";

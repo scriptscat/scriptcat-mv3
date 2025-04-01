@@ -1,15 +1,16 @@
 import { MessageQueue } from "@Packages/message/message_queue";
-import { Group, MessageSend } from "@Packages/message/server";
+import { GetSender, Group, MessageSend } from "@Packages/message/server";
 import { Script, SCRIPT_STATUS_ENABLE, SCRIPT_TYPE_NORMAL, ScriptDAO, ScriptRunResouce } from "@App/app/repo/scripts";
 import { ValueService } from "./value";
 import GMApi from "./gm_api";
 import { subscribeScriptDelete, subscribeScriptEnable, subscribeScriptInstall } from "../queue";
 import { ScriptService } from "./script";
 import { runScript, stopScript } from "../offscreen/client";
-import { dealMatches, getRunAt } from "./utils";
+import { getRunAt } from "./utils";
 import { randomString } from "@App/pkg/utils/utils";
 import { compileInjectScript, compileScriptCode } from "@App/runtime/content/utils";
 import Cache from "@App/app/cache";
+import { dealMatches } from "@App/pkg/utils/match";
 
 export class RuntimeService {
   scriptDAO: ScriptDAO = new ScriptDAO();
@@ -99,7 +100,10 @@ export class RuntimeService {
     this.group.on("pageLoad", this.pageLoad.bind(this));
   }
 
-  pageLoad() {
+  pageLoad(_, sender: GetSender) {
+    const chromeSender = sender.getSender() as chrome.runtime.MessageSender;
+    // 匹配当前页面的脚本
+
     return Promise.resolve({ flag: this.scriptFlag });
   }
 
@@ -119,25 +123,41 @@ export class RuntimeService {
   }
 
   registerInjectScript() {
-    fetch("inject.js")
-      .then((res) => res.text())
-      .then((injectJs) => {
-        // 替换ScriptFlag
-        const code = `(function (ScriptFlag) {\n${injectJs}\n})('${this.scriptFlag}')`;
-        chrome.userScripts.register([
+    chrome.userScripts.getScripts({ ids: ["scriptcat-inject"] }).then((res) => {
+      if (res.length == 0) {
+        fetch("inject.js")
+          .then((res) => res.text())
+          .then((injectJs) => {
+            // 替换ScriptFlag
+            const code = `(function (ScriptFlag) {\n${injectJs}\n})('${this.scriptFlag}')`;
+            chrome.userScripts.register([
+              {
+                id: "scriptcat-inject",
+                js: [{ code }],
+                matches: ["<all_urls>"],
+                allFrames: true,
+                world: "MAIN",
+                runAt: "document_start",
+              },
+            ]);
+          });
+        chrome.scripting.registerContentScripts([
           {
-            id: "scriptcat-inject",
-            js: [{ code }],
+            id: "scriptcat-content",
+            js: ["src/content.js"],
             matches: ["<all_urls>"],
             allFrames: true,
-            world: "MAIN",
             runAt: "document_start",
           },
         ]);
-      });
+      }
+    });
   }
 
   async registryPageScript(script: Script) {
+    if (await Cache.getInstance().has("registryScript:" + script.uuid)) {
+      return;
+    }
     const matches = script.metadata["match"];
     if (!matches) {
       return;
@@ -167,12 +187,21 @@ export class RuntimeService {
     if (script.metadata["run-at"]) {
       registerScript.runAt = getRunAt(script.metadata["run-at"]);
     }
-    chrome.userScripts.register([registerScript]);
+    chrome.userScripts.register([registerScript], () => {
+      Cache.getInstance().set("registryScript:" + script.uuid, true);
+    });
+    // 标记为已注册
   }
 
   unregistryPageScript(script: Script) {
-    chrome.userScripts.unregister({
-      ids: [script.uuid],
-    });
+    chrome.userScripts.unregister(
+      {
+        ids: [script.uuid],
+      },
+      () => {
+        // 删除缓存
+        Cache.getInstance().del("registryScript:" + script.uuid);
+      }
+    );
   }
 }

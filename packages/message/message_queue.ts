@@ -1,5 +1,4 @@
 import EventEmitter from "eventemitter3";
-import Logger from "@App/app/logger/logger";
 import LoggerCore from "@App/app/logger/core";
 
 export type SubscribeCallback = (message: any) => void;
