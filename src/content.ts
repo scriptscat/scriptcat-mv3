@@ -23,3 +23,7 @@ client.pageLoad().then((data) => {
   const runtime = new ContentRuntime(send, msg);
   runtime.start(data.scripts);
 });
+
+chrome.storage.local.get((data) => {
+  console.log(data);
+});
