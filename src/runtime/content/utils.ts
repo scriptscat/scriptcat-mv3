@@ -29,7 +29,9 @@ export function compileScript(code: string): ScriptFunc {
 }
 
 export function compileInjectScript(script: ScriptRunResouce): string {
-  return `window['${script.flag}']=function(context,GM_info){\n${script.code}\n}`;
+  return (
+    `console.log(window,'` + script.flag + `');window['${script.flag}']=function(context,GM_info){\n${script.code}\n}`
+  );
 }
 
 // 设置api依赖

@@ -147,6 +147,7 @@ export class RuntimeService {
             matches: ["<all_urls>"],
             allFrames: true,
             runAt: "document_start",
+            world: "ISOLATED",
           },
         ]);
       }
@@ -185,9 +186,19 @@ export class RuntimeService {
       registerScript.runAt = getRunAt(script.metadata["run-at"]);
     }
     chrome.userScripts.register([registerScript], () => {
+      // 标记为已注册
       Cache.getInstance().set("registryScript:" + script.uuid, true);
     });
-    // 标记为已注册
+    console.log(registerScript);
+    // 把脚本uuid注册到content页面
+    chrome.userScripts.register([
+      {
+        id: "content-" + scriptRes.uuid,
+        js: [{ code: "window.a=1;console.log('window.a',window,window.b)" }],
+        matches: dealMatches(matches),
+        runAt: "document_start",
+      },
+    ]);
   }
 
   unregistryPageScript(script: Script) {
