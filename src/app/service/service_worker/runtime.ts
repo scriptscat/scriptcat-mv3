@@ -183,9 +183,9 @@ export class RuntimeService {
     if (script.metadata["exclude-match"]) {
       const excludeMatches = script.metadata["exclude-match"];
       excludeMatches.push(...(script.metadata["exclude"] || []));
-      const result= dealPatternMatches(excludeMatches);
-      
-      registerScript.excludeMatches =result.patternResult;
+      const result = dealPatternMatches(excludeMatches);
+
+      registerScript.excludeMatches = result.patternResult;
     }
     if (script.metadata["run-at"]) {
       registerScript.runAt = getRunAt(script.metadata["run-at"]);
@@ -194,25 +194,6 @@ export class RuntimeService {
       // 标记为已注册
       Cache.getInstance().set("registryScript:" + script.uuid, true);
     });
-    console.log(registerScript);
-    // 把脚本信息注入到USER_SCRIPT环境中
-    chrome.userScripts.register([
-      {
-        id: "scriptinfo-" + scriptRes.uuid,
-        js: [
-          {
-            code: compileInjectScriptInfo(
-              await this.messageFlag(),
-              scriptRes,
-              await (await fetch("inject_script_info.js")).text()
-            ),
-          },
-        ],
-        matches: dealPatternMatches(matches),
-        runAt: "document_start",
-        world: "USER_SCRIPT",
-      },
-    ]);
   }
 
   unregistryPageScript(script: Script) {
