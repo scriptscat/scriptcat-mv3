@@ -5,10 +5,7 @@ import { Server } from "@Packages/message/server";
 import { InjectRuntime } from "./runtime/content/inject";
 import { ScriptRunResouce } from "./app/repo/scripts";
 
-// 通过flag与content建立通讯,这个ScriptFlag是后端注入时候生成的
-const flag = ScriptFlag;
-
-const msg = new CustomEventMessage(flag, false);
+const msg = new CustomEventMessage(MessageFlag, false);
 
 // 加载logger组件
 const logger = new LoggerCore({

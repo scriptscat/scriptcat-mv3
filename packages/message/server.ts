@@ -39,9 +39,7 @@ export class Server {
   private logger = LoggerCore.getInstance().logger({ service: "messageServer" });
 
   constructor(prefix: string, message: Message) {
-    console.log("constructor", prefix, message);
     message.onConnect((msg: any, con: MessageConnect) => {
-      console.log("onConnect", this.apiFunctionMap, this.apiFunctionMap.size);
       this.logger.trace("server onConnect", { msg });
       if (msg.action.startsWith(prefix)) {
         return this.connectHandle(msg.action.slice(prefix.length + 1), msg.data, con);
@@ -50,7 +48,6 @@ export class Server {
     });
 
     message.onMessage((msg: { action: string; data: any }, sendResponse, sender) => {
-      console.log("onConnect", this.apiFunctionMap, this.apiFunctionMap.size);
       this.logger.trace("server onMessage", { msg: msg as any });
       if (msg.action.startsWith(prefix)) {
         return this.messageHandle(msg.action.slice(prefix.length + 1), msg.data, sendResponse, sender);

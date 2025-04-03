@@ -85,4 +85,8 @@ export class RuntimeClient extends Client {
   pageLoad(): Promise<{ flag: string; scripts: ScriptRunResouce[] }> {
     return this.do("pageLoad");
   }
+
+  scriptLoad(flag: string, uuid: string) {
+    return this.do("scriptLoad", { flag, uuid });
+  }
 }

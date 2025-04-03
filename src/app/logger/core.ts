@@ -12,6 +12,10 @@ export interface Writer {
   write(level: LogLevel, message: string, label: LogLabel): void;
 }
 
+export class EmptyWriter implements Writer {
+  write(): void {}
+}
+
 export default class LoggerCore {
   static instance: LoggerCore;
 

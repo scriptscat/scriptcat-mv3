@@ -10,6 +10,10 @@ export default class ContentRuntime {
   ) {}
 
   start(scripts: ScriptRunResouce[]) {
+    console.log("onMessage");
+    this.msg.onMessage((msg, sendResponse) => {
+      console.log("content onMessage", msg);
+    });
     // 由content到background
     // 转发gmApi消息
     // this.contentMessage.setHandler("gmApi", (action, data) => {

@@ -29,8 +29,18 @@ export function compileScript(code: string): ScriptFunc {
 }
 
 export function compileInjectScript(script: ScriptRunResouce): string {
+  return `window['${script.flag}']=function(context,GM_info){\n${script.code}\n}`;
+}
+
+// 编译注入脚本信息
+export function compileInjectScriptInfo(
+  messageFlag: string,
+  script: ScriptRunResouce,
+  injectScriptInfoCode: string
+): string {
   return (
-    `console.log(window,'` + script.flag + `');window['${script.flag}']=function(context,GM_info){\n${script.code}\n}`
+    `(function (MessageFlag, ScriptFlag, ScriptUuid) {\n${injectScriptInfoCode}\n})` +
+    `('${messageFlag}', '${script.flag}', '${script.uuid}');`
   );
 }
 

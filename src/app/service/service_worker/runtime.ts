@@ -8,9 +8,9 @@ import { ScriptService } from "./script";
 import { runScript, stopScript } from "../offscreen/client";
 import { getRunAt } from "./utils";
 import { randomString } from "@App/pkg/utils/utils";
-import { compileInjectScript, compileScriptCode } from "@App/runtime/content/utils";
+import { compileInjectScript, compileInjectScriptInfo, compileScriptCode } from "@App/runtime/content/utils";
 import Cache from "@App/app/cache";
-import { dealMatches } from "@App/pkg/utils/match";
+import { dealPatternMatches } from "@App/pkg/utils/match";
 
 export class RuntimeService {
   scriptDAO: ScriptDAO = new ScriptDAO();
@@ -92,16 +92,17 @@ export class RuntimeService {
     });
   }
 
-  scriptFlag() {
-    return Cache.getInstance().getOrSet("scriptInjectFlag", () => {
+  messageFlag() {
+    return Cache.getInstance().getOrSet("scriptInjectMessageFlag", () => {
       return Promise.resolve(randomString(16));
     });
   }
 
   async pageLoad(_, sender: GetSender) {
-    const scriptFlag = await this.scriptFlag();
+    const scriptFlag = await this.messageFlag();
     const chromeSender = sender.getSender() as chrome.runtime.MessageSender;
     // 匹配当前页面的脚本
+    console.log("pageLoad");
 
     return Promise.resolve({ flag: scriptFlag });
   }
@@ -128,7 +129,7 @@ export class RuntimeService {
           .then((res) => res.text())
           .then(async (injectJs) => {
             // 替换ScriptFlag
-            const code = `(function (ScriptFlag) {\n${injectJs}\n})('${await this.scriptFlag()}')`;
+            const code = `(function (MessageFlag) {\n${injectJs}\n})('${await this.messageFlag()}')`;
             chrome.userScripts.register([
               {
                 id: "scriptcat-inject",
@@ -168,19 +169,23 @@ export class RuntimeService {
     scriptRes.code = compileInjectScript(scriptRes);
 
     matches.push(...(script.metadata["include"] || []));
+    const patternMatches = dealPatternMatches(matches);
     const registerScript: chrome.userScripts.RegisteredUserScript = {
       id: scriptRes.uuid,
       js: [{ code: scriptRes.code }],
-      matches: dealMatches(matches),
+      matches: patternMatches.patternResult,
       world: "MAIN",
     };
     if (!script.metadata["noframes"]) {
       registerScript.allFrames = true;
     }
+
     if (script.metadata["exclude-match"]) {
       const excludeMatches = script.metadata["exclude-match"];
       excludeMatches.push(...(script.metadata["exclude"] || []));
-      registerScript.excludeMatches = dealMatches(excludeMatches);
+      const result= dealPatternMatches(excludeMatches);
+      
+      registerScript.excludeMatches =result.patternResult;
     }
     if (script.metadata["run-at"]) {
       registerScript.runAt = getRunAt(script.metadata["run-at"]);
@@ -190,13 +195,22 @@ export class RuntimeService {
       Cache.getInstance().set("registryScript:" + script.uuid, true);
     });
     console.log(registerScript);
-    // 把脚本uuid注册到content页面
+    // 把脚本信息注入到USER_SCRIPT环境中
     chrome.userScripts.register([
       {
-        id: "content-" + scriptRes.uuid,
-        js: [{ code: "window.a=1;console.log('window.a',window,window.b)" }],
-        matches: dealMatches(matches),
+        id: "scriptinfo-" + scriptRes.uuid,
+        js: [
+          {
+            code: compileInjectScriptInfo(
+              await this.messageFlag(),
+              scriptRes,
+              await (await fetch("inject_script_info.js")).text()
+            ),
+          },
+        ],
+        matches: dealPatternMatches(matches),
         runAt: "document_start",
+        world: "USER_SCRIPT",
       },
     ]);
   }
