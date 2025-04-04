@@ -12,6 +12,14 @@ export default class Match<T> {
 
   protected rule = new Map<string, T[]>();
 
+  protected kv = new Map<string, T>();
+
+  forEach(fn: (val: T, key: string) => void) {
+    this.kv.forEach((val, key) => {
+      fn(val, key);
+    });
+  }
+
   protected parseURL(url: string): Url | undefined {
     if (url.indexOf("*http") === 0) {
       url = url.substring(1);
@@ -112,6 +120,7 @@ export default class Match<T> {
       this.rule.set(re, rule);
     }
     rule.push(val);
+    this.kv.set(Match.getId(val), val);
     this.delCache();
   }
 
@@ -129,7 +138,6 @@ export default class Match<T> {
         }
       });
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.warn("bad match rule", Logger.E(e));
       // LoggerCore.getLogger({ component: "match" }).warn(
       //   "bad match rule",
@@ -141,10 +149,7 @@ export default class Match<T> {
   }
 
   protected static getId(val: any): string {
-    if (typeof val === "object") {
-      return (<{ uuid: string }>(<unknown>val)).uuid;
-    }
-    return <string>(<unknown>val);
+    return (<{ uuid: string }>(<unknown>val)).uuid;
   }
 
   public del(val: T) {

@@ -8,12 +8,21 @@ import { ScriptService } from "./script";
 import { runScript, stopScript } from "../offscreen/client";
 import { getRunAt } from "./utils";
 import { randomString } from "@App/pkg/utils/utils";
-import { compileInjectScript, compileInjectScriptInfo, compileScriptCode } from "@App/runtime/content/utils";
+import { compileInjectScript, compileScriptCode } from "@App/runtime/content/utils";
 import Cache from "@App/app/cache";
-import { dealPatternMatches } from "@App/pkg/utils/match";
+import { dealPatternMatches, UrlMatch } from "@App/pkg/utils/match";
+
+// 为了优化性能，存储到缓存时删除了code与value
+export interface ScriptMatchInfo extends ScriptRunResouce {
+  matches: string[];
+  excludeMatches: string[];
+}
 
 export class RuntimeService {
   scriptDAO: ScriptDAO = new ScriptDAO();
+
+  scriptMatch: UrlMatch<string> = new UrlMatch<string>();
+  scriptMatchCache: Map<string, ScriptMatchInfo> | null | undefined;
 
   constructor(
     private group: Group,
@@ -99,12 +108,23 @@ export class RuntimeService {
   }
 
   async pageLoad(_, sender: GetSender) {
-    const scriptFlag = await this.messageFlag();
+    const [scriptFlag, match] = await Promise.all([this.messageFlag(), this.loadScriptMatchInfo()]);
     const chromeSender = sender.getSender() as chrome.runtime.MessageSender;
-    // 匹配当前页面的脚本
-    console.log("pageLoad");
 
-    return Promise.resolve({ flag: scriptFlag });
+    // 匹配当前页面的脚本
+    const matchScriptUuid = match.match(chromeSender.url!);
+    console.log("pageLoad", match.match(chromeSender.url!));
+    const scripts = await Promise.all(
+      matchScriptUuid.map(
+        (uuid) =>
+          new Promise((resolve) => {
+            // 获取value
+            const scriptRes = Object.assign({}, this.scriptMatchCache?.get(uuid));
+            resolve(scriptRes);
+          })
+      )
+    );
+    return Promise.resolve({ flag: scriptFlag, scripts: scripts });
   }
 
   // 停止脚本
@@ -155,6 +175,70 @@ export class RuntimeService {
     });
   }
 
+  loadScripting: Promise<void> | null | undefined;
+
+  // 加载脚本匹配信息，由于service_worker的机制，如果由不活动状态恢复过来时，会优先触发事件
+  // 可能当时会没有脚本匹配信息，所以使用脚本信息时，尽量使用此方法获取
+  async loadScriptMatchInfo() {
+    if (this.scriptMatchCache) {
+      return this.scriptMatch;
+    }
+    if (this.loadScripting) {
+      await this.loadScripting;
+    } else {
+      // 如果没有缓存, 则创建一个新的缓存
+      this.loadScripting = Cache.getInstance()
+        .get("scriptMatch")
+        .then((data: { [key: string]: ScriptMatchInfo }) => {
+          this.scriptMatchCache = new Map<string, ScriptMatchInfo>();
+          if (data) {
+            Object.keys(data).forEach((key) => {
+              const item = data[key];
+              this.scriptMatchCache!.set(item.uuid, item);
+              item.matches.forEach((match) => {
+                this.scriptMatch.add(match, item.uuid);
+              });
+              item.excludeMatches.forEach((match) => {
+                this.scriptMatch.exclude(match, item.uuid);
+              });
+            });
+          }
+        });
+      await this.loadScripting;
+      this.loadScripting = null;
+    }
+    return this.scriptMatch;
+  }
+
+  // 保存脚本匹配信息
+  async saveScriptMatchInfo() {
+    if (!this.scriptMatchCache) {
+      return;
+    }
+    const scriptMatch = {} as { [key: string]: ScriptMatchInfo };
+    this.scriptMatchCache.forEach((val, key) => {
+      scriptMatch[key] = val;
+      // 优化性能，将不需要的信息去掉
+      scriptMatch[key].code = "";
+      scriptMatch[key].value = {};
+    });
+    return await Cache.getInstance().set("scriptMatch", scriptMatch);
+  }
+
+  async addScriptMatch(item: ScriptMatchInfo) {
+    if (!this.scriptMatchCache) {
+      await this.loadScriptMatchInfo();
+    }
+    this.scriptMatchCache!.set(item.uuid, item);
+    item.matches.forEach((match) => {
+      this.scriptMatch.add(match, item.uuid);
+    });
+    item.excludeMatches.forEach((match) => {
+      this.scriptMatch.exclude(match, item.uuid);
+    });
+    this.saveScriptMatchInfo();
+  }
+
   async registryPageScript(script: Script) {
     if (await Cache.getInstance().has("registryScript:" + script.uuid)) {
       return;
@@ -170,6 +254,11 @@ export class RuntimeService {
 
     matches.push(...(script.metadata["include"] || []));
     const patternMatches = dealPatternMatches(matches);
+    const scriptMatchInfo: ScriptMatchInfo = Object.assign(
+      { matches: patternMatches.result, excludeMatches: [] },
+      scriptRes
+    );
+
     const registerScript: chrome.userScripts.RegisteredUserScript = {
       id: scriptRes.uuid,
       js: [{ code: scriptRes.code }],
@@ -186,13 +275,16 @@ export class RuntimeService {
       const result = dealPatternMatches(excludeMatches);
 
       registerScript.excludeMatches = result.patternResult;
+      scriptMatchInfo.excludeMatches = result.result;
     }
     if (script.metadata["run-at"]) {
       registerScript.runAt = getRunAt(script.metadata["run-at"]);
     }
-    chrome.userScripts.register([registerScript], () => {
+    chrome.userScripts.register([registerScript], async () => {
       // 标记为已注册
       Cache.getInstance().set("registryScript:" + script.uuid, true);
+      // 将脚本match信息放入缓存中
+      this.addScriptMatch(scriptMatchInfo);
     });
   }
 

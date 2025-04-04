@@ -33,7 +33,12 @@ export default class ExecScript {
 
   GM_info: any;
 
-  constructor(scriptRes: ScriptRunResouce, message: Message, thisContext?: { [key: string]: any }) {
+  constructor(
+    scriptRes: ScriptRunResouce,
+    message: Message,
+    code: string | ScriptFunc,
+    thisContext?: { [key: string]: any }
+  ) {
     this.scriptRes = scriptRes;
     this.logger = LoggerCore.getInstance().logger({
       component: "exec",
@@ -42,7 +47,11 @@ export default class ExecScript {
     });
     this.GM_info = GMApi.GM_info(this.scriptRes);
     // 构建脚本资源
-    this.scriptFunc = compileScript(this.scriptRes.code);
+    if (typeof code === "string") {
+      this.scriptFunc = compileScript(code);
+    } else {
+      this.scriptFunc = code;
+    }
     const grantMap: { [key: string]: boolean } = {};
     scriptRes.metadata.grant?.forEach((key) => {
       grantMap[key] = true;
