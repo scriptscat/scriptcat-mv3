@@ -53,9 +53,10 @@ function setDepend(context: { [key: string]: any }, apiVal: ApiValue) {
 }
 
 // 构建沙盒上下文
-export function createContext(scriptRes: ScriptRunResouce, GMInfo: any, message: Message): GMApi {
+export function createContext(scriptRes: ScriptRunResouce, GMInfo: any, envPrefix: string, message: Message): GMApi {
   // 按照GMApi构建
   const context: { [key: string]: any } = {
+    prefix: envPrefix,
     message: message,
     scriptRes,
     valueChangeListener: new Map<number, { name: string; listener: GMTypes.ValueChangeListener }>(),

@@ -1,7 +1,7 @@
 import LoggerCore from "@App/app/logger/core";
 import Logger from "@App/app/logger/logger";
 import { Script, ScriptDAO } from "@App/app/repo/scripts";
-import { GetSender, Group, MessageConnect, MessageSend, MessageSender } from "@Packages/message/server";
+import { GetSender, Group, MessageSend, MessageSender } from "@Packages/message/server";
 import { ValueService } from "@App/app/service/service_worker/value";
 import PermissionVerify from "./permission_verify";
 import { connect } from "@Packages/message/client";
@@ -23,7 +23,7 @@ export type Request = MessageRequest & {
   sender: MessageSender;
 };
 
-export type Api = (request: Request, con: MessageConnect | null) => Promise<any>;
+export type Api = (request: Request, con: GetSender) => Promise<any>;
 
 export default class GMApi {
   logger: Logger;
@@ -34,7 +34,7 @@ export default class GMApi {
 
   constructor(
     private group: Group,
-    private sender: MessageSend,
+    private send: MessageSend,
     private value: ValueService
   ) {
     this.logger = LoggerCore.logger().with({ service: "runtime/gm_api" });
@@ -53,7 +53,7 @@ export default class GMApi {
       this.logger.error("verify error", { api: data.api }, Logger.E(e));
       return Promise.reject(e);
     }
-    return api.api.call(this, req, con.getConnect());
+    return api.api.call(this, req, con);
   }
 
   // 解析请求
@@ -80,11 +80,12 @@ export default class GMApi {
   }
 
   // 根据header生成dnr规则
-  async buildDNRRule(reqeustId: number, params: GMSend.XHRDetails) {
+  async buildDNRRule(reqeustId: number, params: GMSend.XHRDetails): Promise<{ [key: string]: string }> {
     // 检查是否有unsafe header,有则生成dnr规则
     const headers = params.headers;
+    console.log(headers, !headers);
     if (!headers) {
-      return;
+      return Promise.resolve({});
     }
     const requestHeaders = [
       {
@@ -100,6 +101,7 @@ export default class GMApi {
           operation: chrome.declarativeNetRequest.HeaderOperation.SET,
           value: headers[key],
         });
+        delete headers[key];
       }
     });
     const ruleId = reqeustId;
@@ -119,20 +121,23 @@ export default class GMApi {
     });
     rule.condition = {
       resourceTypes: [chrome.declarativeNetRequest.ResourceType.XMLHTTPREQUEST],
-      urlFilter: "^" + params.url + "$",
+      urlFilter: params.url,
+      requestMethods: [(params.method || "GET").toLowerCase() as chrome.declarativeNetRequest.RequestMethod],
       excludedTabIds: excludedTabIds,
     };
+    console.log(rule);
     await chrome.declarativeNetRequest.updateSessionRules({
       removeRuleIds: [ruleId],
       addRules: [rule],
     });
-    return ruleId;
+    return Promise.resolve(headers);
   }
 
   gmXhrHeadersReceived: EventEmitter = new EventEmitter();
 
   @PermissionVerify.API()
-  async GM_xmlhttpRequest(request: Request, con: MessageConnect) {
+  async GM_xmlhttpRequest(request: Request, con: GetSender) {
+    console.log("GM XHR", request);
     if (request.params.length === 0) {
       return Promise.reject(new Error("param is failed"));
     }
@@ -145,7 +150,8 @@ export default class GMApi {
       params.headers = {};
     }
     params.headers["X-Scriptcat-GM-XHR-Request-Id"] = requestId.toString();
-    await this.buildDNRRule(requestId, request.params[0]);
+    params.headers = await this.buildDNRRule(requestId, request.params[0]);
+    console.log("    params.headers", params.headers);
     let responseHeader = "";
     // 等待response
     this.gmXhrHeadersReceived.addListener(
@@ -157,12 +163,12 @@ export default class GMApi {
       }
     );
     // 再发送到offscreen, 处理请求
-    const offscreenCon = await connect(this.sender, "gmApi/xmlHttpRequest", request.params[0]);
+    const offscreenCon = await connect(this.send, "offscreen/gmApi/xmlHttpRequest", request.params[0]);
     offscreenCon.onMessage((msg: { action: string; data: any }) => {
       // 发送到content
       // 替换msg.data.responseHeaders
       msg.data.responseHeaders = responseHeader;
-      con.sendMessage(msg);
+      con.getConnect().sendMessage(msg);
     });
   }
 
@@ -171,6 +177,7 @@ export default class GMApi {
     chrome.webRequest.onBeforeSendHeaders.addListener(
       (details) => {
         if (details.tabId === -1) {
+          console.log(details);
           // 判断是否存在X-Scriptcat-GM-XHR-Request-Id
           // 讲请求id与chrome.webRequest的请求id关联
           if (details.requestHeaders) {

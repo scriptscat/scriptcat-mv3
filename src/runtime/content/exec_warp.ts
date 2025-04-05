@@ -63,7 +63,7 @@ export class BgExecScriptWarp extends ExecScript {
     };
     // @ts-ignore
     thisContext.CATRetryError = CATRetryError;
-    super(scriptRes, message, thisContext);
+    super(scriptRes, "offscreen", message, scriptRes.code, thisContext);
     this.setTimeout = setTimeout;
     this.setInterval = setInterval;
   }

@@ -1,19 +1,23 @@
 import { ScriptRunResouce } from "@App/app/repo/scripts";
 import { Client } from "@Packages/message/client";
-import { Message, MessageSend } from "@Packages/message/server";
+import { forwardMessage, Message, MessageSend, Server } from "@Packages/message/server";
 
 // content页的处理
 export default class ContentRuntime {
   constructor(
+    private server: Server,
     private send: MessageSend,
     private msg: Message
   ) {}
 
   start(scripts: ScriptRunResouce[]) {
-    console.log("onMessage");
     this.msg.onMessage((msg, sendResponse) => {
       console.log("content onMessage", msg);
     });
+    this.msg.onConnect((msg, connect) => {
+      console.log(msg, connect);
+    });
+    forwardMessage("serviceWorker", "runtime/gmApi", this.server, this.send);
     // 由content到background
     // 转发gmApi消息
     // this.contentMessage.setHandler("gmApi", (action, data) => {

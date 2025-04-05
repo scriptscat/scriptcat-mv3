@@ -35,6 +35,7 @@ export default class ExecScript {
 
   constructor(
     scriptRes: ScriptRunResouce,
+    envPrefix: "content" | "offscreen",
     message: Message,
     code: string | ScriptFunc,
     thisContext?: { [key: string]: any }
@@ -61,7 +62,7 @@ export default class ExecScript {
       this.proxyContent = global;
     } else {
       // 构建脚本GM上下文
-      this.sandboxContent = createContext(scriptRes, this.GM_info, message);
+      this.sandboxContent = createContext(scriptRes, this.GM_info, envPrefix, message);
       this.proxyContent = proxyContext(global, this.sandboxContent, thisContext);
     }
   }
@@ -76,7 +77,6 @@ export default class ExecScript {
     return this.scriptFunc.apply(this.proxyContent, [this.proxyContent, this.GM_info]);
   }
 
-  // TODO: 实现脚本的停止,资源释放
   stop() {
     this.logger.debug("script stop");
     return true;

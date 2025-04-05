@@ -1,4 +1,4 @@
-import { Group, MessageConnect } from "@Packages/message/server";
+import { GetSender, Group, MessageConnect } from "@Packages/message/server";
 
 export default class GMApi {
   constructor(private group: Group) {}
@@ -24,8 +24,9 @@ export default class GMApi {
     return response;
   }
 
-  xmlHttpRequest(details: GMSend.XHRDetails, con: MessageConnect | null) {
+  xmlHttpRequest(details: GMSend.XHRDetails, sender: GetSender) {
     const xhr = new XMLHttpRequest();
+    const con = sender.getConnect();
     xhr.open(details.method || "GET", details.url);
     // 添加header
     if (details.headers) {
@@ -34,7 +35,7 @@ export default class GMApi {
       }
     }
     xhr.onload = () => {
-      this.dealXhrResponse(con!, details, "onload", xhr);
+      this.dealXhrResponse(con, details, "onload", xhr);
     };
     xhr.onloadstart = () => {
       this.dealXhrResponse(con!, details, "onloadstart", xhr);

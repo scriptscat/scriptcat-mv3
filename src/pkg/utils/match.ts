@@ -149,6 +149,9 @@ export default class Match<T> {
   }
 
   protected static getId(val: any): string {
+    if (typeof val === "string") {
+      return val;
+    }
     return (<{ uuid: string }>(<unknown>val)).uuid;
   }
 

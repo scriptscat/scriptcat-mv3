@@ -8,7 +8,7 @@ import { ScriptService } from "./script";
 import { runScript, stopScript } from "../offscreen/client";
 import { getRunAt } from "./utils";
 import { randomString } from "@App/pkg/utils/utils";
-import { compileInjectScript, compileScriptCode } from "@App/runtime/content/utils";
+import { compileInjectScript } from "@App/runtime/content/utils";
 import Cache from "@App/app/cache";
 import { dealPatternMatches, UrlMatch } from "@App/pkg/utils/match";
 
@@ -113,7 +113,6 @@ export class RuntimeService {
 
     // 匹配当前页面的脚本
     const matchScriptUuid = match.match(chromeSender.url!);
-    console.log("pageLoad", match.match(chromeSender.url!));
     const scripts = await Promise.all(
       matchScriptUuid.map(
         (uuid) =>
@@ -249,7 +248,6 @@ export class RuntimeService {
     }
     const scriptRes = await this.script.buildScriptRunResource(script);
 
-    scriptRes.code = compileScriptCode(scriptRes);
     scriptRes.code = compileInjectScript(scriptRes);
 
     matches.push(...(script.metadata["include"] || []));

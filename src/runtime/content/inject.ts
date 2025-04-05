@@ -32,7 +32,7 @@ export class InjectRuntime {
   execScript(script: ScriptRunResouce, scriptFunc: ScriptFunc) {
     // @ts-ignore
     delete window[script.flag];
-    const exec = new ExecScript(script, this.msg, scriptFunc);
+    const exec = new ExecScript(script, "content", this.msg, scriptFunc);
     this.execList.push(exec);
     // 注入css
     if (script.metadata["require-css"]) {
