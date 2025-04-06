@@ -17,7 +17,7 @@ export class CustomEventMessage implements Message {
   EE: EventEmitter = new EventEmitter();
 
   // 关联dom目标
-  relatedTarget: Map<number, Element> = new Map();
+  relatedTarget: Map<number, Document> = new Map();
 
   constructor(
     protected flag: string,
@@ -25,7 +25,7 @@ export class CustomEventMessage implements Message {
   ) {
     window.addEventListener((isContent ? "ct" : "fd") + flag, (event) => {
       if (event instanceof MouseEvent) {
-        this.relatedTarget.set(event.clientX, <Element>event.relatedTarget);
+        this.relatedTarget.set(event.clientX, <Document>event.relatedTarget);
         return;
       } else if (event instanceof CustomEvent) {
         this.messageHandle(event.detail, new CustomEventPostMessage(this));
@@ -129,5 +129,11 @@ export class CustomEventMessage implements Message {
       this.EE.addListener("response:" + body.messageId, callback);
       this.nativeSend(body);
     });
+  }
+
+  getAndDelRelatedTarget(id: number) {
+    const target = this.relatedTarget.get(id);
+    this.relatedTarget.delete(id);
+    return target;
   }
 }

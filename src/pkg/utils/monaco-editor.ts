@@ -2,7 +2,7 @@ import dts from "@App/types/scriptcat.d.ts";
 import { languages } from "monaco-editor";
 import pako from "pako";
 import Cache from "@App/app/cache";
-import { isFirefox } from "./utils";
+import { isDebug, isFirefox } from "./utils";
 import EventEmitter from "eventemitter3";
 
 // 注册eslint
@@ -15,7 +15,12 @@ export default function registerEditor() {
   fetch(chrome.runtime.getURL(`/src/ts.worker.js${isFirefox() ? ".gz" : ""}`))
     .then((resp) => resp.blob())
     .then(async (blob) => {
-      const result = pako.inflate(await blob.arrayBuffer());
+      let result: ArrayBuffer;
+      if (isDebug()) {
+        result = await blob.arrayBuffer();
+      } else {
+        result = pako.inflate(await blob.arrayBuffer());
+      }
       // @ts-ignore
       window.tsUrl = URL.createObjectURL(new Blob([result]));
     });

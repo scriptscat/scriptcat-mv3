@@ -1,9 +1,17 @@
+import LoggerCore from "@App/app/logger/core";
+import Logger from "@App/app/logger/logger";
 import { GetSender, Group, MessageConnect } from "@Packages/message/server";
 
 export default class GMApi {
   constructor(private group: Group) {}
 
-  dealXhrResponse(con: MessageConnect, details: GMSend.XHRDetails, event: string, xhr: XMLHttpRequest, data?: any) {
+  async dealXhrResponse(
+    con: MessageConnect,
+    details: GMSend.XHRDetails,
+    event: string,
+    xhr: XMLHttpRequest,
+    data?: any
+  ) {
     const finalUrl = xhr.responseURL || details.url;
     // 判断是否有headerFlag-final-url,有则替换finalUrl
     let response: GMTypes.XHRResponse = {
@@ -11,9 +19,56 @@ export default class GMApi {
       readyState: <any>xhr.readyState,
       status: xhr.status,
       statusText: xhr.statusText,
+      // header由service_worker处理
       // responseHeaders: xhr.getAllResponseHeaders().replace(removeXCat, ""),
       responseType: details.responseType,
     };
+    if (xhr.readyState === 4) {
+      const responseType = details.responseType?.toLowerCase();
+      if (responseType === "arraybuffer" || responseType === "blob") {
+        let blob: Blob;
+        if (xhr.response instanceof ArrayBuffer) {
+          blob = new Blob([xhr.response]);
+          response.response = URL.createObjectURL(blob);
+        } else {
+          blob = <Blob>xhr.response;
+          response.response = URL.createObjectURL(blob);
+        }
+        try {
+          if (xhr.getResponseHeader("Content-Type")?.indexOf("text") !== -1) {
+            // 如果是文本类型,则尝试转换为文本
+            response.responseText = await blob.text();
+          }
+        } catch (e) {
+          LoggerCore.logger(Logger.E(e)).error("GM XHR getResponseHeader error");
+        }
+        setTimeout(() => {
+          URL.revokeObjectURL(<string>response.response);
+        }, 60 * 1000);
+      } else if (response.responseType === "json") {
+        try {
+          response.response = JSON.parse(xhr.responseText);
+        } catch (e) {
+          LoggerCore.logger(Logger.E(e)).error("GM XHR JSON parse error");
+        }
+        try {
+          response.responseText = xhr.responseText;
+        } catch (e) {
+          LoggerCore.logger(Logger.E(e)).error("GM XHR getResponseText error");
+        }
+      } else {
+        try {
+          response.response = xhr.response;
+        } catch (e) {
+          LoggerCore.logger(Logger.E(e)).error("GM XHR response error");
+        }
+        try {
+          response.responseText = xhr.responseText || undefined;
+        } catch (e) {
+          LoggerCore.logger(Logger.E(e)).error("GM XHR getResponseText error");
+        }
+      }
+    }
     if (data) {
       response = Object.assign(response, data);
     }
@@ -24,16 +79,36 @@ export default class GMApi {
     return response;
   }
 
-  xmlHttpRequest(details: GMSend.XHRDetails, sender: GetSender) {
+  CAT_fetch(details: GMSend.XHRDetails, sender: GetSender) {
+    throw new Error("Method not implemented.");
+  }
+
+  async xmlHttpRequest(details: GMSend.XHRDetails, sender: GetSender) {
+    if (details.responseType === "stream") {
+      // 只有fetch支持ReadableStream
+      return this.CAT_fetch(details, sender);
+    }
     const xhr = new XMLHttpRequest();
     const con = sender.getConnect();
-    xhr.open(details.method || "GET", details.url);
+    xhr.open(details.method || "GET", details.url, true, details.user || "", details.password || "");
     // 添加header
     if (details.headers) {
       for (const key in details.headers) {
         xhr.setRequestHeader(key, details.headers[key]);
       }
     }
+    //超时时间
+    if (details.timeout) {
+      xhr.timeout = details.timeout;
+    }
+    if (details.overrideMimeType) {
+      xhr.overrideMimeType(details.overrideMimeType);
+    }
+    //设置响应类型
+    if (details.responseType !== "json") {
+      xhr.responseType = details.responseType || "";
+    }
+
     xhr.onload = () => {
       this.dealXhrResponse(con, details, "onload", xhr);
     };
@@ -65,14 +140,32 @@ export default class GMApi {
     xhr.ontimeout = () => {
       con?.sendMessage({ action: "ontimeout", data: {} });
     };
+    //处理数据
+    if (details.dataType === "FormData") {
+      const data = new FormData();
+      if (details.data && details.data instanceof Array) {
+        await Promise.all(
+          details.data.map(async (val: GMSend.XHRFormData) => {
+            if (val.type === "file") {
+              const file = new File([await (await fetch(val.val)).blob()], val.filename!);
+              data.append(val.key, file, val.filename);
+            } else {
+              data.append(val.key, val.val);
+            }
+          })
+        );
+        xhr.send(data);
+      }
+    } else if (details.dataType === "Blob") {
+      if (!details.data) {
+        throw new Error("Blob data is empty");
+      }
+      const resp = await (await fetch(<string>details.data)).blob();
+      xhr.send(resp);
+    } else {
+      xhr.send(<string>details.data);
+    }
 
-    if (details.timeout) {
-      xhr.timeout = details.timeout;
-    }
-    if (details.overrideMimeType) {
-      xhr.overrideMimeType(details.overrideMimeType);
-    }
-    xhr.send();
     con?.onDisconnect(() => {
       xhr.abort();
     });

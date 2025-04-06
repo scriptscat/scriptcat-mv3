@@ -2,8 +2,6 @@ import * as path from "path";
 import { defineConfig } from "@rspack/cli";
 import { rspack } from "@rspack/core";
 import { version } from "./package.json";
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const CompressionPlugin = require("compression-webpack-plugin");
 
 const isDev = process.env.NODE_ENV === "development";
 const isBeta = version.includes("-");
@@ -174,11 +172,6 @@ export default defineConfig({
       minify: true,
       chunks: ["sandbox"],
     }),
-    new CompressionPlugin({
-      test: /ts.worker.js$/,
-      filename: () => "ts.worker.js",
-      deleteOriginalAssets: true,
-    }),
   ].filter(Boolean),
   optimization: {
     minimizer: [
@@ -187,7 +180,6 @@ export default defineConfig({
         minimizerOptions: { targets },
       }),
     ],
-    realContentHash: true,
   },
   experiments: {
     css: true,

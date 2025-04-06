@@ -1,6 +1,6 @@
 import { ScriptRunResouce } from "@App/app/repo/scripts";
 import { Client } from "@Packages/message/client";
-import { forwardMessage, Message, MessageSend, Server } from "@Packages/message/server";
+import { forwardMessage, GetSender, Message, MessageSend, Server } from "@Packages/message/server";
 
 // content页的处理
 export default class ContentRuntime {
@@ -17,7 +17,43 @@ export default class ContentRuntime {
     this.msg.onConnect((msg, connect) => {
       console.log(msg, connect);
     });
-    forwardMessage("serviceWorker", "runtime/gmApi", this.server, this.send);
+    forwardMessage(
+      "serviceWorker",
+      "runtime/gmApi",
+      this.server,
+      this.send,
+      (data: { api: string; params: any }, con: GetSender) => {
+        // 拦截关注的action
+        console.log("拦截", data);
+        switch (data.api) {
+          case "CAT_createBlobUrl": {
+            const file = data.params[0] as File;
+            const url = URL.createObjectURL(file);
+            setTimeout(() => {
+              URL.revokeObjectURL(url);
+            }, 60 * 1000);
+            return Promise.resolve(url);
+          }
+          case "CAT_fetchBlob": {
+            return fetch(data.params[0]).then((res) => res.blob());
+          }
+          case "CAT_fetchDocument": {
+            return new Promise((resolve) => {
+              const xhr = new XMLHttpRequest();
+              xhr.responseType = "document";
+              xhr.open("GET", data.params[0]);
+              xhr.onload = () => {
+                resolve({
+                  relatedTarget: xhr.response,
+                });
+              };
+              xhr.send();
+            });
+          }
+        }
+        return Promise.resolve(false);
+      }
+    );
     // 由content到background
     // 转发gmApi消息
     // this.contentMessage.setHandler("gmApi", (action, data) => {

@@ -52,20 +52,5 @@ export class OffscreenManager {
 
     const gmApi = new GMApi(this.windowApi.group("gmApi"));
     gmApi.init();
-
-    // // 处理gm xhr请求
-    // this.api.on("gmXhr", (data) => {
-    //   console.log("123");
-    // });
-    // // 测试xhr
-    // const ret = await sendMessage(this.extensionMessage, "serviceWorker/testGmApi");
-    // console.log("test xhr", ret);
-    // const xhr = new XMLHttpRequest();
-    // xhr.onload = () => {
-    //   console.log(xhr);
-    // };
-    // xhr.open("GET", "https://scriptcat.org/zh-CN");
-
-    // xhr.send();
   }
 }

@@ -159,7 +159,7 @@ export class Runtime {
   crontabScript(script: ScriptRunResouce) {
     // 执行定时脚本 运行表达式
     if (!script.metadata.crontab) {
-      throw new Error("错误的crontab表达式");
+      throw new Error(script.name + " - 错误的crontab表达式");
     }
     // 如果有nextruntime,则加入重试队列
     this.joinRetryList(script);

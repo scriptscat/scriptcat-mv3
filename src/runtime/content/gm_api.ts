@@ -4,6 +4,9 @@ import { ValueUpdateData } from "./exec_script";
 import { ExtVersion } from "@App/app/const";
 import { storageKey } from "../utils";
 import { Message, MessageConnect } from "@Packages/message/server";
+import { CustomEventMessage } from "@Packages/message/custom_event_message";
+import LoggerCore from "@App/app/logger/core";
+import { connect, sendMessage } from "@Packages/message/client";
 
 interface ApiParam {
   depend?: string[];
@@ -65,25 +68,19 @@ export default class GMApi {
 
   // 单次回调使用
   public sendMessage(api: string, params: any[]) {
-    return this.message.sendMessage({
-      action: this.prefix + "/runtime/gmApi",
-      data: {
-        uuid: this.scriptRes.uuid,
-        api,
-        params,
-      },
+    return sendMessage(this.message, this.prefix + "/runtime/gmApi", {
+      uuid: this.scriptRes.uuid,
+      api,
+      params,
     });
   }
 
   // 长连接使用,connect只用于接受消息,不发送消息
   public connect(api: string, params: any[]) {
-    return this.message.connect({
-      action: this.prefix + "/runtime/gmApi",
-      data: {
-        uuid: this.scriptRes.uuid,
-        api,
-        params,
-      },
+    return connect(this.message, this.prefix + "/runtime/gmApi", {
+      uuid: this.scriptRes.uuid,
+      api,
+      params,
     });
   }
 
@@ -184,6 +181,23 @@ export default class GMApi {
     return this.sendMessage("GM_log", [message, level, labels]);
   }
 
+  @GMContext.API()
+  public CAT_createBlobUrl(blob: Blob): Promise<string> {
+    return this.sendMessage("CAT_createBlobUrl", [blob]);
+  }
+
+  // 辅助GM_xml获取blob数据
+  @GMContext.API()
+  public CAT_fetchBlob(url: string): Promise<Blob> {
+    return this.sendMessage("CAT_fetchBlob", [url]);
+  }
+
+  @GMContext.API()
+  public async CAT_fetchDocument(url: string): Promise<Document | undefined> {
+    const data = await this.sendMessage("CAT_fetchDocument", [url]);
+    return (<CustomEventMessage>this.message).getAndDelRelatedTarget(data.relatedTarget);
+  }
+
   // 用于脚本跨域请求,需要@connect domain指定允许的域名
   @GMContext.API({
     depend: ["CAT_fetchBlob", "CAT_createBlobUrl", "CAT_fetchDocument"],
@@ -220,42 +234,154 @@ export default class GMApi {
       param.headers["Cache-Control"] = "no-cache";
     }
     let connect: MessageConnect;
-    this.connect("GM_xmlhttpRequest", [param]).then((con) => {
-      connect = con;
-      con.onMessage((data: { action: string; data: any }) => {
-        // 处理返回
-        switch (data.action) {
-          case "onload":
-            details.onload?.(data.data);
-            break;
-          case "onloadend":
-            details.onloadend?.(data.data);
-            break;
-          case "onloadstart":
-            details.onloadstart?.(data.data);
-            break;
-          case "onprogress":
-            details.onprogress?.(data.data);
-            break;
-          case "onreadystatechange":
-            details.onreadystatechange && details.onreadystatechange(data.data);
-            break;
-          case "ontimeout":
-            details.ontimeout?.();
-            break;
-          case "onerror":
-            details.onerror?.("");
-            break;
-          case "onabort":
-            details.onabort?.();
-            break;
-          case "onstream":
-            // controller?.enqueue(new Uint8Array(resp.data));
-            break;
-        }
-      });
-    });
+    const handler = async () => {
+      // 处理数据
+      if (details.data instanceof FormData) {
+        // 处理FormData
+        param.dataType = "FormData";
+        const data: Array<GMSend.XHRFormData> = [];
+        const keys: { [key: string]: boolean } = {};
+        details.data.forEach((val, key) => {
+          keys[key] = true;
+        });
+        // 处理FormData中的数据
+        await Promise.all(
+          Object.keys(keys).map((key) => {
+            const values = (<FormData>details.data).getAll(key);
+            return Promise.all(
+              values.map(async (val) => {
+                if (val instanceof File) {
+                  const url = await this.CAT_createBlobUrl(val);
+                  console.log(url);
+                  data.push({
+                    key,
+                    type: "file",
+                    val: url,
+                    filename: val.name,
+                  });
+                } else {
+                  data.push({
+                    key,
+                    type: "text",
+                    val,
+                  });
+                }
+              })
+            );
+          })
+        );
+        param.data = data;
+      } else if (details.data instanceof Blob) {
+        // 处理blob
+        param.dataType = "Blob";
+        param.data = await this.CAT_createBlobUrl(details.data);
+      }
 
+      // 处理返回数据
+      let readerStream: ReadableStream<Uint8Array> | undefined;
+      let controller: ReadableStreamDefaultController<Uint8Array> | undefined;
+      // 如果返回类型是arraybuffer或者blob的情况下,需要将返回的数据转化为blob
+      // 在background通过URL.createObjectURL转化为url,然后在content页读取url获取blob对象
+      const responseType = details.responseType?.toLocaleLowerCase();
+      const warpResponse = (old: (xhr: GMTypes.XHRResponse) => void) => {
+        if (responseType === "stream") {
+          readerStream = new ReadableStream<Uint8Array>({
+            start(ctrl) {
+              controller = ctrl;
+            },
+          });
+        }
+        return async (xhr: GMTypes.XHRResponse) => {
+          if (xhr.response) {
+            if (responseType === "document") {
+              xhr.response = await this.CAT_fetchDocument(<string>xhr.response);
+              xhr.responseXML = xhr.response;
+              xhr.responseType = "document";
+            } else {
+              const resp = await this.CAT_fetchBlob(<string>xhr.response);
+              if (responseType === "arraybuffer") {
+                xhr.response = await resp.arrayBuffer();
+              } else {
+                xhr.response = resp;
+              }
+            }
+          }
+          if (responseType === "stream") {
+            xhr.response = readerStream;
+          }
+          old(xhr);
+        };
+      };
+      if (
+        responseType === "arraybuffer" ||
+        responseType === "blob" ||
+        responseType === "document" ||
+        responseType === "stream"
+      ) {
+        if (details.onload) {
+          details.onload = warpResponse(details.onload);
+        }
+        if (details.onreadystatechange) {
+          details.onreadystatechange = warpResponse(details.onreadystatechange);
+        }
+        if (details.onloadend) {
+          details.onloadend = warpResponse(details.onloadend);
+        }
+        // document类型读取blob,然后在content页转化为document对象
+        if (responseType === "document") {
+          param.responseType = "blob";
+        }
+        if (responseType === "stream") {
+          if (details.onloadstart) {
+            details.onloadstart = warpResponse(details.onloadstart);
+          }
+        }
+      }
+
+      // 发送信息
+      this.connect("GM_xmlhttpRequest", [param]).then((con) => {
+        connect = con;
+        con.onMessage((data: { action: string; data: any }) => {
+          // 处理返回
+          switch (data.action) {
+            case "onload":
+              details.onload?.(data.data);
+              break;
+            case "onloadend":
+              details.onloadend?.(data.data);
+              break;
+            case "onloadstart":
+              details.onloadstart?.(data.data);
+              break;
+            case "onprogress":
+              details.onprogress?.(data.data);
+              break;
+            case "onreadystatechange":
+              details.onreadystatechange && details.onreadystatechange(data.data);
+              break;
+            case "ontimeout":
+              details.ontimeout?.();
+              break;
+            case "onerror":
+              details.onerror?.("");
+              break;
+            case "onabort":
+              details.onabort?.();
+              break;
+            case "onstream":
+              controller?.enqueue(new Uint8Array(data.data));
+              break;
+            default:
+              LoggerCore.logger().warn("GM_xmlhttpRequest resp is error", {
+                action: data.action,
+              });
+              break;
+          }
+        });
+      });
+    };
+    // 由于需要同步返回一个abort，但是一些操作是异步的，所以需要在这里处理
+    handler();
     return {
       abort: () => {
         if (connect) {

@@ -95,11 +95,21 @@ export default class GMApi {
     ] as chrome.declarativeNetRequest.ModifyHeaderInfo[];
     Object.keys(headers).forEach((key) => {
       const lowKey = key.toLowerCase();
-      if (unsafeHeaders[lowKey] || lowKey.startsWith("sec-") || lowKey.startsWith("proxy-")) {
+      if (headers[key]) {
+        if (unsafeHeaders[lowKey] || lowKey.startsWith("sec-") || lowKey.startsWith("proxy-")) {
+          if (headers[key]) {
+            requestHeaders.push({
+              header: key,
+              operation: chrome.declarativeNetRequest.HeaderOperation.SET,
+              value: headers[key],
+            });
+          }
+          delete headers[key];
+        }
+      } else {
         requestHeaders.push({
           header: key,
-          operation: chrome.declarativeNetRequest.HeaderOperation.SET,
-          value: headers[key],
+          operation: chrome.declarativeNetRequest.HeaderOperation.REMOVE,
         });
         delete headers[key];
       }
@@ -125,7 +135,6 @@ export default class GMApi {
       requestMethods: [(params.method || "GET").toLowerCase() as chrome.declarativeNetRequest.RequestMethod],
       excludedTabIds: excludedTabIds,
     };
-    console.log(rule);
     await chrome.declarativeNetRequest.updateSessionRules({
       removeRuleIds: [ruleId],
       addRules: [rule],
@@ -135,9 +144,9 @@ export default class GMApi {
 
   gmXhrHeadersReceived: EventEmitter = new EventEmitter();
 
+  // TODO: maxRedirects实现
   @PermissionVerify.API()
   async GM_xmlhttpRequest(request: Request, con: GetSender) {
-    console.log("GM XHR", request);
     if (request.params.length === 0) {
       return Promise.reject(new Error("param is failed"));
     }
@@ -151,7 +160,6 @@ export default class GMApi {
     }
     params.headers["X-Scriptcat-GM-XHR-Request-Id"] = requestId.toString();
     params.headers = await this.buildDNRRule(requestId, request.params[0]);
-    console.log("    params.headers", params.headers);
     let responseHeader = "";
     // 等待response
     this.gmXhrHeadersReceived.addListener(
@@ -160,6 +168,7 @@ export default class GMApi {
         details.responseHeaders?.forEach((header) => {
           responseHeader += header.name + ": " + header.value + "\n";
         });
+        this.gmXhrHeadersReceived.removeAllListeners("headersReceived:" + requestId);
       }
     );
     // 再发送到offscreen, 处理请求
