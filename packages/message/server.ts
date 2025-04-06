@@ -116,7 +116,6 @@ export class Group {
 // 转发消息
 export function forwardMessage(prefix: string, path: string, from: Server, to: MessageSend, middleware?: ApiFunction) {
   from.on(path, async (params, fromCon) => {
-    console.log("forwardMessage", path, prefix, params);
     if (middleware) {
       const resp = await middleware(params, new GetSender(fromCon));
       if (resp !== false) {

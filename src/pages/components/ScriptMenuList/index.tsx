@@ -1,7 +1,5 @@
 /* eslint-disable no-nested-ternary */
 import React, { useEffect, useState } from "react";
-import MessageInternal from "@App/app/message/internal";
-import { MessageSender } from "@App/app/message/message";
 import { ScriptMenu } from "@App/runtime/service_worker/runtime";
 import {
   Button,
@@ -21,13 +19,9 @@ import {
   IconMinus,
   IconSettings,
 } from "@arco-design/web-react/icon";
-import IoC from "@App/app/ioc";
-import ScriptController from "@App/app/service/script/controller";
 import { SCRIPT_RUN_STATUS_RUNNING } from "@App/app/repo/scripts";
 import { RiPlayFill, RiStopFill } from "react-icons/ri";
-import RuntimeController from "@App/runtime/content/runtime";
 import { useTranslation } from "react-i18next";
-import { SystemConfig } from "@App/pkg/config/config";
 import { ScriptIcons } from "@App/pages/options/routes/utils";
 
 const CollapseItem = Collapse.Item;
@@ -51,10 +45,6 @@ const ScriptMenuList: React.FC<{
   currentUrl: string;
 }> = ({ script, isBackscript, currentUrl }) => {
   const [list, setList] = useState([] as ScriptMenu[]);
-  const message = IoC.instance(MessageInternal) as MessageInternal;
-  const scriptCtrl = IoC.instance(ScriptController) as ScriptController;
-  const runtimeCtrl = IoC.instance(RuntimeController) as RuntimeController;
-  const systemConfig = IoC.instance(SystemConfig) as SystemConfig;
   const [expandMenuIndex, setExpandMenuIndex] = useState<{
     [key: string]: boolean;
   }>({});
@@ -70,23 +60,23 @@ const ScriptMenuList: React.FC<{
     setList(script);
   }, [script]);
 
-  useEffect(() => {
-    // 监听脚本运行状态
-    const channel = runtimeCtrl.watchRunStatus();
-    channel.setHandler(([id, status]: any) => {
-      setList((prev) => {
-        const newList = [...prev];
-        const index = newList.findIndex((item) => item.id === id);
-        if (index !== -1) {
-          newList[index].runStatus = status;
-        }
-        return newList;
-      });
-    });
-    return () => {
-      channel.disChannel();
-    };
-  }, []);
+  // useEffect(() => {
+  //   // 监听脚本运行状态
+  //   const channel = runtimeCtrl.watchRunStatus();
+  //   channel.setHandler(([id, status]: any) => {
+  //     setList((prev) => {
+  //       const newList = [...prev];
+  //       const index = newList.findIndex((item) => item.id === id);
+  //       if (index !== -1) {
+  //         newList[index].runStatus = status;
+  //       }
+  //       return newList;
+  //     });
+  //   });
+  //   return () => {
+  //     channel.disChannel();
+  //   };
+  // }, []);
 
   const sendMenuAction = (sender: MessageSender, channelFlag: string) => {
     let id = sender.tabId;

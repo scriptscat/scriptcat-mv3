@@ -11,20 +11,13 @@ export default class ContentRuntime {
   ) {}
 
   start(scripts: ScriptRunResouce[]) {
-    this.msg.onMessage((msg, sendResponse) => {
-      console.log("content onMessage", msg);
-    });
-    this.msg.onConnect((msg, connect) => {
-      console.log(msg, connect);
-    });
     forwardMessage(
       "serviceWorker",
       "runtime/gmApi",
       this.server,
       this.send,
       (data: { api: string; params: any }, con: GetSender) => {
-        // 拦截关注的action
-        console.log("拦截", data);
+        // 拦截关注的api
         switch (data.api) {
           case "CAT_createBlobUrl": {
             const file = data.params[0] as File;

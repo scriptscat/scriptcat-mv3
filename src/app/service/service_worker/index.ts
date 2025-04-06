@@ -5,6 +5,7 @@ import { ResourceService } from "./resource";
 import { ValueService } from "./value";
 import { RuntimeService } from "./runtime";
 import { ServiceWorkerMessageSend } from "@Packages/message/window_message";
+import { PopupService } from "./popup";
 
 export type InstallSource = "user" | "system" | "sync" | "subscribe" | "vscode";
 
@@ -31,5 +32,7 @@ export default class ServiceWorkerManager {
     script.init();
     const runtime = new RuntimeService(this.api.group("runtime"), this.sender, this.mq, value, script);
     runtime.init();
+    const popup = new PopupService(this.api.group("popup"), this.mq, runtime);
+    popup.init();
   }
 }

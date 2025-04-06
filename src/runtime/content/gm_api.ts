@@ -198,6 +198,53 @@ export default class GMApi {
     return (<CustomEventMessage>this.message).getAndDelRelatedTarget(data.relatedTarget);
   }
 
+  menuId: number | undefined;
+
+  menuMap: Map<number, string> | undefined;
+
+  @GMContext.API()
+  GM_registerMenuCommand(name: string, listener: () => void, accessKey?: string): number {
+    if (!this.menuMap) {
+      this.menuMap = new Map();
+    }
+    let flag = 0;
+    this.menuMap.forEach((val, key) => {
+      if (val === name) {
+        flag = key;
+      }
+    });
+    if (flag) {
+      return flag;
+    }
+    if (!this.menuId) {
+      this.menuId = 1;
+    } else {
+      this.menuId += 1;
+    }
+    const id = this.menuId;
+    this.connect("GM_registerMenuCommand", [id, name, accessKey]).then((con) => {
+      con.onMessage((data: { action: string; data: any }) => {
+        if (data.action === "onClick") {
+          listener();
+        }
+      });
+      con.onDisconnect(() => {
+        this.menuMap?.delete(id);
+      });
+    });
+    this.menuMap.set(id, name);
+    return id;
+  }
+
+  @GMContext.API()
+  GM_unregisterMenuCommand(id: number): void {
+    if (!this.menuMap) {
+      this.menuMap = new Map();
+    }
+    this.menuMap.delete(id);
+    this.sendMessage("GM_unregisterMenuCommand", [id]);
+  }
+
   // 用于脚本跨域请求,需要@connect domain指定允许的域名
   @GMContext.API({
     depend: ["CAT_fetchBlob", "CAT_createBlobUrl", "CAT_fetchDocument"],
@@ -252,7 +299,6 @@ export default class GMApi {
               values.map(async (val) => {
                 if (val instanceof File) {
                   const url = await this.CAT_createBlobUrl(val);
-                  console.log(url);
                   data.push({
                     key,
                     type: "file",

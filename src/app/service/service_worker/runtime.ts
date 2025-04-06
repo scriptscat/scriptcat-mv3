@@ -34,7 +34,7 @@ export class RuntimeService {
 
   async init() {
     // 启动gm api
-    const gmApi = new GMApi(this.group, this.sender, this.value);
+    const gmApi = new GMApi(this.group, this.sender, this.mq, this.value);
     gmApi.start();
 
     this.group.on("stopScript", this.stopScript.bind(this));
@@ -235,6 +235,15 @@ export class RuntimeService {
     item.excludeMatches.forEach((match) => {
       this.scriptMatch.exclude(match, item.uuid);
     });
+    this.saveScriptMatchInfo();
+  }
+
+  async deleteScriptMatch(uuid: string) {
+    if (!this.scriptMatchCache) {
+      await this.loadScriptMatchInfo();
+    }
+    this.scriptMatchCache!.delete(uuid);
+    this.scriptMatch.del(uuid);
     this.saveScriptMatchInfo();
   }
 

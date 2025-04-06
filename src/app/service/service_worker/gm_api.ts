@@ -8,6 +8,7 @@ import { connect } from "@Packages/message/client";
 import Cache, { incr } from "@App/app/cache";
 import { unsafeHeaders } from "@App/runtime/utils";
 import EventEmitter from "eventemitter3";
+import { MessageQueue } from "@Packages/message/message_queue";
 
 // GMApi,处理脚本的GM API调用请求
 
@@ -35,6 +36,7 @@ export default class GMApi {
   constructor(
     private group: Group,
     private send: MessageSend,
+    private mq: MessageQueue,
     private value: ValueService
   ) {
     this.logger = LoggerCore.logger().with({ service: "runtime/gm_api" });
@@ -83,7 +85,6 @@ export default class GMApi {
   async buildDNRRule(reqeustId: number, params: GMSend.XHRDetails): Promise<{ [key: string]: string }> {
     // 检查是否有unsafe header,有则生成dnr规则
     const headers = params.headers;
-    console.log(headers, !headers);
     if (!headers) {
       return Promise.resolve({});
     }
@@ -181,12 +182,42 @@ export default class GMApi {
     });
   }
 
-  start() {
-    this.group.on("gmApi", this.handlerRequest.bind(this));
+  @PermissionVerify.API()
+  GM_registerMenuCommand(request: Request, con: GetSender) {
+    console.log("registerMenuCommand", request.params);
+    const [id, name, accessKey] = request.params;
+    // 触发菜单注册, 在popup中处理
+    this.mq.emit("registerMenuCommand", {
+      uuid: request.script.uuid,
+      id: id,
+      name: name,
+      accessKey: accessKey,
+      con: con.getConnect(),
+    });
+    con.getConnect().onDisconnect(() => {
+      // 取消注册
+      this.mq.emit("unregisterMenuCommand", {
+        uuid: request.script.uuid,
+        name: name,
+      });
+    });
+  }
+
+  @PermissionVerify.API()
+  GM_unregisterMenuCommand(request: Request) {
+    const [id] = request.params;
+    // 触发菜单取消注册, 在popup中处理
+    this.mq.emit("unregisterMenuCommand", {
+      uuid: request.script.uuid,
+      id: id,
+    });
+  }
+
+  // 处理GM_xmlhttpRequest请求
+  handlerGmXhr() {
     chrome.webRequest.onBeforeSendHeaders.addListener(
       (details) => {
         if (details.tabId === -1) {
-          console.log(details);
           // 判断是否存在X-Scriptcat-GM-XHR-Request-Id
           // 讲请求id与chrome.webRequest的请求id关联
           if (details.requestHeaders) {
@@ -227,5 +258,10 @@ export default class GMApi {
       },
       ["responseHeaders", "extraHeaders"]
     );
+  }
+
+  start() {
+    this.group.on("gmApi", this.handlerRequest.bind(this));
+    this.handlerGmXhr();
   }
 }

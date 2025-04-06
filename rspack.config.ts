@@ -152,7 +152,7 @@ export default defineConfig({
     }),
     new rspack.HtmlRspackPlugin({
       filename: `${dist}/ext/src/popup.html`,
-      template: `${src}/pages/popup/index.html`,
+      template: `${src}/pages/popup.html`,
       inject: "head",
       title: "Home - ScriptCat",
       minify: true,
