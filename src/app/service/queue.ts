@@ -35,6 +35,7 @@ export type ScriptMenuRegisterCallbackValue = {
   accessKey: string;
   tabId: number;
   frameId: number;
+  documentId: string;
 };
 
 export function subscribeScriptMenuRegister(

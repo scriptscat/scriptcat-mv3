@@ -112,6 +112,12 @@ export class PopupClient extends Client {
   }
 
   menuClick(uuid: string, data: ScriptMenuItem) {
-    return this.do("menuClick", { uuid, id: data.id, tabId: data.tabId, frameId: data.frameId });
+    return this.do("menuClick", {
+      uuid,
+      id: data.id,
+      tabId: data.tabId,
+      frameId: data.frameId,
+      documentId: data.documentId,
+    });
   }
 }

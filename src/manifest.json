@@ -30,6 +30,7 @@
     "activeTab",
     "webRequest",
     "userScripts",
+    "contextMenus",
     "declarativeNetRequest"
   ],
   "host_permissions": [

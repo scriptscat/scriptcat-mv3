@@ -24,8 +24,9 @@ export type ScriptMenuItem = {
   id: number;
   name: string;
   accessKey?: string;
-  tabId: number | "background";
-  frameId: number;
+  tabId: number; //-1表示后台脚本
+  frameId?: number;
+  documentId?: string;
 };
 
 export type ScriptMenu = {
@@ -52,6 +53,54 @@ export class PopupService {
     private runtime: RuntimeService
   ) {}
 
+  genScriptMenuByTabMap(menu: ScriptMenu[]) {
+    menu.forEach((script) => {
+      // 创建脚本菜单
+      if (script.menus.length) {
+        chrome.contextMenus.create({
+          id: `scriptMenu_` + script.uuid,
+          title: script.name,
+          contexts: ["all"],
+          parentId: "scriptMenu",
+        });
+        script.menus.forEach((menu) => {
+          // 创建菜单
+          console.log("create menu", menu);
+          chrome.contextMenus.create({
+            id: `scriptMenu_menu_${script.uuid}_${menu.id}`,
+            title: menu.name,
+            contexts: ["all"],
+            parentId: `scriptMenu_${script.uuid}`,
+          });
+        });
+      }
+    });
+  }
+
+  // 生成chrome菜单
+  async genScriptMenu(tabId: number) {
+    // 移除之前所有的菜单
+    chrome.contextMenus.removeAll();
+    const [menu, backgroundMenu] = await Promise.all([this.getScriptMenu(tabId), this.getScriptMenu(-1)]);
+    console.log(menu, backgroundMenu, tabId);
+    if (!menu.length && !backgroundMenu.length) {
+      return;
+    }
+    // 创建根菜单
+    chrome.contextMenus.create({
+      id: "scriptMenu",
+      title: "ScriptCat",
+      contexts: ["all"],
+    });
+    if (menu) {
+      this.genScriptMenuByTabMap(menu);
+    }
+    // 后台脚本的菜单
+    if (backgroundMenu) {
+      this.genScriptMenuByTabMap(backgroundMenu);
+    }
+  }
+
   async registerMenuCommand(message: ScriptMenuRegisterCallbackValue) {
     // 给脚本添加菜单
     const data = await this.getScriptMenu(message.tabId);
@@ -65,6 +114,7 @@ export class PopupService {
           accessKey: message.accessKey,
           tabId: message.tabId,
           frameId: message.frameId,
+          documentId: message.documentId,
         });
       } else {
         menu.name = message.name;
@@ -72,8 +122,10 @@ export class PopupService {
         menu.tabId = message.tabId;
       }
     }
-    console.log(data);
-    Cache.getInstance().set("tabScript:" + message.tabId, data);
+    console.log("set menu", data);
+    await Cache.getInstance().set("tabScript:" + message.tabId, data);
+    console.log("update menu");
+    this.updateScriptMenu();
   }
 
   async unregisterMenuCommand({ id, uuid, tabId }: { id: number; uuid: string; tabId: number }) {
@@ -83,7 +135,21 @@ export class PopupService {
     if (script) {
       script.menus = script.menus.filter((item) => item.id !== id);
     }
-    Cache.getInstance().set("tabScript:" + tabId, data);
+    await Cache.getInstance().set("tabScript:" + tabId, data);
+    this.updateScriptMenu();
+  }
+
+  updateScriptMenu() {
+    // 获取当前页面并更新菜单
+    chrome.tabs.query({ active: true }, (tabs) => {
+      console.log("query", tabs);
+      if (!tabs.length) {
+        return;
+      }
+      const tab = tabs[0];
+      // 生成菜单
+      tab.id && this.genScriptMenu(tab.id);
+    });
   }
 
   scriptToMenu(script: Script): ScriptMenu {
@@ -225,15 +291,34 @@ export class PopupService {
     });
   }
 
-  menuClick({ uuid, id, tabId, frameId }: { uuid: string; id: number; tabId: number; frameId: number }) {
+  menuClick({
+    uuid,
+    id,
+    tabId,
+    frameId,
+    documentId,
+  }: {
+    uuid: string;
+    id: number;
+    tabId: number;
+    frameId: number;
+    documentId: string;
+  }) {
     // 菜单点击事件
-    console.log("click menu", uuid, id, tabId);
-    this.runtime.sendMessageToTab(tabId, "menuClick", {
-      uuid,
-      id,
+    console.log("click menu", uuid, id, tabId, frameId, documentId);
+    this.runtime.sendMessageToTab(
       tabId,
-      frameId,
-    });
+      "menuClick",
+      {
+        uuid,
+        id,
+        tabId,
+      },
+      {
+        frameId,
+        documentId: documentId,
+      }
+    );
     return Promise.resolve(true);
   }
 
@@ -250,10 +335,47 @@ export class PopupService {
       // 清理数据
       Cache.getInstance().del("tabScript:" + tabId);
     });
+    // 监听页面切换加载菜单
+    chrome.tabs.onActivated.addListener((activeInfo) => {
+      this.genScriptMenu(activeInfo.tabId);
+    });
+    // 处理chrome菜单点击
+    chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+      const menuIds = (info.menuItemId as string).split("_");
+      if (menuIds.length === 4) {
+        const [, , uuid, id] = menuIds;
+        // 寻找menu信息
+        const menu = await this.getScriptMenu(tab!.id!);
+        const script = menu.find((item) => item.uuid === uuid);
+        if (script) {
+          const menuItem = script.menus.find((item) => item.id === parseInt(id, 10));
+          if (menuItem) {
+            this.menuClick({
+              uuid: script.uuid,
+              id: menuItem.id,
+              tabId: tab!.id!,
+              frameId: menuItem.frameId || 0,
+              documentId: menuItem.documentId || "",
+            });
+            return;
+          }
+        }
+      }
+    });
+
     // 监听运行次数
     this.mq.subscribe(
       "pageLoad",
-      async ({ tabId, frameId, scripts }: { tabId: number; frameId: number; scripts: ScriptMatchInfo[] }) => {
+      async ({
+        tabId,
+        frameId,
+        scripts,
+      }: {
+        tabId: number;
+        frameId: number;
+        document: string;
+        scripts: ScriptMatchInfo[];
+      }) => {
         this.addScriptRunNumber({ tabId, frameId, scripts });
         // 设置角标和脚本
         chrome.action.getBadgeText(

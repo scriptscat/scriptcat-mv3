@@ -86,13 +86,19 @@ export class ExtensionMessageConnect implements MessageConnect {
 }
 
 export class ExtensionContentMessageSend extends ExtensionMessageSend {
-  constructor(private tabId: number) {
+  constructor(
+    private tabId: number,
+    private options?: {
+      frameId?: number;
+      documentId?: string;
+    }
+  ) {
     super();
   }
 
   sendMessage(data: any): Promise<any> {
     return new Promise((resolve) => {
-      chrome.tabs.sendMessage(this.tabId, data, (resp) => {
+      chrome.tabs.sendMessage(this.tabId, data, this.options || {}, (resp) => {
         resolve(resp);
       });
     });
@@ -100,7 +106,7 @@ export class ExtensionContentMessageSend extends ExtensionMessageSend {
 
   connect(data: any): Promise<MessageConnect> {
     return new Promise((resolve) => {
-      const con = chrome.tabs.connect(this.tabId);
+      const con = chrome.tabs.connect(this.tabId, this.options);
       con.postMessage(data);
       resolve(new ExtensionMessageConnect(con));
     });

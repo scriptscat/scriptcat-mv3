@@ -190,6 +190,7 @@ export default class GMApi {
       accessKey: accessKey,
       tabId: sender.getSender().tab!.id!,
       frameId: sender.getSender().frameId,
+      documentId: sender.getSender().documentId,
     });
   }
 

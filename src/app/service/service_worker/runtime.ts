@@ -122,12 +122,20 @@ export class RuntimeService {
   }
 
   // 给指定tab发送消息
-  sendMessageToTab(tabId: number, action: string, data: any) {
+  sendMessageToTab(
+    tabId: number,
+    action: string,
+    data: any,
+    options?: {
+      documentId?: string;
+      frameId?: number;
+    }
+  ) {
     if (tabId === -1) {
       // 如果是-1, 代表给offscreen发送消息
       return sendMessage(this.sender, "offscreen/runtime/" + action, data);
     }
-    return sendMessage(new ExtensionContentMessageSend(tabId), "content/runtime/" + action, data);
+    return sendMessage(new ExtensionContentMessageSend(tabId, options), "content/runtime/" + action, data);
   }
 
   async getPageScriptUuidByUrl(url: string) {
