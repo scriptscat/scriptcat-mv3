@@ -15,7 +15,8 @@ import { RiMessage2Line } from "react-icons/ri";
 import semver from "semver";
 import { useTranslation } from "react-i18next";
 import ScriptMenuList from "../components/ScriptMenuList";
-import { ScriptMenu } from "@App/runtime/service_worker/runtime";
+import { popupClient } from "../store/features/script";
+import { ScriptMenu } from "@App/app/service/service_worker/popup";
 
 const CollapseItem = Collapse.Item;
 
@@ -43,41 +44,39 @@ function App() {
     // ignore error
   }
 
-//   const message = IoC.instance(MessageInternal) as MessageInternal;
-//   useEffect(() => {
-//     systemManage.getNotice().then((res) => {
-//       if (res) {
-//         setNotice(res.notice);
-//         setIsRead(res.isRead);
-//       }
-//     });
-//     systemManage.getVersion().then((res) => {
-//       res && setVersion(res);
-//     });
-//     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-//       if (!tabs.length) {
-//         return;
-//       }
-//       setCurrentUrl(tabs[0].url || "");
-//       message
-//         .syncSend("queryPageScript", { url: tabs[0].url, tabId: tabs[0].id })
-//         .then((resp: { scriptList: ScriptMenu[]; backScriptList: ScriptMenu[] }) => {
-//           // 按照开启状态和更新时间排序
-//           const list = resp.scriptList;
-//           list.sort((a, b) => {
-//             if (a.enable === b.enable) {
-//               if (a.runNum !== b.runNum) {
-//                 return b.runNum - a.runNum;
-//               }
-//               return b.updatetime - a.updatetime;
-//             }
-//             return a.enable ? -1 : 1;
-//           });
-//           setScriptList(list);
-//           setBackScriptList(resp.backScriptList);
-//         });
-//     });
-//   }, []);
+  useEffect(() => {
+    // systemManage.getNotice().then((res) => {
+    //   if (res) {
+    //     setNotice(res.notice);
+    //     setIsRead(res.isRead);
+    //   }
+    // });
+    // systemManage.getVersion().then((res) => {
+    //   res && setVersion(res);
+    // });
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs.length) {
+        return;
+      }
+      setCurrentUrl(tabs[0].url || "");
+      popupClient.getPopupData({ url: tabs[0].url!, tabId: tabs[0].id! }).then((resp) => {
+        console.log(resp);
+        // 按照开启状态和更新时间排序
+        const list = resp.scriptList;
+        list.sort((a, b) => {
+          if (a.enable === b.enable) {
+            if (a.runNum !== b.runNum) {
+              return b.runNum - a.runNum;
+            }
+            return b.updatetime - a.updatetime;
+          }
+          return a.enable ? -1 : 1;
+        });
+        setScriptList(list);
+        setBackScriptList(resp.backScriptList);
+      });
+    });
+  }, []);
   return (
     <Card
       size="small"
@@ -178,7 +177,6 @@ function App() {
       <Alert
         style={{ marginBottom: 20, display: showAlert ? "flex" : "none" }}
         type="info"
-        // eslint-disable-next-line react/no-danger
         content={<div dangerouslySetInnerHTML={{ __html: notice }} />}
       />
       <Collapse bordered={false} defaultActiveKey={["script", "background"]} style={{ maxWidth: 640 }}>

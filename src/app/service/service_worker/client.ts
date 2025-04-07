@@ -3,6 +3,7 @@ import { Client } from "@Packages/message/client";
 import { InstallSource } from ".";
 import { Resource } from "@App/app/repo/resource";
 import { MessageSend } from "@Packages/message/server";
+import { ScriptMenu, ScriptMenuItem } from "./popup";
 
 export class ServiceWorkerClient extends Client {
   constructor(msg: MessageSend) {
@@ -88,5 +89,29 @@ export class RuntimeClient extends Client {
 
   scriptLoad(flag: string, uuid: string) {
     return this.do("scriptLoad", { flag, uuid });
+  }
+}
+
+export type GetPopupDataReq = {
+  tabId: number;
+  url: string;
+};
+
+export type GetPopupDataRes = {
+  scriptList: ScriptMenu[];
+  backScriptList: ScriptMenu[];
+};
+
+export class PopupClient extends Client {
+  constructor(msg: MessageSend) {
+    super(msg, "serviceWorker/popup");
+  }
+
+  getPopupData(data: GetPopupDataReq): Promise<GetPopupDataRes> {
+    return this.do("getPopupData", data);
+  }
+
+  menuClick(uuid: string, data: ScriptMenuItem) {
+    return this.do("menuClick", { uuid, id: data.id, tabId: data.tabId, frameId: data.frameId });
   }
 }

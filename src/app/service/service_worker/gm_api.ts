@@ -1,7 +1,7 @@
 import LoggerCore from "@App/app/logger/core";
 import Logger from "@App/app/logger/logger";
 import { Script, ScriptDAO } from "@App/app/repo/scripts";
-import { GetSender, Group, MessageSend, MessageSender } from "@Packages/message/server";
+import { GetSender, Group, MessageSend } from "@Packages/message/server";
 import { ValueService } from "@App/app/service/service_worker/value";
 import PermissionVerify from "./permission_verify";
 import { connect } from "@Packages/message/client";
@@ -21,7 +21,6 @@ export type MessageRequest = {
 
 export type Request = MessageRequest & {
   script: Script;
-  sender: MessageSender;
 };
 
 export type Api = (request: Request, con: GetSender) => Promise<any>;
@@ -48,7 +47,7 @@ export default class GMApi {
     if (!api) {
       return Promise.reject(new Error("gm api is not found"));
     }
-    const req = await this.parseRequest(data, { tabId: 0 });
+    const req = await this.parseRequest(data);
     try {
       await this.permissionVerify.verify(req, api);
     } catch (e) {
@@ -59,14 +58,13 @@ export default class GMApi {
   }
 
   // 解析请求
-  async parseRequest(data: MessageRequest, sender: MessageSender): Promise<Request> {
+  async parseRequest(data: MessageRequest): Promise<Request> {
     const script = await this.scriptDAO.get(data.uuid);
     if (!script) {
       return Promise.reject(new Error("script is not found"));
     }
     const req: Request = <Request>data;
     req.script = script;
-    req.sender = sender;
     return Promise.resolve(req);
   }
 
@@ -76,8 +74,6 @@ export default class GMApi {
       return Promise.reject(new Error("param is failed"));
     }
     const [key, value] = request.params;
-    const sender = <MessageSender & { runFlag: string }>request.sender;
-    sender.runFlag = request.runFlag;
     return this.value.setValue(request.script.uuid, key, value);
   }
 
@@ -183,8 +179,8 @@ export default class GMApi {
   }
 
   @PermissionVerify.API()
-  GM_registerMenuCommand(request: Request, con: GetSender) {
-    console.log("registerMenuCommand", request.params);
+  GM_registerMenuCommand(request: Request, sender: GetSender) {
+    console.log("registerMenuCommand", request.params, sender.getSender(), sender.getSender().tab!.id!);
     const [id, name, accessKey] = request.params;
     // 触发菜单注册, 在popup中处理
     this.mq.emit("registerMenuCommand", {
@@ -192,24 +188,20 @@ export default class GMApi {
       id: id,
       name: name,
       accessKey: accessKey,
-      con: con.getConnect(),
-    });
-    con.getConnect().onDisconnect(() => {
-      // 取消注册
-      this.mq.emit("unregisterMenuCommand", {
-        uuid: request.script.uuid,
-        name: name,
-      });
+      tabId: sender.getSender().tab!.id!,
+      frameId: sender.getSender().frameId,
     });
   }
 
   @PermissionVerify.API()
-  GM_unregisterMenuCommand(request: Request) {
+  GM_unregisterMenuCommand(request: Request, sender: GetSender) {
     const [id] = request.params;
     // 触发菜单取消注册, 在popup中处理
     this.mq.emit("unregisterMenuCommand", {
       uuid: request.script.uuid,
       id: id,
+      tabId: sender.getSender().tab!.id!,
+      frameId: sender.getSender().frameId,
     });
   }
 

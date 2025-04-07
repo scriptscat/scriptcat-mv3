@@ -1,15 +1,5 @@
-/* eslint-disable no-nested-ternary */
 import React, { useEffect, useState } from "react";
-import { ScriptMenu } from "@App/runtime/service_worker/runtime";
-import {
-  Button,
-  Collapse,
-  Empty,
-  Message,
-  Popconfirm,
-  Space,
-  Switch,
-} from "@arco-design/web-react";
+import { Button, Collapse, Empty, Message, Popconfirm, Space, Switch } from "@arco-design/web-react";
 import {
   IconCaretDown,
   IconCaretUp,
@@ -23,6 +13,11 @@ import { SCRIPT_RUN_STATUS_RUNNING } from "@App/app/repo/scripts";
 import { RiPlayFill, RiStopFill } from "react-icons/ri";
 import { useTranslation } from "react-i18next";
 import { ScriptIcons } from "@App/pages/options/routes/utils";
+import { ScriptMenu, ScriptMenuItem } from "@App/app/service/service_worker/popup";
+import { MessageSender } from "@Packages/message/server";
+import { selectMenuExpandNum } from "@App/pages/store/features/setting";
+import { useAppSelector } from "@App/pages/store/hooks";
+import { popupClient } from "@App/pages/store/features/script";
 
 const CollapseItem = Collapse.Item;
 
@@ -49,12 +44,13 @@ const ScriptMenuList: React.FC<{
     [key: string]: boolean;
   }>({});
   const { t } = useTranslation();
+  const menuExpandNum = useAppSelector(selectMenuExpandNum);
 
   let url: URL;
   try {
     url = new URL(currentUrl);
-  } catch (e) {
-    // ignore error
+  } catch (e: any) {
+    console.error("Invalid URL:", e);
   }
   useEffect(() => {
     setList(script);
@@ -78,20 +74,10 @@ const ScriptMenuList: React.FC<{
   //   };
   // }, []);
 
-  const sendMenuAction = (sender: MessageSender, channelFlag: string) => {
-    let id = sender.tabId;
-    if (sender.frameId) {
-      id = sender.frameId;
-    }
-    message.broadcastChannel(
-      {
-        tag: sender.targetTag,
-        id: [id!],
-      },
-      channelFlag,
-      "click"
-    );
-    window.close();
+  const sendMenuAction = (uuid: string, menu: ScriptMenuItem) => {
+    popupClient.menuClick(uuid, menu).then(() => {
+      window.close();
+    });
   };
   // 监听菜单按键
 
@@ -101,16 +87,14 @@ const ScriptMenuList: React.FC<{
     <>
       {list.length === 0 && <Empty />}
       {list.map((item, index) => (
-        <Collapse bordered={false} expandIconPosition="right" key={item.id}>
+        <Collapse bordered={false} expandIconPosition="right" key={item.uuid}>
           <CollapseItem
             header={
-              // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
               <div
                 onClick={(e) => {
                   e.stopPropagation();
                 }}
                 title={
-                  // eslint-disable-next-line no-nested-ternary
                   item.enable
                     ? item.runNumByIframe
                       ? t("script_total_runs", {
@@ -159,7 +143,7 @@ const ScriptMenuList: React.FC<{
                 </Space>
               </div>
             }
-            name={item.id.toString()}
+            name={item.uuid}
             contentStyle={{ padding: "0 0 0 40px" }}
           >
             <div className="flex flex-col">
@@ -167,13 +151,7 @@ const ScriptMenuList: React.FC<{
                 <Button
                   className="text-left"
                   type="secondary"
-                  icon={
-                    item.runStatus !== SCRIPT_RUN_STATUS_RUNNING ? (
-                      <RiPlayFill />
-                    ) : (
-                      <RiStopFill />
-                    )
-                  }
+                  icon={item.runStatus !== SCRIPT_RUN_STATUS_RUNNING ? <RiPlayFill /> : <RiStopFill />}
                   onClick={() => {
                     if (item.runStatus !== SCRIPT_RUN_STATUS_RUNNING) {
                       runtimeCtrl.startScript(item.id);
@@ -182,9 +160,7 @@ const ScriptMenuList: React.FC<{
                     }
                   }}
                 >
-                  {item.runStatus !== SCRIPT_RUN_STATUS_RUNNING
-                    ? t("run_once")
-                    : t("stop")}
+                  {item.runStatus !== SCRIPT_RUN_STATUS_RUNNING ? t("run_once") : t("stop")}
                 </Button>
               )}
               <Button
@@ -192,10 +168,7 @@ const ScriptMenuList: React.FC<{
                 type="secondary"
                 icon={<IconEdit />}
                 onClick={() => {
-                  window.open(
-                    `/src/options.html#/script/editor/${item.id}`,
-                    "_blank"
-                  );
+                  window.open(`/src/options.html#/script/editor/${item.id}`, "_blank");
                   window.close();
                 }}
               >
@@ -208,20 +181,12 @@ const ScriptMenuList: React.FC<{
                   type="secondary"
                   icon={<IconMinus />}
                   onClick={() => {
-                    scriptCtrl
-                      .exclude(
-                        item.id,
-                        `*://${url.host}*`,
-                        isExclude(item, url.host)
-                      )
-                      .finally(() => {
-                        window.close();
-                      });
+                    scriptCtrl.exclude(item.id, `*://${url.host}*`, isExclude(item, url.host)).finally(() => {
+                      window.close();
+                    });
                   }}
                 >
-                  {isExclude(item, url.host)
-                    ? t("exclude_on")
-                    : t("exclude_off")}
+                  {isExclude(item, url.host) ? t("exclude_on") : t("exclude_off")}
                   {` ${url.host} ${t("exclude_execution")}`}
                 </Button>
               )}
@@ -235,32 +200,24 @@ const ScriptMenuList: React.FC<{
                   });
                 }}
               >
-                <Button
-                  className="text-left"
-                  status="danger"
-                  type="secondary"
-                  icon={<IconDelete />}
-                >
+                <Button className="text-left" status="danger" type="secondary" icon={<IconDelete />}>
                   {t("delete")}
                 </Button>
               </Popconfirm>
             </div>
           </CollapseItem>
-          <div
-            className="arco-collapse-item-content-box flex flex-col"
-            style={{ padding: "0 0 0 40px" }}
-          >
+          <div className="arco-collapse-item-content-box flex flex-col" style={{ padding: "0 0 0 40px" }}>
             {/* 判断菜单数量，再判断是否展开 */}
-            {(item.menus && item.menus?.length > systemConfig.menuExpandNum
+            {(item.menus.length > menuExpandNum
               ? expandMenuIndex[index]
                 ? item.menus
-                : item.menus?.slice(0, systemConfig.menuExpandNum)
+                : item.menus?.slice(0, menuExpandNum)
               : item.menus
             )?.map((menu) => {
               if (menu.accessKey) {
                 document.addEventListener("keypress", (e) => {
                   if (e.key.toUpperCase() === menu.accessKey!.toUpperCase()) {
-                    sendMenuAction(menu.sender, menu.channelFlag);
+                    sendMenuAction(item.uuid, menu);
                   }
                 });
               }
@@ -271,7 +228,7 @@ const ScriptMenuList: React.FC<{
                   type="secondary"
                   icon={<IconMenu />}
                   onClick={() => {
-                    sendMenuAction(menu.sender, menu.channelFlag);
+                    sendMenuAction(item.uuid, menu);
                   }}
                 >
                   {menu.name}
@@ -279,14 +236,12 @@ const ScriptMenuList: React.FC<{
                 </Button>
               );
             })}
-            {item.menus && item.menus?.length > systemConfig.menuExpandNum && (
+            {item.menus.length > menuExpandNum && (
               <Button
                 className="text-left"
                 key="expand"
                 type="secondary"
-                icon={
-                  expandMenuIndex[index] ? <IconCaretUp /> : <IconCaretDown />
-                }
+                icon={expandMenuIndex[index] ? <IconCaretUp /> : <IconCaretDown />}
                 onClick={() => {
                   setExpandMenuIndex({
                     ...expandMenuIndex,
@@ -304,10 +259,7 @@ const ScriptMenuList: React.FC<{
                 type="secondary"
                 icon={<IconSettings />}
                 onClick={() => {
-                  window.open(
-                    `/src/options.html#/?userConfig=${item.id}`,
-                    "_blank"
-                  );
+                  window.open(`/src/options.html#/?userConfig=${item.id}`, "_blank");
                   window.close();
                 }}
               >

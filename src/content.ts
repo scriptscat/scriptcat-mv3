@@ -1,6 +1,6 @@
 import LoggerCore from "./app/logger/core";
 import MessageWriter from "./app/logger/message_writer";
-import { ExtensionMessageSend } from "@Packages/message/extension_message";
+import { ExtensionMessage, ExtensionMessageSend } from "@Packages/message/extension_message";
 import { CustomEventMessage } from "@Packages/message/custom_event_message";
 import { RuntimeClient } from "./app/service/service_worker/client";
 import ContentRuntime from "./runtime/content/content";
@@ -18,9 +18,11 @@ const loggerCore = new LoggerCore({
 const client = new RuntimeClient(send);
 client.pageLoad().then((data) => {
   loggerCore.logger().debug("content start");
+  const extMsg = new ExtensionMessage();
   const msg = new CustomEventMessage(data.flag, true);
   const server = new Server("content", msg);
+  const extServer = new Server("content", extMsg);
   // 初始化运行环境
-  const runtime = new ContentRuntime(server, send, msg);
+  const runtime = new ContentRuntime(extServer, server, send, msg);
   runtime.start(data.scripts);
 });

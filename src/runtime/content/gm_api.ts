@@ -222,16 +222,17 @@ export default class GMApi {
       this.menuId += 1;
     }
     const id = this.menuId;
-    this.connect("GM_registerMenuCommand", [id, name, accessKey]).then((con) => {
-      con.onMessage((data: { action: string; data: any }) => {
-        if (data.action === "onClick") {
-          listener();
-        }
-      });
-      con.onDisconnect(() => {
-        this.menuMap?.delete(id);
-      });
-    });
+    this.sendMessage("GM_registerMenuCommand", [id, name, accessKey]);
+    // .then((con) => {
+    //   con.onMessage((data: { action: string; data: any }) => {
+    //     if (data.action === "onClick") {
+    //       listener();
+    //     }
+    //   });
+    //   con.onDisconnect(() => {
+    //     this.menuMap?.delete(id);
+    //   });
+    // });
     this.menuMap.set(id, name);
     return id;
   }

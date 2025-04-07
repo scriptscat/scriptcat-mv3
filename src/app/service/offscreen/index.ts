@@ -14,7 +14,7 @@ export class OffscreenManager {
 
   private windowMessage = new WindowMessage(window, sandbox, true);
 
-  private windowApi: Server = new Server("offscreen", this.windowMessage);
+  private windowServer: Server = new Server("offscreen", this.windowMessage);
 
   private messageQueue: MessageQueue = new MessageQueue();
 
@@ -36,21 +36,21 @@ export class OffscreenManager {
 
   async initManager() {
     // 监听消息
-    this.windowApi.on("logger", this.logger.bind(this));
-    this.windowApi.on("preparationSandbox", this.preparationSandbox.bind(this));
-    this.windowApi.on("sendMessageToServiceWorker", this.sendMessageToServiceWorker.bind(this));
+    this.windowServer.on("logger", this.logger.bind(this));
+    this.windowServer.on("preparationSandbox", this.preparationSandbox.bind(this));
+    this.windowServer.on("sendMessageToServiceWorker", this.sendMessageToServiceWorker.bind(this));
     const script = new ScriptService(
-      this.windowApi.group("script"),
+      this.windowServer.group("script"),
       this.extensionMessage,
       this.windowMessage,
       this.messageQueue
     );
     script.init();
     // 转发从sandbox来的gm api请求
-    forwardMessage("serviceWorker", "runtime/gmApi", this.windowApi, this.extensionMessage);
+    forwardMessage("serviceWorker", "runtime/gmApi", this.windowServer, this.extensionMessage);
     // 转发message queue请求
 
-    const gmApi = new GMApi(this.windowApi.group("gmApi"));
+    const gmApi = new GMApi(this.windowServer.group("gmApi"));
     gmApi.init();
   }
 }

@@ -8,11 +8,12 @@ import {
   ScriptDAO,
 } from "@App/app/repo/scripts";
 import { arrayMove } from "@dnd-kit/sortable";
-import { RuntimeClient, ScriptClient } from "@App/app/service/service_worker/client";
+import { PopupClient, RuntimeClient, ScriptClient } from "@App/app/service/service_worker/client";
 import { message } from "../global";
 
 export const scriptClient = new ScriptClient(message);
 export const runtimeClient = new RuntimeClient(message);
+export const popupClient = new PopupClient(message);
 
 export const fetchAndSortScriptList = createAsyncThunk("script/fetchScriptList", async () => {
   // 排序

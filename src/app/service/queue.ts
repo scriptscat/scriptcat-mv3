@@ -27,3 +27,19 @@ export function subscribeScriptRunStatus(
 ) {
   return messageQueue.subscribe("scriptRunStatus", callback);
 }
+
+export type ScriptMenuRegisterCallbackValue = {
+  uuid: string;
+  id: number;
+  name: string;
+  accessKey: string;
+  tabId: number;
+  frameId: number;
+};
+
+export function subscribeScriptMenuRegister(
+  messageQueue: MessageQueue,
+  callback: (message: ScriptMenuRegisterCallbackValue) => void
+) {
+  return messageQueue.subscribe("registerMenuCommand", callback);
+}

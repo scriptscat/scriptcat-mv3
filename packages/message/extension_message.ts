@@ -84,3 +84,25 @@ export class ExtensionMessageConnect implements MessageConnect {
     this.con.onDisconnect.addListener(callback);
   }
 }
+
+export class ExtensionContentMessageSend extends ExtensionMessageSend {
+  constructor(private tabId: number) {
+    super();
+  }
+
+  sendMessage(data: any): Promise<any> {
+    return new Promise((resolve) => {
+      chrome.tabs.sendMessage(this.tabId, data, (resp) => {
+        resolve(resp);
+      });
+    });
+  }
+
+  connect(data: any): Promise<MessageConnect> {
+    return new Promise((resolve) => {
+      const con = chrome.tabs.connect(this.tabId);
+      con.postMessage(data);
+      resolve(new ExtensionMessageConnect(con));
+    });
+  }
+}

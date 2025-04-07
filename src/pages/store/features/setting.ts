@@ -11,6 +11,7 @@ export const settingSlice = createAppSlice({
       config: "",
     },
     scriptListColumnWidth: {} as { [key: string]: number },
+    menuExpandNum: 5,
   },
   reducers: (create) => {
     // 初始化黑夜模式
@@ -42,14 +43,18 @@ export const settingSlice = createAppSlice({
           editor.setTheme(action.payload === "dark" ? "vs-dark" : "vs");
         }
       }),
+      menuExpandNum: create.reducer((state, action: PayloadAction<number>) => {
+        state.menuExpandNum = action.payload;
+      }),
     };
   },
   selectors: {
     selectThemeMode: (state) => state.lightMode,
     selectScriptListColumnWidth: (state) => state.scriptListColumnWidth,
+    selectMenuExpandNum: (state) => state.menuExpandNum,
   },
 });
 
 export const { setDarkMode } = settingSlice.actions;
 
-export const { selectThemeMode, selectScriptListColumnWidth } = settingSlice.selectors;
+export const { selectThemeMode, selectScriptListColumnWidth, selectMenuExpandNum } = settingSlice.selectors;

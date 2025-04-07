@@ -17,7 +17,7 @@ export interface MessageConnect {
   onDisconnect(callback: () => void): void;
 }
 
-export type MessageSender = any;
+export type MessageSender = chrome.runtime.MessageSender;
 
 export class GetSender {
   constructor(private sender: MessageConnect | MessageSender) {}
@@ -117,13 +117,13 @@ export class Group {
 export function forwardMessage(prefix: string, path: string, from: Server, to: MessageSend, middleware?: ApiFunction) {
   from.on(path, async (params, fromCon) => {
     if (middleware) {
-      const resp = await middleware(params, new GetSender(fromCon));
+      const resp = await middleware(params, fromCon);
       if (resp !== false) {
         return resp;
       }
     }
-    if (fromCon) {
-      const fromConnect = fromCon.getConnect();
+    const fromConnect = fromCon.getConnect();
+    if (fromConnect) {
       to.connect({ action: prefix + "/" + path, data: params }).then((toCon) => {
         fromConnect.onMessage((data) => {
           toCon.sendMessage(data);
