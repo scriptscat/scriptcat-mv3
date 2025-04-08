@@ -300,7 +300,11 @@ export class PopupService {
       return this.txUpdateScriptMenu(-1, async (menu) => {
         const scriptMenu = menu.find((item) => item.uuid === uuid);
         if (scriptMenu) {
-          scriptMenu.runNum = 1;
+          if (scriptMenu.runStatus === SCRIPT_RUN_STATUS_RUNNING) {
+            scriptMenu.runNum = 1;
+          } else {
+            scriptMenu.runNum = 0;
+          }
           scriptMenu.runStatus = runStatus;
           return menu;
         }
