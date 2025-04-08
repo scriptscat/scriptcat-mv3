@@ -46,13 +46,13 @@ dayjs.extend(relativeTime);
 
 export function i18nName(script: { name: string; metadata: Metadata }) {
   return script.metadata[`name:${i18n.language.toLowerCase()}`]
-    ? script.metadata[`name:${i18n.language.toLowerCase()}`][0]
+    ? script.metadata[`name:${i18n.language.toLowerCase()}`]![0]
     : script.name;
 }
 
 export function i18nDescription(script: { metadata: Metadata }) {
   return script.metadata[`description:${i18n.language.toLowerCase()}`]
-    ? script.metadata[`description:${i18n.language.toLowerCase()}`][0]
+    ? script.metadata[`description:${i18n.language.toLowerCase()}`]![0]
     : script.metadata.description;
 }
 

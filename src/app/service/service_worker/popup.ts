@@ -10,6 +10,7 @@ import {
   Script,
   ScriptDAO,
   SCRIPT_TYPE_NORMAL,
+  SCRIPT_RUN_STATUS_RUNNING,
 } from "@App/app/repo/scripts";
 import {
   ScriptMenuRegisterCallbackValue,
@@ -54,9 +55,11 @@ export class PopupService {
   ) {}
 
   genScriptMenuByTabMap(menu: ScriptMenu[]) {
+    let n = 0;
     menu.forEach((script) => {
       // 创建脚本菜单
       if (script.menus.length) {
+        n += script.menus.length;
         chrome.contextMenus.create({
           id: `scriptMenu_` + script.uuid,
           title: script.name,
@@ -65,7 +68,6 @@ export class PopupService {
         });
         script.menus.forEach((menu) => {
           // 创建菜单
-          console.log("create menu", menu);
           chrome.contextMenus.create({
             id: `scriptMenu_menu_${script.uuid}_${menu.id}`,
             title: menu.name,
@@ -75,6 +77,7 @@ export class PopupService {
         });
       }
     });
+    return n;
   }
 
   // 生成chrome菜单
@@ -86,6 +89,7 @@ export class PopupService {
     if (!menu.length && !backgroundMenu.length) {
       return;
     }
+    let n = 0;
     // 创建根菜单
     chrome.contextMenus.create({
       id: "scriptMenu",
@@ -93,18 +97,21 @@ export class PopupService {
       contexts: ["all"],
     });
     if (menu) {
-      this.genScriptMenuByTabMap(menu);
+      n += this.genScriptMenuByTabMap(menu);
     }
     // 后台脚本的菜单
     if (backgroundMenu) {
-      this.genScriptMenuByTabMap(backgroundMenu);
+      n += this.genScriptMenuByTabMap(backgroundMenu);
+    }
+    if (n === 0) {
+      // 如果没有菜单，删除菜单
+      chrome.contextMenus.remove("scriptMenu");
     }
   }
 
   async registerMenuCommand(message: ScriptMenuRegisterCallbackValue) {
     // 给脚本添加菜单
     return this.txUpdateScriptMenu(message.tabId, async (data) => {
-      console.log("register menu", message, data);
       const script = data.find((item) => item.uuid === message.uuid);
       if (script) {
         const menu = script.menus.find((item) => item.id === message.id);
@@ -165,7 +172,7 @@ export class PopupService {
       hasUserConfig: !!script.config,
       metadata: script.metadata,
       runStatus: script.runStatus,
-      runNum: 0,
+      runNum: script.type === SCRIPT_TYPE_NORMAL ? 0 : script.runStatus === SCRIPT_RUN_STATUS_RUNNING ? 1 : 0,
       runNumByIframe: 0,
       menus: [],
       customExclude: (script as ScriptMatchInfo).customizeExcludeMatches || [],
@@ -175,21 +182,21 @@ export class PopupService {
   // 获取popup页面数据
   async getPopupData(req: GetPopupDataReq): Promise<GetPopupDataRes> {
     // 获取当前tabId
-    const scriptUuid = await this.runtime.getPageScriptByUrl(req.url);
+    const script = await this.runtime.getPageScriptByUrl(req.url, true);
     // 与运行时脚本进行合并
     const runScript = await this.getScriptMenu(req.tabId);
-    // 筛选出未运行的脚本
-    const notRunScript = scriptUuid.filter((script) => {
-      return !runScript.find((item) => item.uuid === script.uuid);
-    });
-    // 将未运行的脚本转换为菜单
-    const scriptList = notRunScript.map((script): ScriptMenu => {
+    // 合并数据
+    const scriptMenu = script.map((script) => {
+      const run = runScript.find((item) => item.uuid === script.uuid);
+      if (run) {
+        // 如果脚本已经存在，则不添加，赋值状态
+        run.enable = script.status === SCRIPT_STATUS_ENABLE;
+        return run;
+      }
       return this.scriptToMenu(script);
     });
-    runScript.push(...scriptList);
     // 后台脚本只显示开启或者运行中的脚本
-
-    return { scriptList: runScript, backScriptList: await this.getScriptMenu(-1) };
+    return { scriptList: scriptMenu, backScriptList: await this.getScriptMenu(-1) };
   }
 
   async getScriptMenu(tabId: number) {
@@ -263,17 +270,17 @@ export class PopupService {
         return;
       }
       return this.txUpdateScriptMenu(-1, async (menu) => {
-        const scriptMenu = menu.find((item) => item.uuid === uuid);
+        const index = menu.findIndex((item) => item.uuid === uuid);
         if (script.status === SCRIPT_STATUS_ENABLE) {
           // 加入菜单
-          if (!scriptMenu) {
+          if (index === -1) {
             const item = this.scriptToMenu(script);
             menu.push(item);
           }
         } else {
           // 移出菜单
-          if (scriptMenu) {
-            menu.splice(menu.indexOf(scriptMenu), 1);
+          if (index !== -1) {
+            menu.splice(index, 1);
           }
         }
         return menu;
@@ -281,9 +288,9 @@ export class PopupService {
     });
     subscribeScriptDelete(this.mq, async ({ uuid }) => {
       return this.txUpdateScriptMenu(-1, async (menu) => {
-        const scriptMenu = menu.find((item) => item.uuid === uuid);
-        if (scriptMenu) {
-          menu.splice(menu.indexOf(scriptMenu), 1);
+        const index = menu.findIndex((item) => item.uuid === uuid);
+        if (index !== -1) {
+          menu.splice(index, 1);
           return menu;
         }
         return null;
@@ -293,6 +300,7 @@ export class PopupService {
       return this.txUpdateScriptMenu(-1, async (menu) => {
         const scriptMenu = menu.find((item) => item.uuid === uuid);
         if (scriptMenu) {
+          scriptMenu.runNum = 1;
           scriptMenu.runStatus = runStatus;
           return menu;
         }

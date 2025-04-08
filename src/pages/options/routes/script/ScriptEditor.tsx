@@ -17,6 +17,7 @@ import ScriptStorage from "@App/pages/components/ScriptStorage";
 import ScriptResource from "@App/pages/components/ScriptResource";
 import ScriptSetting from "@App/pages/components/ScriptSetting";
 import { scriptClient } from "@App/pages/store/features/script";
+import { i18nName } from "@App/locales/locales";
 import { useTranslation } from "react-i18next";
 
 const { Row } = Grid;
@@ -377,7 +378,7 @@ function ScriptEditor() {
   });
   useEffect(() => {
     scriptDAO.all().then(async (scripts) => {
-      setScriptList(scripts);
+      setScriptList(scripts.sort((a, b) => a.sort - b.sort));
       // 如果有id则打开对应的脚本
       if (uuid) {
         for (let i = 0; i < scripts.length; i += 1) {
@@ -734,7 +735,7 @@ function ScriptEditor() {
                   }
                 }}
               >
-                {script.name}
+                {i18nName(script)}
               </Button>
             ))}
           </div>

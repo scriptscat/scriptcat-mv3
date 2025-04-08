@@ -14,10 +14,12 @@ import { RiPlayFill, RiStopFill } from "react-icons/ri";
 import { useTranslation } from "react-i18next";
 import { ScriptIcons } from "@App/pages/options/routes/utils";
 import { ScriptMenu, ScriptMenuItem } from "@App/app/service/service_worker/popup";
-import { MessageSender } from "@Packages/message/server";
 import { selectMenuExpandNum } from "@App/pages/store/features/setting";
 import { useAppSelector } from "@App/pages/store/hooks";
-import { popupClient } from "@App/pages/store/features/script";
+import { popupClient, runtimeClient, scriptClient } from "@App/pages/store/features/script";
+import { i18nName } from "@App/locales/locales";
+import { subscribeScriptRunStatus } from "@App/app/service/queue";
+import { messageQueue } from "@App/pages/store/global";
 
 const CollapseItem = Collapse.Item;
 
@@ -26,7 +28,7 @@ function isExclude(script: ScriptMenu, host: string) {
     return false;
   }
   for (let i = 0; i < script.customExclude.length; i += 1) {
-    if (script.customExclude[i] === `*://${host}*`) {
+    if (script.customExclude[i] === `*://${host}/*`) {
       return true;
     }
   }
@@ -56,32 +58,28 @@ const ScriptMenuList: React.FC<{
     setList(script);
   }, [script]);
 
-  // useEffect(() => {
-  //   // 监听脚本运行状态
-  //   const channel = runtimeCtrl.watchRunStatus();
-  //   channel.setHandler(([id, status]: any) => {
-  //     setList((prev) => {
-  //       const newList = [...prev];
-  //       const index = newList.findIndex((item) => item.id === id);
-  //       if (index !== -1) {
-  //         newList[index].runStatus = status;
-  //       }
-  //       return newList;
-  //     });
-  //   });
-  //   return () => {
-  //     channel.disChannel();
-  //   };
-  // }, []);
+  useEffect(() => {
+    // 监听脚本运行状态
+    const unsub = subscribeScriptRunStatus(messageQueue, ({ uuid, runStatus }) => {
+      setList((prev) => {
+        const newList = [...prev];
+        const index = newList.findIndex((item) => item.uuid === uuid);
+        if (index !== -1) {
+          newList[index].runStatus = runStatus;
+        }
+        return newList;
+      });
+    });
+    return () => {
+      unsub();
+    };
+  }, []);
 
   const sendMenuAction = (uuid: string, menu: ScriptMenuItem) => {
     popupClient.menuClick(uuid, menu).then(() => {
       window.close();
     });
   };
-  // 监听菜单按键
-
-  // 菜单展开
 
   return (
     <>
@@ -110,21 +108,15 @@ const ScriptMenuList: React.FC<{
                     size="small"
                     checked={item.enable}
                     onChange={(checked) => {
-                      let p: Promise<any>;
-                      if (checked) {
-                        p = scriptCtrl.enable(item.id).then(() => {
-                          item.enable = true;
+                      scriptClient
+                        .enable(item.uuid, checked)
+                        .then(() => {
+                          item.enable = checked;
+                          setList([...list]);
+                        })
+                        .catch((err) => {
+                          Message.error(err);
                         });
-                      } else {
-                        p = scriptCtrl.disable(item.id).then(() => {
-                          item.enable = false;
-                        });
-                      }
-                      p.catch((err) => {
-                        Message.error(err);
-                      }).finally(() => {
-                        setList([...list]);
-                      });
                     }}
                   />
                   <span
@@ -138,7 +130,7 @@ const ScriptMenuList: React.FC<{
                     }}
                   >
                     <ScriptIcons script={item} size={20} />
-                    {item.name}
+                    {i18nName(item)}
                   </span>
                 </Space>
               </div>
@@ -154,9 +146,9 @@ const ScriptMenuList: React.FC<{
                   icon={item.runStatus !== SCRIPT_RUN_STATUS_RUNNING ? <RiPlayFill /> : <RiStopFill />}
                   onClick={() => {
                     if (item.runStatus !== SCRIPT_RUN_STATUS_RUNNING) {
-                      runtimeCtrl.startScript(item.id);
+                      runtimeClient.runScript(item.uuid);
                     } else {
-                      runtimeCtrl.stopScript(item.id);
+                      runtimeClient.stopScript(item.uuid);
                     }
                   }}
                 >
@@ -168,7 +160,7 @@ const ScriptMenuList: React.FC<{
                 type="secondary"
                 icon={<IconEdit />}
                 onClick={() => {
-                  window.open(`/src/options.html#/script/editor/${item.id}`, "_blank");
+                  window.open(`/src/options.html#/script/editor/${item.uuid}`, "_blank");
                   window.close();
                 }}
               >
@@ -181,7 +173,7 @@ const ScriptMenuList: React.FC<{
                   type="secondary"
                   icon={<IconMinus />}
                   onClick={() => {
-                    scriptCtrl.exclude(item.id, `*://${url.host}*`, isExclude(item, url.host)).finally(() => {
+                    scriptClient.excludeUrl(item.uuid, `*://${url.host}/*`, isExclude(item, url.host)).finally(() => {
                       window.close();
                     });
                   }}
@@ -194,8 +186,8 @@ const ScriptMenuList: React.FC<{
                 title={t("confirm_delete_script")}
                 icon={<IconDelete />}
                 onOk={() => {
-                  setList(list.filter((i) => i.id !== item.id));
-                  scriptCtrl.delete(item.id).catch((e) => {
+                  setList(list.filter((i) => i.uuid !== item.uuid));
+                  scriptClient.delete(item.uuid).catch((e) => {
                     Message.error(`{t('delete_failed')}: ${e}`);
                   });
                 }}
@@ -259,7 +251,7 @@ const ScriptMenuList: React.FC<{
                 type="secondary"
                 icon={<IconSettings />}
                 onClick={() => {
-                  window.open(`/src/options.html#/?userConfig=${item.id}`, "_blank");
+                  window.open(`/src/options.html#/?userConfig=${item.uuid}`, "_blank");
                   window.close();
                 }}
               >

@@ -65,6 +65,10 @@ function App() {
         const list = resp.scriptList;
         list.sort((a, b) => {
           if (a.enable === b.enable) {
+            // 根据菜单数排序
+            if (a.menus.length !== b.menus.length) {
+              return b.menus.length - a.menus.length;
+            }
             if (a.runNum !== b.runNum) {
               return b.runNum - a.runNum;
             }

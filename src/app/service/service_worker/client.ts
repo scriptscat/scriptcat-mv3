@@ -48,6 +48,10 @@ export class ScriptClient extends Client {
   getScriptRunResource(script: Script): Promise<ScriptRunResouce> {
     return this.do("getScriptRunResource", script);
   }
+
+  excludeUrl(uuid: string, url: string, remove: boolean) {
+    return this.do("excludeUrl", { uuid, url, remove });
+  }
 }
 
 export class ResourceClient extends Client {

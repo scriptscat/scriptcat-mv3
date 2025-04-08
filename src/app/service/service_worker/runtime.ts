@@ -67,7 +67,7 @@ export class RuntimeService {
         // 加载页面脚本
         await this.loadPageScript(script);
         if (!data.enable) {
-          await this.unregistryPageScript(script);
+          await this.unregistryPageScript(script.uuid);
         }
       }
     });
@@ -82,15 +82,9 @@ export class RuntimeService {
       }
     });
     // 监听脚本删除
-    subscribeScriptDelete(this.mq, async (data) => {
-      const script = await this.scriptDAO.get(data.uuid);
-      if (!script) {
-        return;
-      }
-      if (script.type === SCRIPT_TYPE_NORMAL) {
-        await this.unregistryPageScript(script);
-        this.deleteScriptMatch(script.uuid);
-      }
+    subscribeScriptDelete(this.mq, async ({ uuid }) => {
+      await this.unregistryPageScript(uuid);
+      this.deleteScriptMatch(uuid);
     });
 
     // 将开启的脚本发送一次enable消息
@@ -138,24 +132,29 @@ export class RuntimeService {
     return sendMessage(new ExtensionContentMessageSend(tabId, options), "content/runtime/" + action, data);
   }
 
-  async getPageScriptUuidByUrl(url: string) {
+  async getPageScriptUuidByUrl(url: string, includeCustomize?: boolean) {
     const match = await this.loadScriptMatchInfo();
     // 匹配当前页面的脚本
     const matchScriptUuid = match.match(url!);
-    // 排除自定义匹配
-    const excludeScriptUuid = this.scriptCustomizeMatch.match(url!);
-    const excludeMatch = new Set<string>();
-    excludeScriptUuid.forEach((uuid) => {
-      excludeMatch.add(uuid);
-    });
-    return matchScriptUuid.filter((value) => {
-      // 过滤掉自定义排除的脚本
-      return !excludeMatch.has(value);
-    });
+    // 包含自定义排除的脚本
+    if (includeCustomize) {
+      const excludeScriptUuid = this.scriptCustomizeMatch.match(url!);
+      const match = new Set<string>();
+      excludeScriptUuid.forEach((uuid) => {
+        match.add(uuid);
+      });
+      matchScriptUuid.forEach((uuid) => {
+        match.add(uuid);
+      });
+      // 转化为数组
+      console.log("matchScriptUuid", matchScriptUuid);
+      return Array.from(match);
+    }
+    return matchScriptUuid;
   }
 
-  async getPageScriptByUrl(url: string) {
-    const matchScriptUuid = await this.getPageScriptUuidByUrl(url);
+  async getPageScriptByUrl(url: string, includeCustomize?: boolean) {
+    const matchScriptUuid = await this.getPageScriptUuidByUrl(url, includeCustomize);
     return matchScriptUuid.map((uuid) => {
       return Object.assign({}, this.scriptMatchCache?.get(uuid));
     });
@@ -266,15 +265,7 @@ export class RuntimeService {
             Object.keys(data).forEach((key) => {
               const item = data[key];
               cache.set(item.uuid, item);
-              item.matches.forEach((match) => {
-                this.scriptMatch.add(match, item.uuid);
-              });
-              item.excludeMatches.forEach((match) => {
-                this.scriptMatch.exclude(match, item.uuid);
-              });
-              item.customizeExcludeMatches.forEach((match) => {
-                this.scriptCustomizeMatch.exclude(match, item.uuid);
-              });
+              this.syncAddScriptMatch(item);
             });
           }
         });
@@ -305,6 +296,11 @@ export class RuntimeService {
       await this.loadScriptMatchInfo();
     }
     this.scriptMatchCache!.set(item.uuid, item);
+    this.syncAddScriptMatch(item);
+    this.saveScriptMatchInfo();
+  }
+
+  syncAddScriptMatch(item: ScriptMatchInfo) {
     // 清理一下老数据
     this.scriptMatch.del(item.uuid);
     this.scriptCustomizeMatch.del(item.uuid);
@@ -316,9 +312,8 @@ export class RuntimeService {
       this.scriptMatch.exclude(match, item.uuid);
     });
     item.customizeExcludeMatches.forEach((match) => {
-      this.scriptCustomizeMatch.exclude(match, item.uuid);
+      this.scriptCustomizeMatch.add(match, item.uuid);
     });
-    this.saveScriptMatchInfo();
   }
 
   async updateScriptStatus(uuid: string, status: SCRIPT_STATUS) {
@@ -329,11 +324,11 @@ export class RuntimeService {
     this.saveScriptMatchInfo();
   }
 
-  deleteScriptMatch(uuid: string) {
+  async deleteScriptMatch(uuid: string) {
     if (!this.scriptMatchCache) {
-      return;
+      await this.loadScriptMatchInfo();
     }
-    this.scriptMatchCache.delete(uuid);
+    this.scriptMatchCache!.delete(uuid);
     this.scriptMatch.del(uuid);
     this.scriptCustomizeMatch.del(uuid);
     this.saveScriptMatchInfo();
@@ -394,24 +389,28 @@ export class RuntimeService {
       if (script.metadata["run-at"]) {
         registerScript.runAt = getRunAt(script.metadata["run-at"]);
       }
-      await chrome.userScripts.register([registerScript]);
+      if (await Cache.getInstance().get("registryScript:" + script.uuid)) {
+        await chrome.userScripts.update([registerScript]);
+      } else {
+        await chrome.userScripts.register([registerScript]);
+      }
       await Cache.getInstance().set("registryScript:" + script.uuid, true);
     }
   }
 
-  async unregistryPageScript(script: Script) {
-    if (!(await Cache.getInstance().get("registryScript:" + script.uuid))) {
+  async unregistryPageScript(uuid: string) {
+    if (!(await Cache.getInstance().get("registryScript:" + uuid))) {
       return;
     }
     chrome.userScripts.unregister(
       {
-        ids: [script.uuid],
+        ids: [uuid],
       },
       () => {
         // 删除缓存
-        Cache.getInstance().del("registryScript:" + script.uuid);
+        Cache.getInstance().del("registryScript:" + uuid);
         // 修改脚本状态为disable
-        this.updateScriptStatus(script.uuid, SCRIPT_STATUS_DISABLE);
+        this.updateScriptStatus(uuid, SCRIPT_STATUS_DISABLE);
       }
     );
   }

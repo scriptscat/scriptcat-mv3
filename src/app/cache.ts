@@ -143,11 +143,9 @@ export default class Cache {
     if (promise) {
       await promise;
     }
-
     promise = this.get(key)
       .then((result) => set(result))
       .then((value) => {
-        console.log("tx", key, value);
         if (value) {
           return this.set(key, value);
         }

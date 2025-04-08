@@ -71,22 +71,16 @@ import { i18nName } from "@App/locales/locales";
 import { getValues, ListHomeRender, ScriptIcons } from "./utils";
 import { useAppDispatch, useAppSelector } from "@App/pages/store/hooks";
 import {
-  deleteScript,
   requestEnableScript,
   fetchAndSortScriptList,
   requestDeleteScript,
   ScriptLoading,
   selectScripts,
   sortScript,
-  upsertScript,
   requestStopScript,
   requestRunScript,
 } from "@App/pages/store/features/script";
 import { selectScriptListColumnWidth } from "@App/pages/store/features/setting";
-import { MessageQueue, Unsubscribe } from "@Packages/message/message_queue";
-import { subscribeScriptDelete, subscribeScriptInstall, subscribeScriptRunStatus } from "@App/app/service/queue";
-import { RuntimeClient } from "@App/app/service/service_worker/client";
-import { ExtensionMessage, ExtensionMessageSend } from "@Packages/message/extension_message";
 
 type ListType = Script & { loading?: boolean };
 

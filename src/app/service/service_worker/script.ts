@@ -198,7 +198,7 @@ export class ScriptService {
       .then(() => {
         logger.info("delete success");
         this.mq.publish("deleteScript", { uuid });
-        return {};
+        return true;
       })
       .catch((e) => {
         logger.error("delete error", Logger.E(e));
@@ -279,6 +279,32 @@ export class ScriptService {
     return Promise.resolve(ret);
   }
 
+  async excludeUrl({ uuid, url, remove }: { uuid: string; url: string; remove: boolean }) {
+    const script = await this.scriptDAO.get(uuid);
+    if (!script) {
+      throw new Error("script not found");
+    }
+    script.selfMetadata = script.selfMetadata || {};
+    let excludes = script.selfMetadata.exclude || script.metadata.exclude || [];
+    if (remove) {
+      excludes = excludes.filter((item) => item !== url);
+    } else {
+      excludes.push(url);
+    }
+    script.selfMetadata.exclude = excludes;
+    return this.scriptDAO
+      .update(uuid, script)
+      .then(() => {
+        // 广播一下
+        this.mq.publish("installScript", { script, update: true });
+        return true;
+      })
+      .catch((e) => {
+        this.logger.error("exclude url error", Logger.E(e));
+        throw e;
+      });
+  }
+
   init() {
     this.listenerScriptInstall();
 
@@ -290,5 +316,6 @@ export class ScriptService {
     this.group.on("updateRunStatus", this.updateRunStatus.bind(this));
     this.group.on("getCode", this.getCode.bind(this));
     this.group.on("getScriptRunResource", this.buildScriptRunResource.bind(this));
+    this.group.on("excludeUrl", this.excludeUrl.bind(this));
   }
 }
