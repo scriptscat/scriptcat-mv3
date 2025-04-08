@@ -178,6 +178,29 @@ export default class GMApi {
     this.GM_setValue(name, undefined);
   }
 
+  valueChangeId: number | undefined;
+
+  @GMContext.API()
+  public GM_addValueChangeListener(name: string, listener: GMTypes.ValueChangeListener): number {
+    if (!this.valueChangeId) {
+      this.valueChangeId = 1;
+    } else {
+      this.valueChangeId += 1;
+    }
+    this.valueChangeListener.set(this.valueChangeId, { name, listener });
+    return this.valueChangeId;
+  }
+
+  @GMContext.API()
+  public GM_removeValueChangeListener(listenerId: number): void {
+    this.valueChangeListener.delete(listenerId);
+  }
+
+  @GMContext.API()
+  public GM_listValues(): string[] {
+    return Object.keys(this.scriptRes.value);
+  }
+
   @GMContext.API()
   GM_log(message: string, level?: GMTypes.LoggerLevel, labels?: GMTypes.LoggerLabel) {
     if (typeof message !== "string") {

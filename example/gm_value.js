@@ -15,8 +15,8 @@
 // ==/UserScript==
 
 GM_addValueChangeListener("test_set", function (name, oldval, newval, remote, tabid) {
-  GM_cookie("store", tabid,(storeId) => {
-    console.log("store",storeId);
+  GM_cookie("store", tabid, (storeId) => {
+    console.log("store", storeId);
   });
 });
 
@@ -30,3 +30,7 @@ setTimeout(() => {
 }, 3000);
 
 GM_setValue("test_set", new Date().getTime());
+
+console.log(GM_getValue("test_set2"));
+
+GM_setValue("test_set2", new Date().getTime());

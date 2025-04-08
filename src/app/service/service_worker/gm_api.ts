@@ -9,6 +9,7 @@ import Cache, { incr } from "@App/app/cache";
 import { unsafeHeaders } from "@App/runtime/utils";
 import EventEmitter from "eventemitter3";
 import { MessageQueue } from "@Packages/message/message_queue";
+import { RuntimeService } from "./runtime";
 
 // GMApi,处理脚本的GM API调用请求
 
@@ -36,7 +37,8 @@ export default class GMApi {
     private group: Group,
     private send: MessageSend,
     private mq: MessageQueue,
-    private value: ValueService
+    private value: ValueService,
+    private runtime: RuntimeService
   ) {
     this.logger = LoggerCore.logger().with({ service: "runtime/gm_api" });
   }
@@ -69,12 +71,13 @@ export default class GMApi {
   }
 
   @PermissionVerify.API()
-  GM_setValue(request: Request): Promise<any> {
+  async GM_setValue(request: Request) {
+    console.log("setValue", request);
     if (!request.params || request.params.length !== 2) {
       return Promise.reject(new Error("param is failed"));
     }
     const [key, value] = request.params;
-    return this.value.setValue(request.script.uuid, key, value);
+    await this.value.setValue(request.script.uuid, key, value);
   }
 
   // 根据header生成dnr规则

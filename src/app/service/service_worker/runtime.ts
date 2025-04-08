@@ -46,7 +46,7 @@ export class RuntimeService {
 
   async init() {
     // 启动gm api
-    const gmApi = new GMApi(this.group, this.sender, this.mq, this.value);
+    const gmApi = new GMApi(this.group, this.sender, this.mq, this.value, this);
     gmApi.start();
 
     this.group.on("stopScript", this.stopScript.bind(this));
@@ -147,7 +147,6 @@ export class RuntimeService {
         match.add(uuid);
       });
       // 转化为数组
-      console.log("matchScriptUuid", matchScriptUuid);
       return Array.from(match);
     }
     return matchScriptUuid;
@@ -186,6 +185,14 @@ export class RuntimeService {
     );
 
     const enableScript = scripts.filter((item) => item);
+
+    // 加载value
+    await Promise.all(
+      enableScript.map(async (script) => {
+        const value = await this.value.getScriptValue(script!);
+        script!.value = value;
+      })
+    );
 
     this.mq.emit("pageLoad", {
       tabId: chromeSender.tab?.id,

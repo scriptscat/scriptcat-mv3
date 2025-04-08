@@ -20,6 +20,7 @@ import {
   subscribeScriptMenuRegister,
   subscribeScriptRunStatus,
 } from "../queue";
+import { storageKey } from "@App/runtime/utils";
 
 export type ScriptMenuItem = {
   id: number;
@@ -33,6 +34,7 @@ export type ScriptMenuItem = {
 export type ScriptMenu = {
   uuid: string; // 脚本uuid
   name: string; // 脚本名称
+  storageName: string; // 脚本存储名称
   enable: boolean; // 脚本是否启用
   updatetime: number; // 脚本更新时间
   hasUserConfig: boolean; // 是否有用户配置
@@ -124,12 +126,6 @@ export class PopupService {
             frameId: message.frameId,
             documentId: message.documentId,
           });
-        } else {
-          menu.name = message.name;
-          menu.accessKey = message.accessKey;
-          menu.tabId = message.tabId;
-          menu.frameId = message.frameId;
-          menu.documentId = message.documentId;
         }
       }
       this.updateScriptMenu();
@@ -167,6 +163,7 @@ export class PopupService {
     return {
       uuid: script.uuid,
       name: script.name,
+      storageName: storageKey(script),
       enable: script.status === SCRIPT_STATUS_ENABLE,
       updatetime: script.updatetime || 0,
       hasUserConfig: !!script.config,
@@ -195,6 +192,13 @@ export class PopupService {
       }
       return this.scriptToMenu(script);
     });
+    runScript.forEach((script) => {
+      const index = scriptMenu.findIndex((item) => item.uuid === script.uuid);
+      // 把运行了但是不在匹配中的脚本加入菜单
+      if (index === -1) {
+        scriptMenu.push(script);
+      }
+    });
     // 后台脚本只显示开启或者运行中的脚本
     return { scriptList: scriptMenu, backScriptList: await this.getScriptMenu(-1) };
   }
@@ -221,7 +225,9 @@ export class PopupService {
   }) {
     // 设置数据
     return this.txUpdateScriptMenu(tabId, async (data) => {
-      data = [];
+      if (!frameId) {
+        data = [];
+      }
       // 设置脚本运行次数
       scripts.forEach((script) => {
         const scriptMenu = data.find((item) => item.uuid === script.uuid);
