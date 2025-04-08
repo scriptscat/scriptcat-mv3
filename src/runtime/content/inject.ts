@@ -1,5 +1,5 @@
 import { ScriptRunResouce } from "@App/app/repo/scripts";
-import { Message } from "@Packages/message/server";
+import { Message, Server } from "@Packages/message/server";
 import ExecScript from "./exec_script";
 import { addStyle, ScriptFunc } from "./utils";
 
@@ -7,6 +7,7 @@ export class InjectRuntime {
   execList: ExecScript[] = [];
 
   constructor(
+    private server: Server,
     private msg: Message,
     private scripts: ScriptRunResouce[]
   ) {}
@@ -25,6 +26,19 @@ export class InjectRuntime {
             this.execScript(script, val);
           },
         });
+      }
+    });
+    this.server.on("runtime/menuClick", (data: { id: number; uuid: string }) => {
+      // 转发给脚本
+      const exec = this.execList.find((val) => val.scriptRes.uuid === data.uuid);
+      if (exec) {
+        exec.menuClick(data.id);
+      }
+    });
+    this.server.on("runtime/valueUpdate", (data: { uuid: string; key: string; value: any }) => {
+      const exec = this.execList.find((val) => val.scriptRes.uuid === data.uuid);
+      if (exec) {
+        // exec.valueUpdate(data.key,);
       }
     });
   }

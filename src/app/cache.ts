@@ -134,4 +134,27 @@ export default class Cache {
   public list(): Promise<string[]> {
     return this.storage.list();
   }
+
+  private txPromise: Map<string, Promise<any>> = new Map();
+
+  // 事务处理,如果有事务正在进行,则等待
+  public async tx(key: string, set: (result: any) => Promise<any>): Promise<void> {
+    let promise = this.txPromise.get(key);
+    if (promise) {
+      await promise;
+    }
+
+    promise = this.get(key)
+      .then((result) => set(result))
+      .then((value) => {
+        console.log("tx", key, value);
+        if (value) {
+          return this.set(key, value);
+        }
+        return Promise.resolve();
+      });
+    this.txPromise.set(key, promise);
+    await promise;
+    this.txPromise.delete(key);
+  }
 }

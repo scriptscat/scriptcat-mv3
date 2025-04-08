@@ -72,6 +72,10 @@ export default class ExecScript {
     this.sandboxContent?.valueUpdate(data);
   }
 
+  menuClick(id: number) {
+    this.sandboxContent?.menuClick(id);
+  }
+
   exec() {
     this.logger.debug("script start");
     return this.scriptFunc.apply(this.proxyContent, [this.proxyContent, this.GM_info]);

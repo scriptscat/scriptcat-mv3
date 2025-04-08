@@ -7,6 +7,7 @@ import { Message, MessageConnect } from "@Packages/message/server";
 import { CustomEventMessage } from "@Packages/message/custom_event_message";
 import LoggerCore from "@App/app/logger/core";
 import { connect, sendMessage } from "@Packages/message/client";
+import EventEmitter from "eventemitter3";
 
 interface ApiParam {
   depend?: string[];
@@ -106,6 +107,10 @@ export default class GMApi {
     }
   }
 
+  menuClick(id: number) {
+    this.EE.emit("menuClick" + id);
+  }
+
   // 获取脚本信息和管理器信息
   static GM_info(script: ScriptRunResouce) {
     const metadataStr = getMetadataStr(script.code);
@@ -202,18 +207,21 @@ export default class GMApi {
 
   menuMap: Map<number, string> | undefined;
 
+  EE: EventEmitter = new EventEmitter();
+
   @GMContext.API()
   GM_registerMenuCommand(name: string, listener: () => void, accessKey?: string): number {
     if (!this.menuMap) {
       this.menuMap = new Map();
     }
     let flag = 0;
-    this.menuMap.forEach((val, key) => {
+    this.menuMap.forEach((val, menuId) => {
       if (val === name) {
-        flag = key;
+        flag = menuId;
       }
     });
     if (flag) {
+      this.EE.addListener("menuClick" + flag, listener);
       return flag;
     }
     if (!this.menuId) {
@@ -222,18 +230,9 @@ export default class GMApi {
       this.menuId += 1;
     }
     const id = this.menuId;
-    this.sendMessage("GM_registerMenuCommand", [id, name, accessKey]);
-    // .then((con) => {
-    //   con.onMessage((data: { action: string; data: any }) => {
-    //     if (data.action === "onClick") {
-    //       listener();
-    //     }
-    //   });
-    //   con.onDisconnect(() => {
-    //     this.menuMap?.delete(id);
-    //   });
-    // });
     this.menuMap.set(id, name);
+    this.EE.addListener("menuClick" + id, listener);
+    this.sendMessage("GM_registerMenuCommand", [id, name, accessKey]);
     return id;
   }
 
@@ -243,6 +242,7 @@ export default class GMApi {
       this.menuMap = new Map();
     }
     this.menuMap.delete(id);
+    this.EE.removeAllListeners("menuClick" + id);
     this.sendMessage("GM_unregisterMenuCommand", [id]);
   }
 

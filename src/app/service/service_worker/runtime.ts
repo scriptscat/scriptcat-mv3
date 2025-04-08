@@ -212,6 +212,7 @@ export class RuntimeService {
     return runScript(this.sender, res);
   }
 
+  // 注册inject.js
   registerInjectScript() {
     chrome.userScripts.getScripts({ ids: ["scriptcat-inject"] }).then((res) => {
       if (res.length == 0) {

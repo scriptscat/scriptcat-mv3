@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import GMApi, { ApiValue, GMContext } from "./gm_api";
 import { has } from "@App/pkg/utils/lodash";
 import { Message } from "@Packages/message/server";
+import EventEmitter from "eventemitter3";
 
 // 构建脚本运行代码
 export function compileScriptCode(scriptRes: ScriptRunResouce): string {
@@ -64,6 +65,8 @@ export function createContext(scriptRes: ScriptRunResouce, GMInfo: any, envPrefi
     connect: GMApi.prototype.connect,
     runFlag: uuidv4(),
     valueUpdate: GMApi.prototype.valueUpdate,
+    menuClick: GMApi.prototype.menuClick,
+    EE: new EventEmitter(),
     GM: { Info: GMInfo },
     GM_info: GMInfo,
   };
