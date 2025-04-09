@@ -71,13 +71,15 @@ export default class GMApi {
   }
 
   @PermissionVerify.API()
-  async GM_setValue(request: Request) {
-    console.log("setValue", request);
+  async GM_setValue(request: Request, sender: GetSender) {
     if (!request.params || request.params.length !== 2) {
       return Promise.reject(new Error("param is failed"));
     }
     const [key, value] = request.params;
-    await this.value.setValue(request.script.uuid, key, value);
+    await this.value.setValue(request.script.uuid, key, value, {
+      runFlag: request.runFlag,
+      tabId: sender.getSender().tab?.id,
+    });
   }
 
   // 根据header生成dnr规则
@@ -183,7 +185,6 @@ export default class GMApi {
 
   @PermissionVerify.API()
   GM_registerMenuCommand(request: Request, sender: GetSender) {
-    console.log("registerMenuCommand", request.params, sender.getSender(), sender.getSender().tab!.id!);
     const [id, name, accessKey] = request.params;
     // 触发菜单注册, 在popup中处理
     this.mq.emit("registerMenuCommand", {

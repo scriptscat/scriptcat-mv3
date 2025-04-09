@@ -1,7 +1,8 @@
 import { ScriptRunResouce } from "@App/app/repo/scripts";
 import { Message, Server } from "@Packages/message/server";
-import ExecScript from "./exec_script";
+import ExecScript, { ValueUpdateData } from "./exec_script";
 import { addStyle, ScriptFunc } from "./utils";
+import { getStorageName } from "../utils";
 
 export class InjectRuntime {
   execList: ExecScript[] = [];
@@ -35,11 +36,12 @@ export class InjectRuntime {
         exec.menuClick(data.id);
       }
     });
-    this.server.on("runtime/valueUpdate", (data: { uuid: string; key: string; value: any }) => {
-      const exec = this.execList.find((val) => val.scriptRes.uuid === data.uuid);
-      if (exec) {
-        // exec.valueUpdate(data.key,);
-      }
+    this.server.on("runtime/valueUpdate", (data: ValueUpdateData) => {
+      this.execList
+        .filter((val) => val.scriptRes.uuid === data.uuid || getStorageName(val.scriptRes) === data.storageName)
+        .forEach((val) => {
+          val.valueUpdate(data);
+        });
     });
   }
 

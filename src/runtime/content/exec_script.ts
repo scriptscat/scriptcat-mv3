@@ -5,16 +5,18 @@ import GMApi from "./gm_api";
 import { compileScript, createContext, proxyContext, ScriptFunc } from "./utils";
 import { Message } from "@Packages/message/server";
 
+export type ValueUpdateSender = {
+  runFlag: string;
+  tabId?: number;
+};
+
 export type ValueUpdateData = {
   oldValue: any;
   value: any;
   key: string; // 值key
   uuid: string;
-  storageKey: string; // 储存key
-  sender: {
-    runFlag: string;
-    tabId?: number;
-  };
+  storageName: string; // 储存name
+  sender: ValueUpdateSender;
 };
 
 export class RuntimeMessage {}

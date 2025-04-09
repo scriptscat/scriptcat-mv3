@@ -3,6 +3,8 @@ import Logger from "@App/app/logger/logger";
 import { GetSender, Group, MessageConnect } from "@Packages/message/server";
 
 export default class GMApi {
+  logger: Logger = LoggerCore.logger().with({ service: "gmApi" });
+
   constructor(private group: Group) {}
 
   async dealXhrResponse(

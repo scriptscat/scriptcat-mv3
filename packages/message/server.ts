@@ -1,4 +1,5 @@
 import LoggerCore from "@App/app/logger/core";
+import { connect } from "./client";
 
 export interface Message extends MessageSend {
   onConnect(callback: (data: any, con: MessageConnect) => void): void;
@@ -124,7 +125,7 @@ export function forwardMessage(prefix: string, path: string, from: Server, to: M
     }
     const fromConnect = fromCon.getConnect();
     if (fromConnect) {
-      to.connect({ action: prefix + "/" + path, data: params }).then((toCon) => {
+      connect(to, prefix + "/" + path, params).then((toCon) => {
         fromConnect.onMessage((data) => {
           toCon.sendMessage(data);
         });

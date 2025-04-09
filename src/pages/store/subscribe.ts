@@ -5,7 +5,6 @@ import { deleteScript, scriptSlice, upsertScript } from "./features/script";
 
 export default function storeSubscribe() {
   subscribeScriptRunStatus(messageQueue, (data) => {
-    console.log("subscribeScriptRunStatus", data);
     store.dispatch(scriptSlice.actions.updateRunStatus(data));
   });
   subscribeScriptInstall(messageQueue, (message) => {

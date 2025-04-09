@@ -90,11 +90,11 @@ export class MapCache {
 }
 
 export async function incr(cache: Cache, key: string, increase: number): Promise<number> {
-  const value = await cache.get(key);
-  let num = value || 0;
-  num += increase;
-  await cache.set(key, num);
-  return num;
+  return cache.tx<number>(key, async (value) => {
+    let num = value || 0;
+    num += increase;
+    return num;
+  });
 }
 
 export default class Cache {
@@ -138,15 +138,17 @@ export default class Cache {
   private txPromise: Map<string, Promise<any>> = new Map();
 
   // 事务处理,如果有事务正在进行,则等待
-  public async tx(key: string, set: (result: any) => Promise<any>): Promise<void> {
+  public async tx<T>(key: string, set: (result: T) => Promise<T>): Promise<T> {
     let promise = this.txPromise.get(key);
     if (promise) {
       await promise;
     }
+    let newValue: T;
     promise = this.get(key)
       .then((result) => set(result))
       .then((value) => {
         if (value) {
+          newValue = value;
           return this.set(key, value);
         }
         return Promise.resolve();
@@ -154,5 +156,6 @@ export default class Cache {
     this.txPromise.set(key, promise);
     await promise;
     this.txPromise.delete(key);
+    return newValue!;
   }
 }

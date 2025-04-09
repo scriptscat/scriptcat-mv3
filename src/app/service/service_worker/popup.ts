@@ -20,7 +20,7 @@ import {
   subscribeScriptMenuRegister,
   subscribeScriptRunStatus,
 } from "../queue";
-import { storageKey } from "@App/runtime/utils";
+import { getStorageName } from "@App/runtime/utils";
 
 export type ScriptMenuItem = {
   id: number;
@@ -87,7 +87,6 @@ export class PopupService {
     // 移除之前所有的菜单
     chrome.contextMenus.removeAll();
     const [menu, backgroundMenu] = await Promise.all([this.getScriptMenu(tabId), this.getScriptMenu(-1)]);
-    console.log(menu, backgroundMenu, tabId);
     if (!menu.length && !backgroundMenu.length) {
       return;
     }
@@ -140,7 +139,6 @@ export class PopupService {
       if (script) {
         script.menus = script.menus.filter((item) => item.id !== id);
       }
-      console.log("unregister menu", data);
       this.updateScriptMenu();
       return data;
     });
@@ -149,7 +147,6 @@ export class PopupService {
   updateScriptMenu() {
     // 获取当前页面并更新菜单
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      console.log("query", tabs);
       if (!tabs.length) {
         return;
       }
@@ -163,7 +160,7 @@ export class PopupService {
     return {
       uuid: script.uuid,
       name: script.name,
-      storageName: storageKey(script),
+      storageName: getStorageName(script),
       enable: script.status === SCRIPT_STATUS_ENABLE,
       updatetime: script.updatetime || 0,
       hasUserConfig: !!script.config,

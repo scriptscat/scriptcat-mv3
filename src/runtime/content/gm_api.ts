@@ -2,7 +2,7 @@ import { ScriptRunResouce } from "@App/app/repo/scripts";
 import { getMetadataStr, getUserConfigStr, parseUserConfig } from "@App/pkg/utils/script";
 import { ValueUpdateData } from "./exec_script";
 import { ExtVersion } from "@App/app/const";
-import { storageKey } from "../utils";
+import { getStorageName } from "../utils";
 import { Message, MessageConnect } from "@Packages/message/server";
 import { CustomEventMessage } from "@Packages/message/custom_event_message";
 import LoggerCore from "@App/app/logger/core";
@@ -86,22 +86,18 @@ export default class GMApi {
   }
 
   public valueUpdate(data: ValueUpdateData) {
-    if (data.uuid === this.scriptRes.uuid || data.storageKey === storageKey(this.scriptRes)) {
+    if (data.uuid === this.scriptRes.uuid || data.storageName === getStorageName(this.scriptRes)) {
       // 触发,并更新值
       if (data.value === undefined) {
-        delete this.scriptRes.value[data.value];
+        if (this.scriptRes.value[data.key] !== undefined) {
+          delete this.scriptRes.value[data.key];
+        }
       } else {
         this.scriptRes.value[data.key] = data.value;
       }
       this.valueChangeListener.forEach((item) => {
-        if (item.name === data.value.key) {
-          item.listener(
-            data.value.key,
-            data.oldValue,
-            data.value,
-            data.sender.runFlag !== this.runFlag,
-            data.sender.tabId
-          );
+        if (item.name === data.key) {
+          item.listener(data.key, data.oldValue, data.value, data.sender.runFlag !== this.runFlag, data.sender.tabId);
         }
       });
     }
@@ -345,6 +341,8 @@ export default class GMApi {
         // 处理blob
         param.dataType = "Blob";
         param.data = await this.CAT_createBlobUrl(details.data);
+      } else {
+        param.data = details.data;
       }
 
       // 处理返回数据

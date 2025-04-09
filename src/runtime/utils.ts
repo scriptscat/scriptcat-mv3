@@ -29,7 +29,7 @@ export const unsafeHeaders: { [key: string]: boolean } = {
   via: true,
 };
 
-export function storageKey(script: Script): string {
+export function getStorageName(script: Script): string {
   if (script.metadata && script.metadata.storagename) {
     return script.metadata.storagename[0];
   }

@@ -194,6 +194,8 @@ export class RuntimeService {
       })
     );
 
+    console.log("pageLoad", enableScript);
+
     this.mq.emit("pageLoad", {
       tabId: chromeSender.tab?.id,
       frameId: chromeSender.frameId,

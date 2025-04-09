@@ -3,7 +3,7 @@ import Logger from "./logger";
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error";
 
 export interface LogLabel {
-  [key: string]: string | string[] | boolean | number | undefined;
+  [key: string]: string | string[] | boolean | number | object | undefined;
   component?: string;
 }
 

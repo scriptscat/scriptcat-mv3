@@ -282,7 +282,6 @@ export class Runtime {
   }
 
   async runScript(script: ScriptRunResouce) {
-    console.log("runScript", script);
     const exec = this.execScripts.get(script.uuid);
     // 如果正在运行,先释放
     if (exec) {
