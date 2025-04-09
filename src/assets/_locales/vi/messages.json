@@ -5,6 +5,9 @@
   "scriptcat": {
     "message": "ScriptCat"
   },
+  "scriptcat_beta": {
+    "message": "ScriptCat Beta"
+  },
   "scriptcat_description": {
     "message": "Mọi thứ đều có thể viết được, cho phép trình duyệt của bạn làm được nhiều việc hơn!"
   }

@@ -168,11 +168,13 @@ export class ServiceWorkerMessageSend implements MessageSend {
   constructor() {}
 
   async init() {
-    const list = await self.clients.matchAll({ includeUncontrolled: true, type: "window" });
-    this.target = list[0];
-    self.addEventListener("message", (e) => {
-      this.messageHandle(e.data);
-    });
+    if (!this.target) {
+      const list = await self.clients.matchAll({ includeUncontrolled: true, type: "window" });
+      this.target = list[0];
+      self.addEventListener("message", (e) => {
+        this.messageHandle(e.data);
+      });
+    }
   }
 
   messageHandle(data: WindowMessageBody) {
@@ -187,20 +189,20 @@ export class ServiceWorkerMessageSend implements MessageSend {
     }
   }
 
-  connect(data: any): Promise<MessageConnect> {
-    return new Promise((resolve) => {
-      const body: WindowMessageBody = {
-        messageId: uuidv4(),
-        type: "connect",
-        data,
-      };
-      this.target!.postMessage(body);
-      resolve(new WindowMessageConnect(body.messageId, this.EE, this.target!));
-    });
+  async connect(data: any): Promise<MessageConnect> {
+    await this.init();
+    const body: WindowMessageBody = {
+      messageId: uuidv4(),
+      type: "connect",
+      data,
+    };
+    this.target!.postMessage(body);
+    return new WindowMessageConnect(body.messageId, this.EE, this.target!);
   }
 
   // 发送消息 注意不进行回调的内存泄漏
-  sendMessage(data: any): Promise<any> {
+  async sendMessage(data: any): Promise<any> {
+    await this.init();
     return new Promise((resolve) => {
       const body: WindowMessageBody = {
         messageId: uuidv4(),

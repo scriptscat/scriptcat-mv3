@@ -1,36 +1,14 @@
 import dts from "@App/types/scriptcat.d.ts";
 import { languages } from "monaco-editor";
-import pako from "pako";
-import Cache from "@App/app/cache";
-import { isDebug, isFirefox } from "./utils";
-import EventEmitter from "eventemitter3";
 
 // 注册eslint
-const linterWorker = new Worker("/src/linter.worker.js");
+// const linterWorker = new Worker("/src/linter.worker.js");
 
 export default function registerEditor() {
-  // @ts-ignore
-  window.tsUrl = "";
-
-  fetch(chrome.runtime.getURL(`/src/ts.worker.js${isFirefox() ? ".gz" : ""}`))
-    .then((resp) => resp.blob())
-    .then(async (blob) => {
-      let result: ArrayBuffer;
-      if (isDebug()) {
-        result = await blob.arrayBuffer();
-      } else {
-        result = pako.inflate(await blob.arrayBuffer());
-      }
-      // @ts-ignore
-      window.tsUrl = URL.createObjectURL(new Blob([result]));
-    });
-  // @ts-ignore
   window.MonacoEnvironment = {
     getWorkerUrl(moduleId: any, label: any) {
       if (label === "typescript" || label === "javascript") {
-        // return "/src/ts.worker.js";
-        // @ts-ignore
-        return window.tsUrl;
+        return "/src/ts.worker.js";
       }
       return "/src/editor.worker.js";
     },
@@ -81,74 +59,74 @@ export default function registerEditor() {
     },
   });
 
-  // 处理quick fix
-  languages.registerCodeActionProvider("javascript", {
-    provideCodeActions: (model /** ITextModel */, range /** Range */, context /** CodeActionContext */) => {
-      const actions: languages.CodeAction[] = [];
-      const eslintFix = <Map<string, any>>Cache.getInstance().get("eslint-fix");
-      for (let i = 0; i < context.markers.length; i += 1) {
-        // 判断有没有修复方案
-        const val = context.markers[i];
-        const code = typeof val.code === "string" ? val.code : val.code!.value;
-        const fix = eslintFix.get(
-          `${code}|${val.startLineNumber}|${val.endLineNumber}|${val.startColumn}|${val.endColumn}`
-        );
-        if (fix) {
-          const edit: languages.IWorkspaceTextEdit = {
-            resource: model.uri,
-            textEdit: {
-              range: fix.range,
-              text: fix.text,
-            },
-            versionId: undefined,
-          };
-          actions.push(<languages.CodeAction>{
-            title: `修复 ${code} 问题`,
-            diagnostics: [val],
-            kind: "quickfix",
-            edit: {
-              edits: [edit],
-            },
-            isPreferred: true,
-          });
-        }
-      }
+  // // 处理quick fix
+  // languages.registerCodeActionProvider("javascript", {
+  //   provideCodeActions: (model /** ITextModel */, range /** Range */, context /** CodeActionContext */) => {
+  //     // const actions: languages.CodeAction[] = [];
+  //     // const eslintFix = <Map<string, any>>Cache.getInstance().get("eslint-fix");
+  //     // for (let i = 0; i < context.markers.length; i += 1) {
+  //     //   // 判断有没有修复方案
+  //     //   const val = context.markers[i];
+  //     //   const code = typeof val.code === "string" ? val.code : val.code!.value;
+  //     //   const fix = eslintFix.get(
+  //     //     `${code}|${val.startLineNumber}|${val.endLineNumber}|${val.startColumn}|${val.endColumn}`
+  //     //   );
+  //     //   if (fix) {
+  //     //     const edit: languages.IWorkspaceTextEdit = {
+  //     //       resource: model.uri,
+  //     //       textEdit: {
+  //     //         range: fix.range,
+  //     //         text: fix.text,
+  //     //       },
+  //     //       versionId: undefined,
+  //     //     };
+  //     //     actions.push(<languages.CodeAction>{
+  //     //       title: `修复 ${code} 问题`,
+  //     //       diagnostics: [val],
+  //     //       kind: "quickfix",
+  //     //       edit: {
+  //     //         edits: [edit],
+  //     //       },
+  //     //       isPreferred: true,
+  //     //     });
+  //     //   }
+  //     // }
 
-      // const actions = context.markers.map((error) => {
-      //   const edit: languages.IWorkspaceTextEdit = {
-      //     resource: model.uri,
-      //     textEdit: {
-      //       range,
-      //       text: "console.log(1)",
-      //     },
-      //     versionId: undefined,
-      //   };
-      //   return <languages.CodeAction>{
-      //     title: ``,
-      //     diagnostics: [error],
-      //     kind: "quickfix",
-      //     edit: {
-      //       edits: [edit],
-      //     },
-      //     isPreferred: true,
-      //   };
-      // });
-      return {
-        actions,
-        dispose: () => {},
-      };
-    },
-  });
+  //     // const actions = context.markers.map((error) => {
+  //     //   const edit: languages.IWorkspaceTextEdit = {
+  //     //     resource: model.uri,
+  //     //     textEdit: {
+  //     //       range,
+  //     //       text: "console.log(1)",
+  //     //     },
+  //     //     versionId: undefined,
+  //     //   };
+  //     //   return <languages.CodeAction>{
+  //     //     title: ``,
+  //     //     diagnostics: [error],
+  //     //     kind: "quickfix",
+  //     //     edit: {
+  //     //       edits: [edit],
+  //     //     },
+  //     //     isPreferred: true,
+  //     //   };
+  //     // });
+  //     return {
+  //       actions,
+  //       dispose: () => {},
+  //     };
+  //   },
+  // });
 }
 
-export class LinterWorker {
-  static hook = new EventEmitter();
+// export class LinterWorker {
+//   static hook = new EventEmitter();
 
-  static sendLinterMessage(data: unknown) {
-    linterWorker.postMessage(data);
-  }
-}
+//   static sendLinterMessage(data: unknown) {
+//     linterWorker.postMessage(data);
+//   }
+// }
 
-linterWorker.onmessage = (event) => {
-  LinterWorker.hook.emit("message", event.data);
-};
+// linterWorker.onmessage = (event) => {
+//   LinterWorker.hook.emit("message", event.data);
+// };

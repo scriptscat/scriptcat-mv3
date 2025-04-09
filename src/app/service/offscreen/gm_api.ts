@@ -21,8 +21,8 @@ export default class GMApi {
       readyState: <any>xhr.readyState,
       status: xhr.status,
       statusText: xhr.statusText,
-      // header由service_worker处理
-      // responseHeaders: xhr.getAllResponseHeaders().replace(removeXCat, ""),
+      // header由service_worker处理，但是存在特殊域名（例如：edge.microsoft.com）无法获取的情况，在这里增加一个默认值
+      responseHeaders: xhr.getAllResponseHeaders(),
       responseType: details.responseType,
     };
     if (xhr.readyState === 4) {

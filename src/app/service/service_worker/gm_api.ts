@@ -168,7 +168,7 @@ export default class GMApi {
       "headersReceived:" + requestId,
       (details: chrome.webRequest.WebResponseHeadersDetails) => {
         details.responseHeaders?.forEach((header) => {
-          responseHeader += header.name + ": " + header.value + "\n";
+          responseHeader += header.name + ": " + header.value + "\r\n";
         });
         this.gmXhrHeadersReceived.removeAllListeners("headersReceived:" + requestId);
       }
@@ -178,7 +178,9 @@ export default class GMApi {
     offscreenCon.onMessage((msg: { action: string; data: any }) => {
       // 发送到content
       // 替换msg.data.responseHeaders
-      msg.data.responseHeaders = responseHeader;
+      if (responseHeader) {
+        msg.data.responseHeaders = responseHeader;
+      }
       con.getConnect().sendMessage(msg);
     });
   }

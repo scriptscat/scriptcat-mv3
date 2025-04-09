@@ -8,6 +8,7 @@ import DBWriter from "@App/app/logger/db_writer.ts";
 import "@arco-design/web-react/dist/css/arco.css";
 import "@App/locales/locales";
 import "@App/index.css";
+import "./index.css";
 import { Provider } from "react-redux";
 import { store } from "../store/store.ts";
 

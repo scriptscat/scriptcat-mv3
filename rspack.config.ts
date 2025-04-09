@@ -20,7 +20,10 @@ export default defineConfig({
         mode: "development",
         devtool: "inline-source-map",
       }
-    : {}),
+    : {
+        mode: "production",
+        devtool: false,
+      }),
   context: __dirname,
   entry: {
     service_worker: `${src}/service_worker.ts`,
@@ -116,15 +119,15 @@ export default defineConfig({
           // 将manifest.json内版本号替换为package.json中版本号
           transform(content: Buffer) {
             const manifest = JSON.parse(content.toString());
-            if (isDev) {
-              manifest.name = "ScriptCat - Dev";
+            if (isDev || isBeta) {
+              manifest.name = "__MSG_scriptcat_beta__";
               // manifest.content_security_policy = "script-src 'self' https://cdn.crowdin.com; object-src 'self'";
             }
             return JSON.stringify(manifest);
           },
         },
         {
-          from: `${assets}/logo${isDev ? "-beta" : ""}.png`,
+          from: `${assets}/logo${isDev || isBeta ? "-beta" : ""}.png`,
           to: `${dist}/ext/assets/logo.png`,
         },
         { from: `${assets}/logo`, to: `${dist}/ext/assets/logo` },
@@ -175,7 +178,7 @@ export default defineConfig({
   ].filter(Boolean),
   optimization: {
     minimizer: [
-      new rspack.SwcJsMinimizerRspackPlugin(),
+      new rspack.SwcJsMinimizerRspackPlugin({}),
       new rspack.LightningCssMinimizerRspackPlugin({
         minimizerOptions: { targets },
       }),

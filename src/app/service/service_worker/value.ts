@@ -57,7 +57,6 @@ export class ValueService {
         valueModel.data[key] = value;
         await this.valueDAO.save(storageName, valueModel);
       }
-      console.log(valueModel);
       return true;
     });
     const sendData: ValueUpdateData = {
