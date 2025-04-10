@@ -2,7 +2,8 @@ import { ScriptRunResouce } from "@App/app/repo/scripts";
 import { Message, Server } from "@Packages/message/server";
 import ExecScript, { ValueUpdateData } from "./exec_script";
 import { addStyle, ScriptFunc } from "./utils";
-import { getStorageName } from "../utils";
+import { getStorageName } from "@App/pkg/utils/utils";
+import { EmitEventRequest } from "../service_worker/runtime";
 
 export class InjectRuntime {
   execList: ExecScript[] = [];
@@ -29,11 +30,11 @@ export class InjectRuntime {
         });
       }
     });
-    this.server.on("runtime/menuClick", (data: { id: number; uuid: string }) => {
+    this.server.on("runtime/emitEvent", (data: EmitEventRequest) => {
       // 转发给脚本
       const exec = this.execList.find((val) => val.scriptRes.uuid === data.uuid);
       if (exec) {
-        exec.menuClick(data.id);
+        exec.emitEvent(data.event, data.data);
       }
     });
     this.server.on("runtime/valueUpdate", (data: ValueUpdateData) => {

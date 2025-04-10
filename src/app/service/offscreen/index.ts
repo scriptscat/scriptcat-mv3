@@ -48,7 +48,9 @@ export class OffscreenManager {
     script.init();
     // 转发从sandbox来的gm api请求
     forwardMessage("serviceWorker", "runtime/gmApi", this.windowServer, this.extensionMessage);
-    // 转发message queue请求
+    // 转发valueUpdate与emitEvent
+    forwardMessage("sandbox", "runtime/valueUpdate", this.windowServer, this.windowMessage);
+    forwardMessage("sandbox", "runtime/emitEvent", this.windowServer, this.windowMessage);
 
     const gmApi = new GMApi(this.windowServer.group("gmApi"));
     gmApi.init();

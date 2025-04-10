@@ -16,17 +16,23 @@ import { ScriptService } from "./script";
 import { runScript, stopScript } from "../offscreen/client";
 import { getRunAt } from "./utils";
 import { randomString } from "@App/pkg/utils/utils";
-import { compileInjectScript } from "@App/runtime/content/utils";
 import Cache from "@App/app/cache";
 import { dealPatternMatches, UrlMatch } from "@App/pkg/utils/match";
 import { ExtensionContentMessageSend } from "@Packages/message/extension_message";
 import { sendMessage } from "@Packages/message/client";
+import { compileInjectScript } from "../content/utils";
 
 // 为了优化性能，存储到缓存时删除了code与value
 export interface ScriptMatchInfo extends ScriptRunResouce {
   matches: string[];
   excludeMatches: string[];
   customizeExcludeMatches: string[];
+}
+
+export interface EmitEventRequest {
+  uuid: string;
+  event: string;
+  data: any;
 }
 
 export class RuntimeService {
@@ -130,6 +136,22 @@ export class RuntimeService {
       return sendMessage(this.sender, "offscreen/runtime/" + action, data);
     }
     return sendMessage(new ExtensionContentMessageSend(tabId, options), "content/runtime/" + action, data);
+  }
+
+  // 给指定脚本触发事件
+  EmitEventToTab(
+    tabId: number,
+    req: EmitEventRequest,
+    options?: {
+      documentId?: string;
+      frameId?: number;
+    }
+  ) {
+    if (tabId === -1) {
+      // 如果是-1, 代表给offscreen发送消息
+      return sendMessage(this.sender, "offscreen/runtime/emitEvent", req);
+    }
+    return sendMessage(new ExtensionContentMessageSend(tabId, options), "content/runtime/emitEvent", req);
   }
 
   async getPageScriptUuidByUrl(url: string, includeCustomize?: boolean) {

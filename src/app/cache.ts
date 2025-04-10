@@ -135,16 +135,39 @@ export default class Cache {
     return this.storage.list();
   }
 
-  private txPromise: Map<string, Promise<any>> = new Map();
+  private txLock: Map<string, ((unlock: () => void) => void)[]> = new Map();
+
+  lock(key: string): Promise<() => void> | (() => void) {
+    let hasLock = this.txLock.has(key);
+
+    const unlock = () => {
+      let waitFunc = this.txLock.get(key)?.shift();
+      if (waitFunc) {
+        waitFunc(unlock);
+      } else {
+        this.txLock.delete(key);
+      }
+    };
+
+    if (hasLock) {
+      let lock = this.txLock.get(key);
+      if (!lock) {
+        lock = [];
+        this.txLock.set(key, lock);
+      }
+      return new Promise<() => void>((resolve) => {
+        lock.push(resolve);
+      });
+    }
+    this.txLock.set(key, []);
+    return unlock;
+  }
 
   // 事务处理,如果有事务正在进行,则等待
   public async tx<T>(key: string, set: (result: T) => Promise<T>): Promise<T> {
-    let promise = this.txPromise.get(key);
-    if (promise) {
-      await promise;
-    }
+    const unlock = await this.lock(key);
     let newValue: T;
-    promise = this.get(key)
+    await this.get(key)
       .then((result) => set(result))
       .then((value) => {
         if (value) {
@@ -153,9 +176,7 @@ export default class Cache {
         }
         return Promise.resolve();
       });
-    this.txPromise.set(key, promise);
-    await promise;
-    this.txPromise.delete(key);
+    unlock();
     return newValue!;
   }
 }

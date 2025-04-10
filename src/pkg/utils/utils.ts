@@ -1,4 +1,4 @@
-import { Metadata } from "@App/app/repo/scripts";
+import { Metadata, Script } from "@App/app/repo/scripts";
 import { CronTime } from "cron";
 import dayjs from "dayjs";
 import semver from "semver";
@@ -216,4 +216,11 @@ export function sleep(time: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, time);
   });
+}
+
+export function getStorageName(script: Script): string {
+  if (script.metadata && script.metadata.storagename) {
+    return script.metadata.storagename[0];
+  }
+  return script.uuid;
 }

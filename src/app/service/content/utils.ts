@@ -64,6 +64,7 @@ export function createContext(scriptRes: ScriptRunResouce, GMInfo: any, envPrefi
     sendMessage: GMApi.prototype.sendMessage,
     connect: GMApi.prototype.connect,
     runFlag: uuidv4(),
+    eventId: 10000,
     valueUpdate: GMApi.prototype.valueUpdate,
     menuClick: GMApi.prototype.menuClick,
     EE: new EventEmitter(),

@@ -1,8 +1,10 @@
-import dts from "@App/types/scriptcat.d.ts";
+import dts from "@App/template/scriptcat.d.tpl";
 import { languages } from "monaco-editor";
 
 // 注册eslint
 // const linterWorker = new Worker("/src/linter.worker.js");
+
+console.log(dts, dts.length);
 
 export default function registerEditor() {
   window.MonacoEnvironment = {
@@ -14,7 +16,7 @@ export default function registerEditor() {
     },
   };
 
-  languages.typescript.javascriptDefaults.addExtraLib(dts, "tampermonkey.d.ts");
+  languages.typescript.javascriptDefaults.addExtraLib(dts, "scriptcat.d.ts");
 
   // 悬停提示
   const prompt: { [key: string]: any } = {

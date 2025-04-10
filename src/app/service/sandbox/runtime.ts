@@ -7,12 +7,14 @@ import {
   SCRIPT_TYPE_BACKGROUND,
   ScriptRunResouce,
 } from "@App/app/repo/scripts";
-import ExecScript from "@App/runtime/content/exec_script";
-import { BgExecScriptWarp, CATRetryError } from "@App/runtime/content/exec_warp";
 import { Server } from "@Packages/message/server";
 import { WindowMessage } from "@Packages/message/window_message";
 import { CronJob } from "cron";
 import { proxyUpdateRunStatus } from "../offscreen/client";
+import { BgExecScriptWarp } from "../content/exec_warp";
+import ExecScript, { ValueUpdateData } from "../content/exec_script";
+import { getStorageName } from "@App/pkg/utils/utils";
+import { EmitEventRequest } from "../service_worker/runtime";
 
 export class Runtime {
   cronJob: Map<string, Array<CronJob>> = new Map();
@@ -290,10 +292,30 @@ export class Runtime {
     return this.execScript(script, true);
   }
 
+  valueUpdate(data: ValueUpdateData) {
+    // 转发给脚本
+    this.execScripts.forEach((val) => {
+      if (val.scriptRes.uuid === data.uuid || getStorageName(val.scriptRes) === data.storageName) {
+        val.valueUpdate(data);
+      }
+    });
+  }
+
+  emitEvent(data: EmitEventRequest) {
+    // 转发给脚本
+    const exec = this.execScripts.get(data.uuid);
+    if (exec) {
+      exec.emitEvent(data.event, data.data);
+    }
+  }
+
   init() {
     this.api.on("enableScript", this.enableScript.bind(this));
     this.api.on("disableScript", this.disableScript.bind(this));
     this.api.on("runScript", this.runScript.bind(this));
     this.api.on("stopScript", this.stopScript.bind(this));
+
+    this.api.on("runtime/valueUpdate", this.valueUpdate.bind(this));
+    this.api.on("runtime/emitEvent", this.emitEvent.bind(this));
   }
 }

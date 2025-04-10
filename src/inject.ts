@@ -2,8 +2,8 @@ import LoggerCore from "./app/logger/core";
 import MessageWriter from "./app/logger/message_writer";
 import { CustomEventMessage } from "@Packages/message/custom_event_message";
 import { Server } from "@Packages/message/server";
-import { InjectRuntime } from "./runtime/content/inject";
 import { ScriptRunResouce } from "./app/repo/scripts";
+import { InjectRuntime } from "./app/service/content/inject";
 
 const msg = new CustomEventMessage(MessageFlag, false);
 

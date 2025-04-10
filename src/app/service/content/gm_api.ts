@@ -2,12 +2,12 @@ import { ScriptRunResouce } from "@App/app/repo/scripts";
 import { getMetadataStr, getUserConfigStr, parseUserConfig } from "@App/pkg/utils/script";
 import { ValueUpdateData } from "./exec_script";
 import { ExtVersion } from "@App/app/const";
-import { getStorageName } from "../utils";
 import { Message, MessageConnect } from "@Packages/message/server";
 import { CustomEventMessage } from "@Packages/message/custom_event_message";
 import LoggerCore from "@App/app/logger/core";
 import { connect, sendMessage } from "@Packages/message/client";
 import EventEmitter from "eventemitter3";
+import { getStorageName } from "@App/pkg/utils/utils";
 
 interface ApiParam {
   depend?: string[];
@@ -174,17 +174,17 @@ export default class GMApi {
     this.GM_setValue(name, undefined);
   }
 
-  valueChangeId: number | undefined;
+  eventId: number = 0;
+
+  menuMap: Map<number, string> | undefined;
+
+  EE: EventEmitter = new EventEmitter();
 
   @GMContext.API()
   public GM_addValueChangeListener(name: string, listener: GMTypes.ValueChangeListener): number {
-    if (!this.valueChangeId) {
-      this.valueChangeId = 1;
-    } else {
-      this.valueChangeId += 1;
-    }
-    this.valueChangeListener.set(this.valueChangeId, { name, listener });
-    return this.valueChangeId;
+    this.eventId += 1;
+    this.valueChangeListener.set(this.eventId, { name, listener });
+    return this.eventId;
   }
 
   @GMContext.API()
@@ -222,12 +222,6 @@ export default class GMApi {
     return (<CustomEventMessage>this.message).getAndDelRelatedTarget(data.relatedTarget);
   }
 
-  menuId: number | undefined;
-
-  menuMap: Map<number, string> | undefined;
-
-  EE: EventEmitter = new EventEmitter();
-
   @GMContext.API()
   GM_registerMenuCommand(name: string, listener: () => void, accessKey?: string): number {
     if (!this.menuMap) {
@@ -240,15 +234,10 @@ export default class GMApi {
       }
     });
     if (flag) {
-      this.EE.addListener("menuClick" + flag, listener);
       return flag;
     }
-    if (!this.menuId) {
-      this.menuId = 1;
-    } else {
-      this.menuId += 1;
-    }
-    const id = this.menuId;
+    this.eventId += 1;
+    const id = this.eventId;
     this.menuMap.set(id, name);
     this.EE.addListener("menuClick" + id, listener);
     this.sendMessage("GM_registerMenuCommand", [id, name, accessKey]);
@@ -257,6 +246,7 @@ export default class GMApi {
 
   @GMContext.API()
   GM_unregisterMenuCommand(id: number): void {
+    console.log("unregisterMenuCommand", id);
     if (!this.menuMap) {
       this.menuMap = new Map();
     }
@@ -457,5 +447,69 @@ export default class GMApi {
         }
       },
     };
+  }
+
+  @GMContext.API()
+  public async GM_notification(
+    detail: GMTypes.NotificationDetails | string,
+    ondone?: GMTypes.NotificationOnDone | string,
+    image?: string,
+    onclick?: GMTypes.NotificationOnClick
+  ) {
+    let data: GMTypes.NotificationDetails = {};
+    if (typeof detail === "string") {
+      data.text = detail;
+      switch (arguments.length) {
+        case 4:
+          data.onclick = onclick;
+        case 3:
+          data.image = image;
+        case 2:
+          data.title = <string>ondone;
+        default:
+          break;
+      }
+    } else {
+      data = detail;
+      data.ondone = data.ondone || <GMTypes.NotificationOnDone>ondone;
+    }
+    let click: GMTypes.NotificationOnClick;
+    let done: GMTypes.NotificationOnDone;
+    let create: GMTypes.NotificationOnClick;
+    if (data.onclick) {
+      click = data.onclick;
+      delete data.onclick;
+    }
+    if (data.ondone) {
+      done = data.ondone;
+      delete data.ondone;
+    }
+    if (data.oncreate) {
+      create = data.oncreate;
+      delete data.oncreate;
+    }
+    this.eventId += 1;
+    this.sendMessage("GM_notification", [data]);
+    this.EE.addListener("GM_notification:" + this.eventId, (resp: any) => {
+      switch (resp.event) {
+        case "click": {
+          click && click.apply({ id: resp.id }, [resp.id, resp.index]);
+          break;
+        }
+        case "done": {
+          done && done.apply({ id: resp.id }, [resp.user]);
+          break;
+        }
+        case "create": {
+          create && create.apply({ id: resp.id }, [resp.id]);
+          break;
+        }
+        default:
+          LoggerCore.logger().warn("GM_notification resp is error", {
+            resp,
+          });
+          break;
+      }
+    });
   }
 }

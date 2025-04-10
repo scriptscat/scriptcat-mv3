@@ -19,7 +19,7 @@ import { MessageQueue } from "@Packages/message/message_queue";
 import { InstallSource } from ".";
 import { ResourceService } from "./resource";
 import { ValueService } from "./value";
-import { compileScriptCode } from "@App/runtime/content/utils";
+import { compileScriptCode } from "../content/utils";
 
 export class ScriptService {
   logger: Logger;

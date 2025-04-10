@@ -20,7 +20,7 @@ import {
   subscribeScriptMenuRegister,
   subscribeScriptRunStatus,
 } from "../queue";
-import { getStorageName } from "@App/runtime/utils";
+import { getStorageName } from "@App/pkg/utils/utils";
 
 export type ScriptMenuItem = {
   id: number;
@@ -206,7 +206,7 @@ export class PopupService {
 
   // 事务更新脚本菜单
   txUpdateScriptMenu(tabId: number, callback: (menu: ScriptMenu[]) => Promise<any>) {
-    return Cache.getInstance().tx("tabScript:" + tabId, async (menu) => {
+    return Cache.getInstance().tx<ScriptMenu[]>("tabScript:" + tabId, async (menu) => {
       return callback(menu || []);
     });
   }
@@ -252,14 +252,15 @@ export class PopupService {
       if (script.type === SCRIPT_TYPE_NORMAL) {
         return;
       }
+      if (script.status !== SCRIPT_STATUS_ENABLE) {
+        return;
+      }
       return this.txUpdateScriptMenu(-1, async (menu) => {
         const scriptMenu = menu.find((item) => item.uuid === script.uuid);
-        if (script.status === SCRIPT_STATUS_ENABLE) {
-          // 加入菜单
-          if (!scriptMenu) {
-            const item = this.scriptToMenu(script);
-            menu.push(item);
-          }
+        // 加入菜单
+        if (!scriptMenu) {
+          const item = this.scriptToMenu(script);
+          menu.push(item);
         }
         return menu;
       });
@@ -294,24 +295,22 @@ export class PopupService {
         const index = menu.findIndex((item) => item.uuid === uuid);
         if (index !== -1) {
           menu.splice(index, 1);
-          return menu;
         }
-        return null;
+        return menu;
       });
     });
     subscribeScriptRunStatus(this.mq, async ({ uuid, runStatus }) => {
       return this.txUpdateScriptMenu(-1, async (menu) => {
         const scriptMenu = menu.find((item) => item.uuid === uuid);
         if (scriptMenu) {
-          if (scriptMenu.runStatus === SCRIPT_RUN_STATUS_RUNNING) {
+          scriptMenu.runStatus = runStatus;
+          if (runStatus === SCRIPT_RUN_STATUS_RUNNING) {
             scriptMenu.runNum = 1;
           } else {
             scriptMenu.runNum = 0;
           }
-          scriptMenu.runStatus = runStatus;
-          return menu;
         }
-        return null;
+        return menu;
       });
     });
   }
@@ -330,13 +329,12 @@ export class PopupService {
     documentId: string;
   }) {
     // 菜单点击事件
-    this.runtime.sendMessageToTab(
+    this.runtime.EmitEventToTab(
       tabId,
-      "menuClick",
       {
         uuid,
-        id,
-        tabId,
+        event: "menuClick",
+        data: id,
       },
       {
         frameId,
@@ -372,14 +370,21 @@ export class PopupService {
         const [, , uuid, id] = menuIds;
         // 寻找menu信息
         const menu = await this.getScriptMenu(tab!.id!);
-        const script = menu.find((item) => item.uuid === uuid);
+        let script = menu.find((item) => item.uuid === uuid);
+        let bgscript = false;
+        if (!script) {
+          // 从后台脚本中寻找
+          const backgroundMenu = await this.getScriptMenu(-1);
+          script = backgroundMenu.find((item) => item.uuid === uuid);
+          bgscript = true;
+        }
         if (script) {
           const menuItem = script.menus.find((item) => item.id === parseInt(id, 10));
           if (menuItem) {
             this.menuClick({
               uuid: script.uuid,
               id: menuItem.id,
-              tabId: tab!.id!,
+              tabId: bgscript ? -1 : tab!.id!,
               frameId: menuItem.frameId || 0,
               documentId: menuItem.documentId || "",
             });

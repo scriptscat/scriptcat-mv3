@@ -72,8 +72,8 @@ export class Server {
     }
   }
 
-  private messageHandle(msg: string, params: any, sendResponse: (response: any) => void, sender?: MessageSender) {
-    const func = this.apiFunctionMap.get(msg);
+  private messageHandle(action: string, params: any, sendResponse: (response: any) => void, sender?: MessageSender) {
+    const func = this.apiFunctionMap.get(action);
     if (func) {
       try {
         const ret = func(params, new GetSender(sender!));
@@ -89,8 +89,8 @@ export class Server {
         sendResponse({ code: -1, message: e.message });
       }
     } else {
-      sendResponse({ code: -1, message: "no such api" });
-      this.logger.error("no such api", { msg });
+      sendResponse({ code: -1, message: "no such api " + action });
+      this.logger.error("no such api", { action: action });
     }
   }
 }

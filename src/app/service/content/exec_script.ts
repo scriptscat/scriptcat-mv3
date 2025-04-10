@@ -69,13 +69,16 @@ export default class ExecScript {
     }
   }
 
-  // 触发值更新
-  valueUpdate(data: ValueUpdateData) {
-    this.sandboxContent?.valueUpdate(data);
+  emitEvent(event: string, data: any) {
+    switch (event) {
+      case "menuClick":
+        this.sandboxContent?.menuClick(data);
+        break;
+    }
   }
 
-  menuClick(id: number) {
-    this.sandboxContent?.menuClick(id);
+  valueUpdate(data: ValueUpdateData) {
+    this.sandboxContent?.valueUpdate(data);
   }
 
   exec() {

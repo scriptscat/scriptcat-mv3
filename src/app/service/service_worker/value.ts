@@ -2,13 +2,13 @@ import LoggerCore from "@App/app/logger/core";
 import Logger from "@App/app/logger/logger";
 import { Script, SCRIPT_TYPE_NORMAL, ScriptDAO } from "@App/app/repo/scripts";
 import { ValueDAO } from "@App/app/repo/value";
-import { getStorageName } from "@App/runtime/utils";
 import { Group, MessageSend } from "@Packages/message/server";
 import { RuntimeService } from "./runtime";
 import { PopupService } from "./popup";
-import { ValueUpdateData, ValueUpdateSender } from "@App/runtime/content/exec_script";
 import { sendMessage } from "@Packages/message/client";
 import Cache from "@App/app/cache";
+import { getStorageName } from "@App/pkg/utils/utils";
+import { ValueUpdateData, ValueUpdateSender } from "../content/exec_script";
 
 export class ValueService {
   logger: Logger;
@@ -67,21 +67,18 @@ export class ValueService {
       uuid,
       storageName: storageName,
     };
-    // 判断是后台脚本还是前台脚本
-    if (script.type === SCRIPT_TYPE_NORMAL) {
-      chrome.tabs.query({}, (tabs) => {
-        // 推送到所有加载了本脚本的tab中
-        tabs.forEach(async (tab) => {
-          const scriptMenu = await this.popup!.getScriptMenu(tab.id!);
-          if (scriptMenu.find((item) => item.storageName === storageName)) {
-            this.runtime!.sendMessageToTab(tab.id!, "valueUpdate", sendData);
-          }
-        });
+
+    chrome.tabs.query({}, (tabs) => {
+      // 推送到所有加载了本脚本的tab中
+      tabs.forEach(async (tab) => {
+        const scriptMenu = await this.popup!.getScriptMenu(tab.id!);
+        if (scriptMenu.find((item) => item.storageName === storageName)) {
+          this.runtime!.sendMessageToTab(tab.id!, "valueUpdate", sendData);
+        }
       });
-    } else {
-      // 推送到offscreen中
-      sendMessage(this.send, "offscreen/runtime/valueUpdate", sendData);
-    }
+    });
+    // 推送到offscreen中
+    sendMessage(this.send, "offscreen/runtime/valueUpdate", sendData);
 
     return Promise.resolve(true);
   }

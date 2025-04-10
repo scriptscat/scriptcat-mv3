@@ -12,9 +12,9 @@ export default class ContentRuntime {
   ) {}
 
   start(scripts: ScriptRunResouce[]) {
-    this.extServer.on("runtime/menuClick", (data) => {
+    this.extServer.on("runtime/emitEvent", (data) => {
       // 转发给inject
-      return sendMessage(this.msg, "inject/runtime/menuClick", data);
+      return sendMessage(this.msg, "inject/runtime/emitEvent", data);
     });
     this.extServer.on("runtime/valueUpdate", (data) => {
       // 转发给inject

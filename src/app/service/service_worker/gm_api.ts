@@ -6,7 +6,6 @@ import { ValueService } from "@App/app/service/service_worker/value";
 import PermissionVerify from "./permission_verify";
 import { connect } from "@Packages/message/client";
 import Cache, { incr } from "@App/app/cache";
-import { unsafeHeaders } from "@App/runtime/utils";
 import EventEmitter from "eventemitter3";
 import { MessageQueue } from "@Packages/message/message_queue";
 import { RuntimeService } from "./runtime";
@@ -22,6 +21,35 @@ export type MessageRequest = {
 
 export type Request = MessageRequest & {
   script: Script;
+};
+
+export const unsafeHeaders: { [key: string]: boolean } = {
+  // 部分浏览器中并未允许
+  "user-agent": true,
+  // 这两个是前缀
+  "proxy-": true,
+  "sec-": true,
+  // cookie已经特殊处理
+  cookie: true,
+  "accept-charset": true,
+  "accept-encoding": true,
+  "access-control-request-headers": true,
+  "access-control-request-method": true,
+  connection: true,
+  "content-length": true,
+  date: true,
+  dnt: true,
+  expect: true,
+  "feature-policy": true,
+  host: true,
+  "keep-alive": true,
+  origin: true,
+  referer: true,
+  te: true,
+  trailer: true,
+  "transfer-encoding": true,
+  upgrade: true,
+  via: true,
 };
 
 export type Api = (request: Request, con: GetSender) => Promise<any>;
@@ -194,7 +222,7 @@ export default class GMApi {
       id: id,
       name: name,
       accessKey: accessKey,
-      tabId: sender.getSender().tab!.id!,
+      tabId: sender.getSender().tab?.id || -1,
       frameId: sender.getSender().frameId,
       documentId: sender.getSender().documentId,
     });
@@ -207,7 +235,7 @@ export default class GMApi {
     this.mq.emit("unregisterMenuCommand", {
       uuid: request.script.uuid,
       id: id,
-      tabId: sender.getSender().tab!.id!,
+      tabId: sender.getSender().tab?.id || -1,
       frameId: sender.getSender().frameId,
     });
   }
