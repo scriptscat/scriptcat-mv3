@@ -24,8 +24,9 @@ if (version.prerelease.length) {
       throw new Error("未知的版本类型");
   }
   manifest.version = `${version.major.toString()}.${version.minor.toString()}.${version.patch.toString()}.${betaVersion.toString()}`;
-  manifest.name = `${manifest.name} Beta`;
+  manifest.name = `__MSG_scriptcat_beta__`;
 } else {
+  manifest.name = `__MSG_scriptcat__`;
   manifest.version = package.version;
 }
 
