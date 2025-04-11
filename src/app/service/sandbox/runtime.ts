@@ -206,7 +206,7 @@ export class Runtime {
     } else {
       this.cronJob.set(script.uuid, cronJobList);
     }
-    return Promise.resolve(!flag);
+    return !flag;
   }
 
   crontabExec(script: ScriptRunResouce, oncePos: number) {

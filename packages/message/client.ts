@@ -6,9 +6,9 @@ export async function sendMessage(msg: MessageSend, action: string, data?: any):
   LoggerCore.getInstance().logger().trace("sendMessage", { action, data, response: res });
   if (res && res.code) {
     console.error(res);
-    return Promise.reject(res.message);
+    throw res.message;
   } else {
-    return Promise.resolve(res.data);
+    return res.data;
   }
 }
 

@@ -215,7 +215,22 @@ export default class GMApi {
   @GMContext.API()
   public async CAT_fetchDocument(url: string): Promise<Document | undefined> {
     const data = await this.sendMessage("CAT_fetchDocument", [url]);
-    return (<CustomEventMessage>this.message).getAndDelRelatedTarget(data.relatedTarget);
+    return (<CustomEventMessage>this.message).getAndDelRelatedTarget(data.relatedTarget) as Document;
+  }
+
+  @GMContext.API()
+  GM_cookie(
+    action: string,
+    details: GMTypes.CookieDetails,
+    done: (cookie: GMTypes.Cookie[] | any, error: any | undefined) => void
+  ) {
+    this.sendMessage("GM_cookie", [action, details])
+      .then((resp: any) => {
+        done && done(resp, undefined);
+      })
+      .catch((err) => {
+        done && done(undefined, err);
+      });
   }
 
   @GMContext.API()
@@ -479,7 +494,7 @@ export default class GMApi {
               break;
             default:
               LoggerCore.logger().warn("GM_xmlhttpRequest resp is error", {
-                action: data.action,
+                data,
               });
               break;
           }
@@ -493,6 +508,64 @@ export default class GMApi {
         if (connect) {
           connect.disconnect();
         }
+      },
+    };
+  }
+
+  @GMContext.API()
+  GM_download(url: GMTypes.DownloadDetails | string, filename?: string): GMTypes.AbortHandle<void> {
+    let details: GMTypes.DownloadDetails;
+    if (typeof url === "string") {
+      details = {
+        name: filename || "",
+        url,
+      };
+    } else {
+      details = url;
+    }
+    let connect: MessageConnect;
+    this.connect("GM_download", [
+      {
+        method: details.method,
+        url: details.url,
+        name: details.name,
+        headers: details.headers,
+        saveAs: details.saveAs,
+        timeout: details.timeout,
+        cookie: details.cookie,
+        anonymous: details.anonymous,
+      },
+    ]).then((con) => {
+      connect = con;
+      connect.onMessage((data: { action: string; data: any }) => {
+        switch (data.action) {
+          case "onload":
+            details.onload && details.onload(data.data);
+            break;
+          case "onprogress":
+            details.onprogress && details.onprogress(<GMTypes.XHRProgress>data.data);
+            break;
+          case "ontimeout":
+            details.ontimeout && details.ontimeout();
+            break;
+          case "onerror":
+            details.onerror &&
+              details.onerror({
+                error: "unknown",
+              });
+            break;
+          default:
+            LoggerCore.logger().warn("GM_download resp is error", {
+              data,
+            });
+            break;
+        }
+      });
+    });
+
+    return {
+      abort: () => {
+        connect?.disconnect();
       },
     };
   }
@@ -574,6 +647,88 @@ export default class GMApi {
   @GMContext.API()
   public GM_updateNotification(id: string, details: GMTypes.NotificationDetails): void {
     this.sendMessage("GM_updateNotification", [id, details]);
+  }
+
+  @GMContext.API({ depend: ["GM_closeInTab"] })
+  public GM_openInTab(url: string, options?: GMTypes.OpenTabOptions | boolean): GMTypes.Tab {
+    let option: GMTypes.OpenTabOptions = {};
+    if (arguments.length === 1) {
+      option.active = true;
+    } else if (typeof options === "boolean") {
+      option.active = !options;
+    } else {
+      option = <GMTypes.OpenTabOptions>options;
+    }
+    if (option.active === undefined) {
+      option.active = true;
+    }
+    let tabid: any;
+
+    const ret: GMTypes.Tab = {
+      close: () => {
+        tabid && this.GM_closeInTab(tabid);
+      },
+    };
+
+    this.sendMessage("GM_openInTab", [url, option]).then((id) => {
+      if (id) {
+        tabid = id;
+        this.EE.addListener("GM_openInTab:" + id, (resp: any) => {
+          switch (resp.event) {
+            case "oncreate":
+              tabid = resp.tabId;
+              break;
+            case "onclose":
+              ret.onclose && ret.onclose();
+              ret.closed = true;
+              this.EE.removeAllListeners("GM_openInTab:" + id);
+              break;
+            default:
+              LoggerCore.logger().warn("GM_openInTab resp is error", {
+                resp,
+              });
+              break;
+          }
+        });
+      } else {
+        ret.onclose && ret.onclose();
+        ret.closed = true;
+      }
+    });
+
+    return ret;
+  }
+
+  @GMContext.API()
+  public GM_closeInTab(tabid: string) {
+    return this.sendMessage("GM_closeInTab", [tabid]);
+  }
+
+  @GMContext.API()
+  GM_getTab(callback: (data: any) => void) {
+    this.sendMessage("GM_getTab", []).then((data) => {
+      callback(data);
+    });
+  }
+
+  @GMContext.API()
+  GM_saveTab(obj: object) {
+    if (typeof obj === "object") {
+      obj = JSON.parse(JSON.stringify(obj));
+    }
+    this.sendMessage("GM_saveTab", [obj]);
+  }
+
+  @GMContext.API()
+  GM_getTabs(callback: (objs: { [key: string | number]: object }) => any) {
+    this.sendMessage("GM_getTabs", []).then((resp) => {
+      callback(resp);
+    });
+  }
+
+  @GMContext.API()
+  GM_setClipboard(data: string, info?: string | { type?: string; minetype?: string }) {
+    this.sendMessage("GM_setClipboard", [data, info]);
   }
 
   @GMContext.API()

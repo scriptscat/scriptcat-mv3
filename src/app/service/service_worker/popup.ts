@@ -183,8 +183,10 @@ export class PopupService {
     const scriptMenu = script.map((script) => {
       const run = runScript.find((item) => item.uuid === script.uuid);
       if (run) {
-        // 如果脚本已经存在，则不添加，赋值状态
+        // 如果脚本已经存在，则不添加，更新信息
         run.enable = script.status === SCRIPT_STATUS_ENABLE;
+        run.customExclude = script.customizeExcludeMatches || run.customExclude;
+        run.hasUserConfig = !!script.config;
         return run;
       }
       return this.scriptToMenu(script);
@@ -196,6 +198,7 @@ export class PopupService {
         scriptMenu.push(script);
       }
     });
+    console.log("popup脚本菜单", runScript);
     // 后台脚本只显示开启或者运行中的脚本
     return { scriptList: scriptMenu, backScriptList: await this.getScriptMenu(-1) };
   }
@@ -335,9 +338,19 @@ export class PopupService {
 
     // 监听tab开关
     chrome.tabs.onRemoved.addListener((tabId) => {
-      // 清理数据
-      this.txUpdateScriptMenu(tabId, async () => {
-        return [];
+      // 清理数据tab关闭需要释放的数据
+      this.txUpdateScriptMenu(tabId, async (script) => {
+        script.forEach((script) => {
+          // 处理GM_saveTab关闭事件, 由于需要用到tab相关的脚本数据，所以需要在这里处理
+          // 避免先删除了数据获取不到
+          Cache.getInstance().tx(`GM_getTab:${script.uuid}`, (tabData: { [key: number]: any }) => {
+            if (tabData) {
+              delete tabData[tabId];
+            }
+            return Promise.resolve(tabData);
+          });
+        });
+        return undefined;
       });
     });
     // 监听页面切换加载菜单

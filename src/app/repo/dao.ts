@@ -75,9 +75,9 @@ export abstract class DAO<T> {
     }
     const resp = await this.table.update(id, <any>val);
     if (resp) {
-      return Promise.resolve(id);
+      return id;
     }
-    return Promise.reject(ErrSaveError);
+    throw ErrSaveError;
   }
 
   public findById(id: number) {

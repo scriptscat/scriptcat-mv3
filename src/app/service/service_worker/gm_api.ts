@@ -4,12 +4,15 @@ import { Script, ScriptDAO } from "@App/app/repo/scripts";
 import { ExtMessageSender, GetSender, Group, MessageSend } from "@Packages/message/server";
 import { ValueService } from "@App/app/service/service_worker/value";
 import PermissionVerify from "./permission_verify";
-import { connect } from "@Packages/message/client";
+import { connect, sendMessage } from "@Packages/message/client";
 import Cache, { incr } from "@App/app/cache";
 import EventEmitter from "eventemitter3";
 import { MessageQueue } from "@Packages/message/message_queue";
 import { RuntimeService } from "./runtime";
 import { getIcon, isFirefox } from "@App/pkg/utils/utils";
+import { PopupService } from "./popup";
+import { act } from "react";
+import { MockMessageConnect } from "@Packages/message/mock_message";
 
 // GMApi,处理脚本的GM API调用请求
 
@@ -82,14 +85,14 @@ export default class GMApi {
     this.logger.trace("GM API request", { api: data.api, uuid: data.uuid, param: data.params });
     const api = PermissionVerify.apis.get(data.api);
     if (!api) {
-      return Promise.reject(new Error("gm api is not found"));
+      throw new Error("gm api is not found");
     }
     const req = await this.parseRequest(data);
     try {
       await this.permissionVerify.verify(req, api);
     } catch (e) {
       this.logger.error("verify error", { api: data.api }, Logger.E(e));
-      return Promise.reject(e);
+      throw e;
     }
     return api.api.call(this, req, sender);
   }
@@ -98,17 +101,103 @@ export default class GMApi {
   async parseRequest(data: MessageRequest): Promise<Request> {
     const script = await this.scriptDAO.get(data.uuid);
     if (!script) {
-      return Promise.reject(new Error("script is not found"));
+      throw new Error("script is not found");
     }
     const req: Request = <Request>data;
     req.script = script;
-    return Promise.resolve(req);
+    return req;
+  }
+
+  @PermissionVerify.API()
+  async GM_cookie(request: Request, sender: GetSender) {
+    const param = request.params;
+    if (param.length !== 2) {
+      throw new Error("there must be two parameters");
+    }
+    const detail = <GMTypes.CookieDetails>request.params[1];
+    // url或者域名不能为空
+    if (detail.url) {
+      detail.url = detail.url.trim();
+    }
+    if (detail.domain) {
+      detail.domain = detail.domain.trim();
+    }
+    if (!detail.url && !detail.domain) {
+      throw new Error("there must be one of url or domain");
+    }
+    // 处理tab的storeid
+    let tabId = sender.getExtMessageSender().tabId;
+    let storeId: string | undefined;
+    if (tabId !== -1) {
+      const stores = await chrome.cookies.getAllCookieStores();
+      const store = stores.find((val) => val.tabIds.includes(tabId));
+      if (store) {
+        storeId = store.id;
+      }
+    }
+    switch (param[0]) {
+      case "list": {
+        return chrome.cookies.getAll({
+          domain: detail.domain,
+          name: detail.name,
+          path: detail.path,
+          secure: detail.secure,
+          session: detail.session,
+          url: detail.url,
+          storeId: storeId,
+        });
+      }
+      case "delete": {
+        if (!detail.url || !detail.name) {
+          throw new Error("delete operation must have url and name");
+        }
+        await chrome.cookies.remove({
+          name: detail.name,
+          url: detail.url,
+          storeId: storeId,
+        });
+        break;
+      }
+      case "set": {
+        if (!detail.url || !detail.name) {
+          throw new Error("set operation must have name and value");
+        }
+        await chrome.cookies.set({
+          url: detail.url,
+          name: detail.name,
+          domain: detail.domain,
+          value: detail.value,
+          expirationDate: detail.expirationDate,
+          path: detail.path,
+          httpOnly: detail.httpOnly,
+          secure: detail.secure,
+          storeId: storeId,
+        });
+        break;
+      }
+      default: {
+        throw new Error("action can only be: get, set, delete, store");
+      }
+    }
+  }
+
+  @PermissionVerify.API()
+  GM_log(request: Request): Promise<boolean> {
+    const message = request.params[0];
+    const level = request.params[1] || "info";
+    const labels = request.params[2] || {};
+    LoggerCore.logger(labels).log(level, message, {
+      uuid: request.uuid,
+      name: request.script.name,
+      component: "GM_log",
+    });
+    return Promise.resolve(true);
   }
 
   @PermissionVerify.API()
   async GM_setValue(request: Request, sender: GetSender) {
     if (!request.params || request.params.length !== 2) {
-      return Promise.reject(new Error("param is failed"));
+      throw new Error("param is failed");
     }
     const [key, value] = request.params;
     await this.value.setValue(request.script.uuid, key, value, {
@@ -122,7 +211,7 @@ export default class GMApi {
     // 检查是否有unsafe header,有则生成dnr规则
     const headers = params.headers;
     if (!headers) {
-      return Promise.resolve({});
+      return {};
     }
     const requestHeaders = [
       {
@@ -151,6 +240,26 @@ export default class GMApi {
         delete headers[key];
       }
     });
+    // 判断是否是anonymous
+    if (params.anonymous) {
+      // 如果是anonymous，并且有cookie，则设置为自定义的cookie
+      if (params.cookie) {
+        requestHeaders.push({
+          header: "cookie",
+          operation: chrome.declarativeNetRequest.HeaderOperation.SET,
+          value: params.cookie,
+        });
+      } else {
+        // 否则删除cookie
+        requestHeaders.push({
+          header: "cookie",
+          operation: chrome.declarativeNetRequest.HeaderOperation.REMOVE,
+        });
+      }
+    } else if (params.cookie) {
+      // 否则正常携带cookie header
+      headers["cookie"] = params.cookie;
+    }
     const ruleId = reqeustId;
     const rule = {} as chrome.declarativeNetRequest.Rule;
     rule.id = ruleId;
@@ -176,16 +285,83 @@ export default class GMApi {
       removeRuleIds: [ruleId],
       addRules: [rule],
     });
-    return Promise.resolve(headers);
+    return headers;
   }
 
   gmXhrHeadersReceived: EventEmitter = new EventEmitter();
 
+  dealFetch(config: GMSend.XHRDetails, response: Response, readyState: 0 | 1 | 2 | 3 | 4) {
+    let respHeader = "";
+    response.headers.forEach((value, key) => {
+      respHeader += `${key}: ${value}\n`;
+    });
+    const respond: GMTypes.XHRResponse = {
+      finalUrl: response.url || config.url,
+      readyState,
+      status: response.status,
+      statusText: response.statusText,
+      responseHeaders: respHeader,
+      responseType: config.responseType,
+    };
+    return respond;
+  }
+
+  CAT_fetch(config: GMSend.XHRDetails, con: GetSender, resultParam: { requestId: number; responseHeader: string }) {
+    const { url } = config;
+    let connect = con.getConnect();
+    return fetch(url, {
+      method: config.method || "GET",
+      body: <any>config.data,
+      headers: config.headers,
+    }).then((resp) => {
+      const send = this.dealFetch(config, resp, 1);
+      const reader = resp.body?.getReader();
+      if (!reader) {
+        throw new Error("read is not found");
+      }
+      const _this = this;
+      reader.read().then(function read({ done, value }) {
+        if (done) {
+          const data = _this.dealFetch(config, resp, 4);
+          data.responseHeaders = resultParam.responseHeader || data.responseHeaders;
+          connect.sendMessage({
+            action: "onreadystatechange",
+            data: data,
+          });
+          connect.sendMessage({
+            action: "onload",
+            data: data,
+          });
+          connect.sendMessage({
+            action: "onloadend",
+            data: data,
+          });
+        } else {
+          connect.sendMessage({
+            action: "onstream",
+            data: Array.from(value),
+          });
+          reader.read().then(read);
+        }
+      });
+      send.responseHeaders = resultParam.responseHeader || send.responseHeaders;
+      connect.sendMessage({
+        action: "onloadstart",
+        data: send,
+      });
+      send.readyState = 2;
+      connect.sendMessage({
+        action: "onreadystatechange",
+        data: send,
+      });
+    });
+  }
+
   // TODO: maxRedirects实现
   @PermissionVerify.API()
-  async GM_xmlhttpRequest(request: Request, con: GetSender) {
+  async GM_xmlhttpRequest(request: Request, sender: GetSender) {
     if (request.params.length === 0) {
-      return Promise.reject(new Error("param is failed"));
+      throw new Error("param is failed");
     }
     const params = request.params[0] as GMSend.XHRDetails;
     // 先处理unsafe hearder
@@ -197,26 +373,35 @@ export default class GMApi {
     }
     params.headers["X-Scriptcat-GM-XHR-Request-Id"] = requestId.toString();
     params.headers = await this.buildDNRRule(requestId, request.params[0]);
-    let responseHeader = "";
+    let resultParam = {
+      requestId,
+      responseHeader: "",
+    };
     // 等待response
     this.gmXhrHeadersReceived.addListener(
       "headersReceived:" + requestId,
       (details: chrome.webRequest.WebResponseHeadersDetails) => {
         details.responseHeaders?.forEach((header) => {
-          responseHeader += header.name + ": " + header.value + "\r\n";
+          resultParam.responseHeader += header.name + ": " + header.value + "\n";
         });
         this.gmXhrHeadersReceived.removeAllListeners("headersReceived:" + requestId);
       }
     );
+    if (params.responseType === "stream" || params.fetch || params.redirect) {
+      // 只有fetch支持ReadableStream、redirect这些，直接使用fetch
+      return this.CAT_fetch(params, sender, resultParam);
+    }
     // 再发送到offscreen, 处理请求
     const offscreenCon = await connect(this.send, "offscreen/gmApi/xmlHttpRequest", request.params[0]);
     offscreenCon.onMessage((msg: { action: string; data: any }) => {
       // 发送到content
       // 替换msg.data.responseHeaders
-      if (responseHeader) {
-        msg.data.responseHeaders = responseHeader;
-      }
-      con.getConnect().sendMessage(msg);
+      msg.data.responseHeaders = resultParam.responseHeader || msg.data.responseHeaders;
+      sender.getConnect().sendMessage(msg);
+    });
+    sender.getConnect().onDisconnect(() => {
+      // 关闭连接
+      offscreenCon.disconnect();
     });
   }
 
@@ -248,9 +433,82 @@ export default class GMApi {
   }
 
   @PermissionVerify.API({})
+  async GM_openInTab(request: Request, sender: GetSender) {
+    const url = request.params[0];
+    const options = request.params[1] || {};
+    if (options.useOpen === true) {
+      // 发送给offscreen页面处理
+      const ok = await sendMessage(this.send, "offscreen/gmApi/openInTab", { url });
+      if (ok) {
+        // 由于window.open强制在前台打开标签，因此获取状态为{ active:true }的标签即为新标签
+        const [tab] = await chrome.tabs.query({ active: true });
+        await Cache.getInstance().set(`GM_openInTab:${tab.id}`, {
+          uuid: request.uuid,
+          sender: sender.getExtMessageSender(),
+        });
+        return tab.id;
+      } else {
+        // 当新tab被浏览器阻止时window.open()会返回null 视为已经关闭
+        // 似乎在Firefox中禁止在background页面使用window.open()，强制返回null
+        return false;
+      }
+    } else {
+      const tab = await chrome.tabs.create({ url, active: options.active });
+      await Cache.getInstance().set(`GM_openInTab:${tab.id}`, {
+        uuid: request.uuid,
+        sender: sender.getExtMessageSender(),
+      });
+      return tab.id;
+    }
+  }
+
+  @PermissionVerify.API({
+    link: "GM_openInTab",
+  })
+  async GM_closeInTab(request: Request): Promise<boolean> {
+    try {
+      await chrome.tabs.remove(<number>request.params[0]);
+    } catch (e) {
+      this.logger.error("GM_closeInTab", Logger.E(e));
+    }
+    return Promise.resolve(true);
+  }
+
+  @PermissionVerify.API({})
+  GM_getTab(request: Request, sender: GetSender) {
+    return Cache.getInstance()
+      .tx(`GM_getTab:${request.uuid}`, async (tabData: { [key: number]: any }) => {
+        return tabData || {};
+      })
+      .then((data) => {
+        return data[sender.getExtMessageSender().tabId];
+      });
+  }
+
+  @PermissionVerify.API()
+  GM_saveTab(request: Request, sender: GetSender) {
+    const data = request.params[0];
+    const tabId = sender.getExtMessageSender().tabId;
+    return Cache.getInstance()
+      .tx(`GM_getTab:${request.uuid}`, (tabData: { [key: number]: any }) => {
+        tabData = tabData || {};
+        tabData[tabId] = data;
+        return Promise.resolve(tabData);
+      })
+      .then(() => true);
+  }
+
+  @PermissionVerify.API()
+  GM_getTabs(request: Request) {
+    return Cache.getInstance().tx(`GM_getTab:${request.uuid}`, async (tabData: { [key: number]: any }) => {
+      return tabData || {};
+    });
+  }
+
+  @PermissionVerify.API({})
   GM_notification(request: Request, sender: GetSender) {
     if (request.params.length === 0) {
-      return Promise.reject(new Error("param is failed"));
+      throw new Error("param is failed");
     }
     const details: GMTypes.NotificationDetails = request.params[0];
     const options: chrome.notifications.NotificationOptions<true> = {
@@ -288,7 +546,7 @@ export default class GMApi {
   })
   GM_closeNotification(request: Request) {
     if (request.params.length === 0) {
-      return Promise.reject(new Error("param is failed"));
+      throw new Error("param is failed");
     }
     const [notificationId] = request.params;
     Cache.getInstance().del(`GM_notification:${notificationId}`);
@@ -300,7 +558,7 @@ export default class GMApi {
   })
   GM_updateNotification(request: Request) {
     if (isFirefox()) {
-      return Promise.reject(new Error("firefox does not support this method"));
+      throw new Error("firefox does not support this method");
     }
     const id = request.params[0];
     const details: GMTypes.NotificationDetails = request.params[1];
@@ -313,6 +571,91 @@ export default class GMApi {
       progress: details.progress && parseInt(details.progress as any, 10),
     };
     chrome.notifications.update(<string>id, options);
+  }
+
+  @PermissionVerify.API()
+  async GM_download(request: Request, sender: GetSender) {
+    const params = <GMTypes.DownloadDetails>request.params[0];
+    // blob本地文件直接下载
+    if (params.url.startsWith("blob:")) {
+      chrome.downloads.download(
+        {
+          url: params.url,
+          saveAs: params.saveAs,
+          filename: params.name,
+        },
+        () => {
+          sender.getConnect().sendMessage({ event: "onload" });
+        }
+      );
+      return;
+    }
+    // 使用xhr下载blob,再使用download api创建下载
+    const EE = new EventEmitter();
+    const mockConnect = new MockMessageConnect(EE);
+    EE.addListener("message", (data: any) => {
+      const xhr = data.data;
+      const respond: any = {
+        finalUrl: xhr.url,
+        readyState: xhr.readyState,
+        status: xhr.status,
+        statusText: xhr.statusText,
+        responseHeaders: xhr.responseHeaders,
+      };
+      switch (data.action) {
+        case "onload":
+          sender.getConnect().sendMessage({
+            action: "onload",
+            data: respond,
+          });
+          chrome.downloads.download({
+            url: xhr.response,
+            saveAs: params.saveAs,
+            filename: params.name,
+          });
+          break;
+        case "onerror":
+          sender.getConnect().sendMessage({
+            action: "onerror",
+            data: respond,
+          });
+          break;
+        case "onprogress":
+          respond.done = xhr.DONE;
+          respond.lengthComputable = xhr.lengthComputable;
+          respond.loaded = xhr.loaded;
+          respond.total = xhr.total;
+          respond.totalSize = xhr.total;
+          sender.getConnect().sendMessage({
+            action: "onprogress",
+            data: respond,
+          });
+          break;
+        case "ontimeout":
+          sender.getConnect().sendMessage({
+            action: "ontimeout",
+          });
+          break;
+      }
+    });
+    // 处理参数问题
+    request.params[0] = {
+      method: params.method || "GET",
+      url: params.url,
+      headers: params.headers,
+      timeout: params.timeout,
+      cookie: params.cookie,
+      anonymous: params.anonymous,
+      responseType: "blob",
+    } as GMSend.XHRDetails;
+    return this.GM_xmlhttpRequest(request, new GetSender(mockConnect));
+  }
+
+  @PermissionVerify.API()
+  async GM_setClipboard(request: Request) {
+    let [data, type] = request.params;
+    type = type || "text/plain";
+    await sendMessage(this.send, "offscreen/gmApi/setClipboard", { data, type });
   }
 
   handlerNotification() {
@@ -397,5 +740,25 @@ export default class GMApi {
     this.group.on("gmApi", this.handlerRequest.bind(this));
     this.handlerGmXhr();
     this.handlerNotification();
+
+    chrome.tabs.onRemoved.addListener(async (tabId) => {
+      // 处理GM_openInTab关闭事件
+      const sender = (await Cache.getInstance().get(`GM_openInTab:${tabId}`)) as {
+        uuid: string;
+        sender: ExtMessageSender;
+      };
+      if (sender) {
+        this.runtime.emitEventToTab(sender.sender, {
+          event: "GM_openInTab",
+          eventId: tabId.toString(),
+          uuid: sender.uuid,
+          data: {
+            event: "onclose",
+            tabId: tabId,
+          },
+        });
+        Cache.getInstance().del(`GM_openInTab:${tabId}`);
+      }
+    });
   }
 }

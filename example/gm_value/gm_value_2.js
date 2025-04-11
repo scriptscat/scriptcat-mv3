@@ -13,13 +13,8 @@
 // @storageName example
 // ==/UserScript==
 
-GM_addValueChangeListener("test_set", function (name, oldval, newval, remote, tabid) {
-  console.log("test_set change", name, oldval, newval, remote, tabid);
-  // 可以通过tabid获取到触发变化的tab
-  // GM_cookie.store可以获取到对应的cookie storeId
-  GM_cookie("store", tabid, (storeId) => {
-    console.log("store", storeId);
-  });
+GM_addValueChangeListener("test_set", function (name, oldval, newval, remote) {
+  console.log("test_set change", name, oldval, newval, remote);
 });
 
 setInterval(() => {

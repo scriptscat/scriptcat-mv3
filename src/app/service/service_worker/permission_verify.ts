@@ -36,8 +36,6 @@ export interface ApiParam {
   background?: boolean;
   // 是否需要弹出页面让用户进行确认
   confirm?: (request: Request) => Promise<boolean | ConfirmParam>;
-  // 监听方法
-  listener?: () => void;
   // 别名
   alias?: string[];
   // 关联
@@ -59,9 +57,6 @@ export default class PermissionVerify {
   public static API(param: ApiParam = {}) {
     return (target: any, propertyName: string, descriptor: PropertyDescriptor) => {
       const key = propertyName;
-      if (param.listener) {
-        param.listener();
-      }
       PermissionVerify.apis.set(key, {
         api: descriptor.value,
         param,

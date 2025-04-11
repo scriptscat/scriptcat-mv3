@@ -15,7 +15,6 @@ export default class GMApi {
     data?: any
   ) {
     const finalUrl = xhr.responseURL || details.url;
-    // 判断是否有headerFlag-final-url,有则替换finalUrl
     let response: GMTypes.XHRResponse = {
       finalUrl,
       readyState: <any>xhr.readyState,
@@ -173,7 +172,38 @@ export default class GMApi {
     });
   }
 
+  openInTab({ url }: { url: string }) {
+    return Promise.resolve(window.open(url) !== undefined);
+  }
+
+  textarea: HTMLTextAreaElement = document.createElement("textarea");
+
+  clipboardData: { type?: string; data: string } | undefined;
+
+  async setClipboard({ data, type }: { data: string; type: string }) {
+    this.clipboardData = {
+      type,
+      data,
+    };
+    this.textarea.focus();
+    document.execCommand("copy", false, <any>null);
+  }
+
   init() {
+    this.textarea.style.display = "none";
+    document.documentElement.appendChild(this.textarea);
+    document.addEventListener("copy", (e: ClipboardEvent) => {
+      if (!this.clipboardData || !e.clipboardData) {
+        return;
+      }
+      e.preventDefault();
+      const { type, data } = this.clipboardData;
+      e.clipboardData.setData(type || "text/plain", data);
+      this.clipboardData = undefined;
+    });
+
     this.group.on("xmlHttpRequest", this.xmlHttpRequest.bind(this));
+    this.group.on("openInTab", this.openInTab.bind(this));
+    this.group.on("setClipboard", this.setClipboard.bind(this));
   }
 }

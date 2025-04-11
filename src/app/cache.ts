@@ -116,7 +116,7 @@ export default class Cache {
       ret = await set();
       this.set(key, ret);
     }
-    return Promise.resolve(ret);
+    return ret;
   }
 
   public set(key: string, value: any): Promise<void> {
@@ -173,8 +173,9 @@ export default class Cache {
         if (value) {
           newValue = value;
           return this.set(key, value);
+        } else if (value === undefined) {
+          return this.del(key);
         }
-        return Promise.resolve();
       });
     unlock();
     return newValue!;

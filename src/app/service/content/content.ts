@@ -35,7 +35,7 @@ export default class ContentRuntime {
             setTimeout(() => {
               URL.revokeObjectURL(url);
             }, 60 * 1000);
-            return Promise.resolve(url);
+            return url;
           }
           case "CAT_fetchBlob": {
             return fetch(data.params[0]).then((res) => res.blob());
@@ -80,7 +80,7 @@ export default class ContentRuntime {
             return nodeId;
           }
         }
-        return Promise.resolve(false);
+        return false;
       }
     );
     const client = new Client(this.msg, "inject");

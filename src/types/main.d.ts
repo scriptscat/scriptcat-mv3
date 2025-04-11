@@ -30,7 +30,8 @@ declare namespace GMSend {
     password?: string;
     nocache?: boolean;
     dataType?: "FormData" | "Blob";
-    maxRedirects?: number;
+    redirect?: "follow" | "error" | "manual";
+    maxRedirects?: number; // 为了与tm保持一致, 在v0.17.0后废弃, 使用redirect替代
   }
 
   interface XHRFormData {

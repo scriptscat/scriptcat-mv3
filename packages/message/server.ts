@@ -138,20 +138,7 @@ export function forwardMessage(
   to: MessageSend,
   middleware?: ApiFunctionSync
 ) {
-  from.on(path, (params, fromCon) => {
-    if (middleware) {
-      // 此处是为了处理CustomEventMessage的同步消息情况
-      const resp = middleware(params, fromCon) as any;
-      if (resp instanceof Promise) {
-        return resp.then((data) => {
-          if (data !== false) {
-            return data;
-          }
-        });
-      } else if (resp !== false) {
-        return resp;
-      }
-    }
+  const handler = (params: any, fromCon: GetSender) => {
     const fromConnect = fromCon.getConnect();
     if (fromConnect) {
       connect(to, prefix + "/" + path, params).then((toCon) => {
@@ -170,6 +157,23 @@ export function forwardMessage(
       });
     } else {
       return sendMessage(to, prefix + "/" + path, params);
+    }
+  };
+  from.on(path, (params, sender) => {
+    if (middleware) {
+      // 此处是为了处理CustomEventMessage的同步消息情况
+      const resp = middleware(params, sender) as any;
+      if (resp instanceof Promise) {
+        return resp.then((data) => {
+          if (data !== false) {
+            return data;
+          }
+          return handler(params, sender);
+        });
+      } else if (resp !== false) {
+        return resp;
+      }
+      return handler(params, sender);
     }
   });
 }

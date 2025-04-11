@@ -21,6 +21,7 @@ import { dealPatternMatches, UrlMatch } from "@App/pkg/utils/match";
 import { ExtensionContentMessageSend } from "@Packages/message/extension_message";
 import { sendMessage } from "@Packages/message/client";
 import { compileInjectScript } from "../content/utils";
+import { PopupService } from "./popup";
 
 // 为了优化性能，存储到缓存时删除了code与value
 export interface ScriptMatchInfo extends ScriptRunResouce {
