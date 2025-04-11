@@ -305,7 +305,7 @@ export class Runtime {
     // 转发给脚本
     const exec = this.execScripts.get(data.uuid);
     if (exec) {
-      exec.emitEvent(data.event, data.data);
+      exec.emitEvent(data.event, data.eventId, data.data);
     }
   }
 

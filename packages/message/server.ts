@@ -1,5 +1,5 @@
 import LoggerCore from "@App/app/logger/core";
-import { connect } from "./client";
+import { connect, sendMessage } from "./client";
 
 export interface Message extends MessageSend {
   onConnect(callback: (data: any, con: MessageConnect) => void): void;
@@ -20,11 +20,26 @@ export interface MessageConnect {
 
 export type MessageSender = chrome.runtime.MessageSender;
 
+export type ExtMessageSender = {
+  tabId: number;
+  frameId?: number;
+  documentId?: string;
+};
+
 export class GetSender {
   constructor(private sender: MessageConnect | MessageSender) {}
 
   getSender(): MessageSender {
     return this.sender as MessageSender;
+  }
+
+  getExtMessageSender(): ExtMessageSender {
+    const sender = this.sender as MessageSender;
+    return {
+      tabId: sender.tab?.id || -1, // -1表示后台脚本
+      frameId: sender.frameId,
+      documentId: sender.documentId,
+    };
   }
 
   getConnect(): MessageConnect {
@@ -33,6 +48,7 @@ export class GetSender {
 }
 
 export type ApiFunction = (params: any, con: GetSender) => Promise<any> | void;
+export type ApiFunctionSync = (params: any, con: GetSender) => any;
 
 export class Server {
   private apiFunctionMap: Map<string, ApiFunction> = new Map();
@@ -115,11 +131,24 @@ export class Group {
 }
 
 // 转发消息
-export function forwardMessage(prefix: string, path: string, from: Server, to: MessageSend, middleware?: ApiFunction) {
-  from.on(path, async (params, fromCon) => {
+export function forwardMessage(
+  prefix: string,
+  path: string,
+  from: Server,
+  to: MessageSend,
+  middleware?: ApiFunctionSync
+) {
+  from.on(path, (params, fromCon) => {
     if (middleware) {
-      const resp = await middleware(params, fromCon);
-      if (resp !== false) {
+      // 此处是为了处理CustomEventMessage的同步消息情况
+      const resp = middleware(params, fromCon) as any;
+      if (resp instanceof Promise) {
+        return resp.then((data) => {
+          if (data !== false) {
+            return data;
+          }
+        });
+      } else if (resp !== false) {
         return resp;
       }
     }
@@ -140,7 +169,7 @@ export function forwardMessage(prefix: string, path: string, from: Server, to: M
         });
       });
     } else {
-      return to.sendMessage({ action: prefix + "/" + path, data: params });
+      return sendMessage(to, prefix + "/" + path, params);
     }
   });
 }

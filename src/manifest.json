@@ -30,6 +30,7 @@
     "webRequest",
     "userScripts",
     "contextMenus",
+    "notifications",
     "unlimitedStorage",
     "declarativeNetRequest"
   ],

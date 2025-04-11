@@ -1,5 +1,5 @@
 import { MessageQueue } from "@Packages/message/message_queue";
-import { Group } from "@Packages/message/server";
+import { ExtMessageSender, Group } from "@Packages/message/server";
 import { RuntimeService, ScriptMatchInfo } from "./runtime";
 import Cache from "@App/app/cache";
 import { GetPopupDataReq, GetPopupDataRes } from "./client";
@@ -315,32 +315,13 @@ export class PopupService {
     });
   }
 
-  menuClick({
-    uuid,
-    id,
-    tabId,
-    frameId,
-    documentId,
-  }: {
-    uuid: string;
-    id: number;
-    tabId: number;
-    frameId: number;
-    documentId: string;
-  }) {
+  menuClick({ uuid, id, sender }: { uuid: string; id: number; sender: ExtMessageSender }) {
     // 菜单点击事件
-    this.runtime.EmitEventToTab(
-      tabId,
-      {
-        uuid,
-        event: "menuClick",
-        data: id,
-      },
-      {
-        frameId,
-        documentId: documentId,
-      }
-    );
+    this.runtime.emitEventToTab(sender, {
+      uuid,
+      event: "menuClick",
+      eventId: id.toString(),
+    });
     return Promise.resolve(true);
   }
 
@@ -384,9 +365,11 @@ export class PopupService {
             this.menuClick({
               uuid: script.uuid,
               id: menuItem.id,
-              tabId: bgscript ? -1 : tab!.id!,
-              frameId: menuItem.frameId || 0,
-              documentId: menuItem.documentId || "",
+              sender: {
+                tabId: bgscript ? -1 : tab!.id!,
+                frameId: menuItem.frameId || 0,
+                documentId: menuItem.documentId || "",
+              },
             });
             return;
           }

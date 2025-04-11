@@ -224,3 +224,13 @@ export function getStorageName(script: Script): string {
   }
   return script.uuid;
 }
+
+export function getIcon(script: Script): string | undefined {
+  return (
+    (script.metadata.icon && script.metadata.icon[0]) ||
+    (script.metadata.iconurl && script.metadata.iconurl[0]) ||
+    (script.metadata.defaulticon && script.metadata.defaulticon[0]) ||
+    (script.metadata.icon64 && script.metadata.icon64[0]) ||
+    (script.metadata.icon64url && script.metadata.icon64url[0])
+  );
+}

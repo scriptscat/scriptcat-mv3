@@ -73,12 +73,24 @@ export class ValueService {
       tabs.forEach(async (tab) => {
         const scriptMenu = await this.popup!.getScriptMenu(tab.id!);
         if (scriptMenu.find((item) => item.storageName === storageName)) {
-          this.runtime!.sendMessageToTab(tab.id!, "valueUpdate", sendData);
+          this.runtime!.sendMessageToTab(
+            {
+              tabId: tab.id!,
+            },
+            "valueUpdate",
+            sendData
+          );
         }
       });
     });
     // 推送到offscreen中
-    sendMessage(this.send, "offscreen/runtime/valueUpdate", sendData);
+    this.runtime!.sendMessageToTab(
+      {
+        tabId: -1,
+      },
+      "valueUpdate",
+      sendData
+    );
 
     return Promise.resolve(true);
   }

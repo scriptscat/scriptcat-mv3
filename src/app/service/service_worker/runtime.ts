@@ -1,5 +1,5 @@
 import { MessageQueue } from "@Packages/message/message_queue";
-import { GetSender, Group, MessageSend } from "@Packages/message/server";
+import { ExtMessageSender, GetSender, Group, MessageSend } from "@Packages/message/server";
 import {
   Script,
   SCRIPT_STATUS,
@@ -32,7 +32,8 @@ export interface ScriptMatchInfo extends ScriptRunResouce {
 export interface EmitEventRequest {
   uuid: string;
   event: string;
-  data: any;
+  eventId: string;
+  data?: any;
 }
 
 export class RuntimeService {
@@ -122,36 +123,35 @@ export class RuntimeService {
   }
 
   // 给指定tab发送消息
-  sendMessageToTab(
-    tabId: number,
-    action: string,
-    data: any,
-    options?: {
-      documentId?: string;
-      frameId?: number;
-    }
-  ) {
-    if (tabId === -1) {
+  sendMessageToTab(to: ExtMessageSender, action: string, data: any) {
+    if (to.tabId === -1) {
       // 如果是-1, 代表给offscreen发送消息
       return sendMessage(this.sender, "offscreen/runtime/" + action, data);
     }
-    return sendMessage(new ExtensionContentMessageSend(tabId, options), "content/runtime/" + action, data);
+    return sendMessage(
+      new ExtensionContentMessageSend(to.tabId, {
+        documentId: to.documentId,
+        frameId: to.frameId,
+      }),
+      "content/runtime/" + action,
+      data
+    );
   }
 
   // 给指定脚本触发事件
-  EmitEventToTab(
-    tabId: number,
-    req: EmitEventRequest,
-    options?: {
-      documentId?: string;
-      frameId?: number;
-    }
-  ) {
-    if (tabId === -1) {
+  emitEventToTab(to: ExtMessageSender, req: EmitEventRequest) {
+    if (to.tabId === -1) {
       // 如果是-1, 代表给offscreen发送消息
       return sendMessage(this.sender, "offscreen/runtime/emitEvent", req);
     }
-    return sendMessage(new ExtensionContentMessageSend(tabId, options), "content/runtime/emitEvent", req);
+    return sendMessage(
+      new ExtensionContentMessageSend(to.tabId, {
+        documentId: to.documentId,
+        frameId: to.frameId,
+      }),
+      "content/runtime/emitEvent",
+      req
+    );
   }
 
   async getPageScriptUuidByUrl(url: string, includeCustomize?: boolean) {

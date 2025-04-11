@@ -1,7 +1,7 @@
 import LoggerCore from "@App/app/logger/core";
 import Logger from "@App/app/logger/logger";
 import { Script, ScriptDAO } from "@App/app/repo/scripts";
-import { GetSender, Group, MessageSend } from "@Packages/message/server";
+import { ExtMessageSender, GetSender, Group, MessageSend } from "@Packages/message/server";
 import { ValueService } from "@App/app/service/service_worker/value";
 import PermissionVerify from "./permission_verify";
 import { connect } from "@Packages/message/client";
@@ -9,6 +9,7 @@ import Cache, { incr } from "@App/app/cache";
 import EventEmitter from "eventemitter3";
 import { MessageQueue } from "@Packages/message/message_queue";
 import { RuntimeService } from "./runtime";
+import { getIcon, isFirefox } from "@App/pkg/utils/utils";
 
 // GMApi,处理脚本的GM API调用请求
 
@@ -52,6 +53,12 @@ export const unsafeHeaders: { [key: string]: boolean } = {
   via: true,
 };
 
+type NotificationData = {
+  uuid: string;
+  details: GMTypes.NotificationDetails;
+  sender: ExtMessageSender;
+};
+
 export type Api = (request: Request, con: GetSender) => Promise<any>;
 
 export default class GMApi {
@@ -71,7 +78,7 @@ export default class GMApi {
     this.logger = LoggerCore.logger().with({ service: "runtime/gm_api" });
   }
 
-  async handlerRequest(data: MessageRequest, con: GetSender) {
+  async handlerRequest(data: MessageRequest, sender: GetSender) {
     this.logger.trace("GM API request", { api: data.api, uuid: data.uuid, param: data.params });
     const api = PermissionVerify.apis.get(data.api);
     if (!api) {
@@ -84,7 +91,7 @@ export default class GMApi {
       this.logger.error("verify error", { api: data.api }, Logger.E(e));
       return Promise.reject(e);
     }
-    return api.api.call(this, req, con);
+    return api.api.call(this, req, sender);
   }
 
   // 解析请求
@@ -240,6 +247,105 @@ export default class GMApi {
     });
   }
 
+  @PermissionVerify.API({})
+  GM_notification(request: Request, sender: GetSender) {
+    if (request.params.length === 0) {
+      return Promise.reject(new Error("param is failed"));
+    }
+    const details: GMTypes.NotificationDetails = request.params[0];
+    const options: chrome.notifications.NotificationOptions<true> = {
+      title: details.title || "ScriptCat",
+      message: details.text || "无消息内容",
+      iconUrl: details.image || getIcon(request.script) || chrome.runtime.getURL("assets/logo.png"),
+      type: isFirefox() || details.progress === undefined ? "basic" : "progress",
+    };
+    if (!isFirefox()) {
+      options.silent = details.silent;
+      options.buttons = details.buttons;
+    }
+    options.progress = options.progress && parseInt(details.progress as any, 10);
+
+    return new Promise((resolve) => {
+      chrome.notifications.create(options, (notificationId) => {
+        Cache.getInstance().set(`GM_notification:${notificationId}`, {
+          uuid: request.script.uuid,
+          details: details,
+          sender: sender.getExtMessageSender(),
+        });
+        if (details.timeout) {
+          setTimeout(() => {
+            chrome.notifications.clear(notificationId);
+            Cache.getInstance().del(`GM_notification:${notificationId}`);
+          }, details.timeout);
+        }
+        resolve(notificationId);
+      });
+    });
+  }
+
+  @PermissionVerify.API({
+    link: "GM_notification",
+  })
+  GM_closeNotification(request: Request) {
+    if (request.params.length === 0) {
+      return Promise.reject(new Error("param is failed"));
+    }
+    const [notificationId] = request.params;
+    Cache.getInstance().del(`GM_notification:${notificationId}`);
+    chrome.notifications.clear(notificationId);
+  }
+
+  @PermissionVerify.API({
+    link: "GM_notification",
+  })
+  GM_updateNotification(request: Request) {
+    if (isFirefox()) {
+      return Promise.reject(new Error("firefox does not support this method"));
+    }
+    const id = request.params[0];
+    const details: GMTypes.NotificationDetails = request.params[1];
+    const options: chrome.notifications.NotificationOptions = {
+      title: details.title,
+      message: details.text,
+      iconUrl: details.image,
+      type: details.progress === undefined ? "basic" : "progress",
+      silent: details.silent,
+      progress: details.progress && parseInt(details.progress as any, 10),
+    };
+    chrome.notifications.update(<string>id, options);
+  }
+
+  handlerNotification() {
+    const send = async (event: string, notificationId: string, params?: any) => {
+      const ret = (await Cache.getInstance().get(`GM_notification:${notificationId}`)) as NotificationData;
+      if (ret) {
+        this.runtime.emitEventToTab(ret.sender, {
+          event: "GM_notification",
+          eventId: notificationId,
+          uuid: ret.uuid,
+          data: {
+            event,
+            params,
+          },
+        });
+      }
+    };
+    chrome.notifications.onClosed.addListener((notificationId, byUser) => {
+      send("close", notificationId, {
+        byUser,
+      });
+      Cache.getInstance().del(`GM_notification:${notificationId}`);
+    });
+    chrome.notifications.onClicked.addListener((notificationId) => {
+      send("click", notificationId);
+    });
+    chrome.notifications.onButtonClicked.addListener((notificationId, index) => {
+      send("buttonClick", notificationId, {
+        index: index,
+      });
+    });
+  }
+
   // 处理GM_xmlhttpRequest请求
   handlerGmXhr() {
     chrome.webRequest.onBeforeSendHeaders.addListener(
@@ -290,5 +396,6 @@ export default class GMApi {
   start() {
     this.group.on("gmApi", this.handlerRequest.bind(this));
     this.handlerGmXhr();
+    this.handlerNotification();
   }
 }

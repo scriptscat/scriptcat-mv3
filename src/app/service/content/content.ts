@@ -1,5 +1,6 @@
 import { ScriptRunResouce } from "@App/app/repo/scripts";
 import { Client, sendMessage } from "@Packages/message/client";
+import { CustomEventMessage } from "@Packages/message/custom_event_message";
 import { forwardMessage, Message, MessageSend, Server } from "@Packages/message/server";
 
 // content页的处理
@@ -51,6 +52,32 @@ export default class ContentRuntime {
               };
               xhr.send();
             });
+          }
+          case "GM_addElement": {
+            let [parentNodeId, tagName, attr] = data.params;
+            let parentNode: EventTarget | undefined;
+            if (parentNodeId) {
+              parentNode = (this.msg as CustomEventMessage).getAndDelRelatedTarget(parentNodeId);
+            }
+            const el = <Element>document.createElement(tagName);
+            Object.keys(attr).forEach((key) => {
+              el.setAttribute(key, attr[key]);
+            });
+            let textContent = "";
+            if (attr) {
+              if (attr.textContent) {
+                textContent = attr.textContent;
+                delete attr.textContent;
+              }
+            } else {
+              attr = {};
+            }
+            if (textContent) {
+              el.innerHTML = textContent;
+            }
+            (<Element>parentNode || document.head || document.body || document.querySelector("*")).appendChild(el);
+            const nodeId = (this.msg as CustomEventMessage).sendRelatedTarget(el);
+            return nodeId;
           }
         }
         return Promise.resolve(false);

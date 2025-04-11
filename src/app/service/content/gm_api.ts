@@ -1,5 +1,5 @@
 import { ScriptRunResouce } from "@App/app/repo/scripts";
-import { getMetadataStr, getUserConfigStr, parseUserConfig } from "@App/pkg/utils/script";
+import { base64ToBlob, getMetadataStr, getUserConfigStr, parseUserConfig } from "@App/pkg/utils/script";
 import { ValueUpdateData } from "./exec_script";
 import { ExtVersion } from "@App/app/const";
 import { Message, MessageConnect } from "@Packages/message/server";
@@ -11,7 +11,6 @@ import { getStorageName } from "@App/pkg/utils/utils";
 
 interface ApiParam {
   depend?: string[];
-  listener?: () => void;
 }
 
 export interface ApiValue {
@@ -25,9 +24,6 @@ export class GMContext {
   public static API(param: ApiParam = {}) {
     return (target: any, propertyName: string, descriptor: PropertyDescriptor) => {
       const key = propertyName;
-      if (param.listener) {
-        param.listener();
-      }
       if (key === "GMdotXmlHttpRequest") {
         GMContext.apis.set("GM.xmlHttpRequest", {
           api: descriptor.value,
@@ -103,8 +99,8 @@ export default class GMApi {
     }
   }
 
-  menuClick(id: number) {
-    this.EE.emit("menuClick" + id);
+  emitEvent(event: string, eventId: string, data: any) {
+    this.EE.emit(event + ":" + eventId, data);
   }
 
   // 获取脚本信息和管理器信息
@@ -239,19 +235,71 @@ export default class GMApi {
     this.eventId += 1;
     const id = this.eventId;
     this.menuMap.set(id, name);
-    this.EE.addListener("menuClick" + id, listener);
+    this.EE.addListener("menuClick:" + id, listener);
     this.sendMessage("GM_registerMenuCommand", [id, name, accessKey]);
     return id;
   }
 
   @GMContext.API()
+  GM_addStyle(css: string) {
+    // 与content页的消息通讯实际是同步,此方法不需要经过background
+    // 这里直接使用同步的方式去处理, 不要有promise
+    const resp = (<CustomEventMessage>this.message).syncSendMessage({
+      action: this.prefix + "/runtime/gmApi",
+      data: {
+        uuid: this.scriptRes.uuid,
+        api: "GM_addElement",
+        params: [
+          null,
+          "style",
+          {
+            textContent: css,
+          },
+        ],
+      },
+    });
+    if (resp.code !== 0) {
+      throw new Error(resp.message);
+    }
+    return (<CustomEventMessage>this.message).getAndDelRelatedTarget(resp.data);
+  }
+
+  @GMContext.API()
+  GM_addElement(parentNode: EventTarget | string, tagName: any, attrs?: any) {
+    // 与content页的消息通讯实际是同步,此方法不需要经过background
+    // 这里直接使用同步的方式去处理, 不要有promise
+    let parentNodeId: any = parentNode;
+    if (typeof parentNodeId !== "string") {
+      const id = (<CustomEventMessage>this.message).sendRelatedTarget(parentNodeId);
+      parentNodeId = id;
+    } else {
+      parentNodeId = null;
+    }
+    const resp = (<CustomEventMessage>this.message).syncSendMessage({
+      action: this.prefix + "/runtime/gmApi",
+      data: {
+        uuid: this.scriptRes.uuid,
+        api: "GM_addElement",
+        params: [
+          parentNodeId,
+          typeof parentNode === "string" ? parentNode : tagName,
+          typeof parentNode === "string" ? tagName : attrs,
+        ],
+      },
+    });
+    if (resp.code !== 0) {
+      throw new Error(resp.message);
+    }
+    return (<CustomEventMessage>this.message).getAndDelRelatedTarget(resp.data);
+  }
+
+  @GMContext.API()
   GM_unregisterMenuCommand(id: number): void {
-    console.log("unregisterMenuCommand", id);
     if (!this.menuMap) {
       this.menuMap = new Map();
     }
     this.menuMap.delete(id);
-    this.EE.removeAllListeners("menuClick" + id);
+    this.EE.removeAllListeners("menuClick:" + id);
     this.sendMessage("GM_unregisterMenuCommand", [id]);
   }
 
@@ -449,15 +497,19 @@ export default class GMApi {
     };
   }
 
-  @GMContext.API()
+  @GMContext.API({
+    depend: ["GM_closeNotification", "GM_updateNotification"],
+  })
   public async GM_notification(
     detail: GMTypes.NotificationDetails | string,
     ondone?: GMTypes.NotificationOnDone | string,
     image?: string,
     onclick?: GMTypes.NotificationOnClick
   ) {
-    let data: GMTypes.NotificationDetails = {};
+    this.eventId += 1;
+    let data: GMTypes.NotificationDetails;
     if (typeof detail === "string") {
+      data = {};
       data.text = detail;
       switch (arguments.length) {
         case 4:
@@ -470,7 +522,7 @@ export default class GMApi {
           break;
       }
     } else {
-      data = detail;
+      data = Object.assign({}, detail);
       data.ondone = data.ondone || <GMTypes.NotificationOnDone>ondone;
     }
     let click: GMTypes.NotificationOnClick;
@@ -488,28 +540,54 @@ export default class GMApi {
       create = data.oncreate;
       delete data.oncreate;
     }
-    this.eventId += 1;
-    this.sendMessage("GM_notification", [data]);
-    this.EE.addListener("GM_notification:" + this.eventId, (resp: any) => {
-      switch (resp.event) {
-        case "click": {
-          click && click.apply({ id: resp.id }, [resp.id, resp.index]);
-          break;
-        }
-        case "done": {
-          done && done.apply({ id: resp.id }, [resp.user]);
-          break;
-        }
-        case "create": {
-          create && create.apply({ id: resp.id }, [resp.id]);
-          break;
-        }
-        default:
-          LoggerCore.logger().warn("GM_notification resp is error", {
-            resp,
-          });
-          break;
+    this.sendMessage("GM_notification", [data]).then((id) => {
+      if (create) {
+        create.apply({ id }, [id]);
       }
+      this.EE.addListener("GM_notification:" + id, (resp: any) => {
+        switch (resp.event) {
+          case "click":
+          case "buttonClick": {
+            click && click.apply({ id }, [id, resp.params.index]);
+            break;
+          }
+          case "close": {
+            done && done.apply({ id }, [resp.params.byUser]);
+            this.EE.removeAllListeners("GM_notification:" + this.eventId);
+            break;
+          }
+          default:
+            LoggerCore.logger().warn("GM_notification resp is error", {
+              resp,
+            });
+            break;
+        }
+      });
     });
+  }
+
+  @GMContext.API()
+  public GM_closeNotification(id: string): void {
+    this.sendMessage("GM_closeNotification", [id]);
+  }
+
+  @GMContext.API()
+  public GM_updateNotification(id: string, details: GMTypes.NotificationDetails): void {
+    this.sendMessage("GM_updateNotification", [id, details]);
+  }
+
+  @GMContext.API()
+  GM_getResourceURL(name: string, isBlobUrl?: boolean): string | undefined {
+    if (!this.scriptRes.resource) {
+      return undefined;
+    }
+    const r = this.scriptRes.resource[name];
+    if (r) {
+      if (isBlobUrl) {
+        return URL.createObjectURL(base64ToBlob(r.base64));
+      }
+      return r.base64;
+    }
+    return undefined;
   }
 }

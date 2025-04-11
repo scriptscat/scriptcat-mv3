@@ -17,7 +17,7 @@ export class CustomEventMessage implements Message {
   EE: EventEmitter = new EventEmitter();
 
   // 关联dom目标
-  relatedTarget: Map<number, Document> = new Map();
+  relatedTarget: Map<number, EventTarget> = new Map();
 
   constructor(
     protected flag: string,
@@ -25,7 +25,7 @@ export class CustomEventMessage implements Message {
   ) {
     window.addEventListener((isContent ? "ct" : "fd") + flag, (event) => {
       if (event instanceof MouseEvent) {
-        this.relatedTarget.set(event.clientX, <Document>event.relatedTarget);
+        this.relatedTarget.set(event.clientX, event.relatedTarget!);
         return;
       } else if (event instanceof CustomEvent) {
         this.messageHandle(event.detail, new CustomEventPostMessage(this));
@@ -82,23 +82,7 @@ export class CustomEventMessage implements Message {
     });
   }
 
-  nativeSend(data: any) {
-    let detail = data;
-
-    // 特殊处理relatedTarget
-    if (detail.data && typeof detail.data.relatedTarget === "object") {
-      // 先将relatedTarget转换成id发送过去
-      const target = detail.data.relatedTarget;
-      delete detail.data.relatedTarget;
-      detail.data.relatedTarget = Math.ceil(Math.random() * 1000000);
-      // 可以使用此种方式交互element
-      const ev = new MouseEvent((this.isContent ? "fd" : "ct") + this.flag, {
-        clientX: detail.data.relatedTarget,
-        relatedTarget: target,
-      });
-      window.dispatchEvent(ev);
-    }
-
+  nativeSend(detail: any) {
     if (typeof cloneInto !== "undefined") {
       try {
         LoggerCore.logger().info("nativeSend");
@@ -129,6 +113,40 @@ export class CustomEventMessage implements Message {
       this.EE.addListener("response:" + body.messageId, callback);
       this.nativeSend(body);
     });
+  }
+
+  // 同步发送消息
+  // 与content页的消息通讯实际是同步,此方法不需要经过background
+  // 但是请注意中间不要有promise
+  syncSendMessage(data: any): any {
+    const body: WindowMessageBody = {
+      messageId: uuidv4(),
+      type: "sendMessage",
+      data,
+    };
+    let ret: any;
+    const callback = (body: WindowMessageBody) => {
+      this.EE.removeListener("response:" + body.messageId, callback);
+      ret = body.data;
+    };
+    this.EE.addListener("response:" + body.messageId, callback);
+    this.nativeSend(body);
+    return ret;
+  }
+
+  relateId = 0;
+
+  sendRelatedTarget(target: EventTarget): number {
+    // 特殊处理relatedTarget，返回id进行关联
+    // 先将relatedTarget转换成id发送过去
+    const id = ++this.relateId;
+    // 可以使用此种方式交互element
+    const ev = new MouseEvent((this.isContent ? "fd" : "ct") + this.flag, {
+      clientX: id,
+      relatedTarget: target,
+    });
+    window.dispatchEvent(ev);
+    return id;
   }
 
   getAndDelRelatedTarget(id: number) {

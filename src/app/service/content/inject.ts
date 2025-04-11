@@ -34,7 +34,7 @@ export class InjectRuntime {
       // 转发给脚本
       const exec = this.execList.find((val) => val.scriptRes.uuid === data.uuid);
       if (exec) {
-        exec.emitEvent(data.event, data.data);
+        exec.emitEvent(data.event, data.eventId, data.data);
       }
     });
     this.server.on("runtime/valueUpdate", (data: ValueUpdateData) => {

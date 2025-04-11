@@ -4,6 +4,7 @@ import { ScriptRunResouce } from "@App/app/repo/scripts";
 import GMApi from "./gm_api";
 import { compileScript, createContext, proxyContext, ScriptFunc } from "./utils";
 import { Message } from "@Packages/message/server";
+import { EmitEventRequest } from "../service_worker/runtime";
 
 export type ValueUpdateSender = {
   runFlag: string;
@@ -69,12 +70,9 @@ export default class ExecScript {
     }
   }
 
-  emitEvent(event: string, data: any) {
-    switch (event) {
-      case "menuClick":
-        this.sandboxContent?.menuClick(data);
-        break;
-    }
+  emitEvent(event: string, eventId: string, data: any) {
+    this.logger.debug("emit event", { event, eventId, data });
+    this.sandboxContent?.emitEvent(event, eventId, data);
   }
 
   valueUpdate(data: ValueUpdateData) {
