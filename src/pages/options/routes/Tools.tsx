@@ -17,12 +17,11 @@ import FileSystemParams from "@App/pages/components/FileSystemParams";
 import { IconQuestionCircleFill } from "@arco-design/web-react/icon";
 import { RefInputType } from "@arco-design/web-react/es/Input/interface";
 import { useTranslation } from "react-i18next";
+import { FileSystemType } from "@Packages/filesystem/factory";
 
 function Tools() {
   const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
-  const syncCtrl = IoC.instance(SynchronizeController) as SynchronizeController;
   const fileRef = useRef<HTMLInputElement>(null);
-  const systemConfig = IoC.instance(SystemConfig) as SystemConfig;
   const [fileSystemType, setFilesystemType] = useState<FileSystemType>(
     systemConfig.backup.filesystem
   );

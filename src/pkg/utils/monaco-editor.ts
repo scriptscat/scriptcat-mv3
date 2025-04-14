@@ -4,8 +4,6 @@ import { languages } from "monaco-editor";
 // 注册eslint
 // const linterWorker = new Worker("/src/linter.worker.js");
 
-console.log(dts, dts.length);
-
 export default function registerEditor() {
   window.MonacoEnvironment = {
     getWorkerUrl(moduleId: any, label: any) {

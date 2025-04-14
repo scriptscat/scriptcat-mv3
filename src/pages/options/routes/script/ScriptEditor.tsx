@@ -777,14 +777,13 @@ function ScriptEditor() {
               setEditors((prev) => {
                 const i = parseInt(index, 10);
                 if (prev[i].isChanged) {
-                  // eslint-disable-next-line no-restricted-globals, no-alert
                   if (!confirm("脚本已修改, 关闭后会丢失修改, 是否继续?")) {
                     return prev;
                   }
                 }
                 if (prev.length === 1) {
-                  // 如果是id打开的回退到列表
-                  if (id) {
+                  // 如果是uuid打开的回退到列表
+                  if (uuid) {
                     navigate("/");
                     return prev;
                   }
@@ -801,7 +800,7 @@ function ScriptEditor() {
                     setSelectSciptButtonAndTab(prev[i - 1].script.uuid);
                   } else {
                     prev[i + 1].active = true;
-                    setSelectSciptButtonAndTab(prev[i - 1].script.uuid);
+                    setSelectSciptButtonAndTab(prev[i + 1].script.uuid);
                   }
                 }
                 prev.splice(i, 1);
