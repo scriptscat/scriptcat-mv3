@@ -14,12 +14,11 @@ import { RiPlayFill, RiStopFill } from "react-icons/ri";
 import { useTranslation } from "react-i18next";
 import { ScriptIcons } from "@App/pages/options/routes/utils";
 import { ScriptMenu, ScriptMenuItem } from "@App/app/service/service_worker/popup";
-import { selectMenuExpandNum } from "@App/pages/store/features/setting";
 import { useAppSelector } from "@App/pages/store/hooks";
 import { popupClient, runtimeClient, scriptClient } from "@App/pages/store/features/script";
 import { i18nName } from "@App/locales/locales";
 import { subscribeScriptRunStatus } from "@App/app/service/queue";
-import { messageQueue } from "@App/pages/store/global";
+import { messageQueue, systemConfig } from "@App/pages/store/global";
 
 const CollapseItem = Collapse.Item;
 
@@ -46,7 +45,7 @@ const ScriptMenuList: React.FC<{
     [key: string]: boolean;
   }>({});
   const { t } = useTranslation();
-  const menuExpandNum = useAppSelector(selectMenuExpandNum);
+  const [menuExpandNum, setMenuExpandNum] = useState(5);
 
   let url: URL;
   try {
@@ -69,6 +68,10 @@ const ScriptMenuList: React.FC<{
         }
         return newList;
       });
+    });
+    // 获取配置
+    systemConfig.getMenuExpandNum().then((num) => {
+      setMenuExpandNum(num);
     });
     return () => {
       unsub();

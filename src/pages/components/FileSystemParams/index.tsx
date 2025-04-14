@@ -1,6 +1,8 @@
 import React from "react";
 import { Input, Select, Space } from "@arco-design/web-react";
+import FileSystemFactory, { FileSystemType } from "@Packages/filesystem/factory";
 
+const fsParams = FileSystemFactory.params();
 
 const fileSystemList: {
   key: FileSystemType;
@@ -65,10 +67,7 @@ const FileSystemParams: React.FC<{
               <>
                 <span>{fsParams[fileSystemType][key].title}</span>
                 <Select
-                  value={
-                    fileSystemParams[key] ||
-                    fsParams[fileSystemType][key].options![0]
-                  }
+                  value={fileSystemParams[key] || fsParams[fileSystemType][key].options![0]}
                   onChange={(value) => {
                     onChangeFileSystemParams({
                       ...fileSystemParams,

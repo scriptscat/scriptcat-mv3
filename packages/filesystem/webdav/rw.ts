@@ -1,6 +1,4 @@
-/* eslint-disable max-classes-per-file */
-/* eslint-disable import/prefer-default-export */
-import { WebDAVClient } from "webdav/web";
+import { WebDAVClient } from "webdav";
 import { FileReader, FileWriter } from "../filesystem";
 
 export class WebDAVFileReader implements FileReader {
@@ -42,10 +40,7 @@ export class WebDAVFileWriter implements FileWriter {
   async write(content: string | Blob): Promise<void> {
     let resp;
     if (content instanceof Blob) {
-      resp = await this.client.putFileContents(
-        this.path,
-        await content.arrayBuffer()
-      );
+      resp = await this.client.putFileContents(this.path, await content.arrayBuffer());
     } else {
       resp = await this.client.putFileContents(this.path, content);
     }

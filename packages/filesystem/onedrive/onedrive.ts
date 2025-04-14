@@ -1,6 +1,3 @@
-/* eslint-disable no-unused-vars */
-import IoC from "@App/app/ioc";
-import { SystemConfig } from "@App/pkg/config/config";
 import { AuthVerify } from "../auth";
 import FileSystem, { File, FileReader, FileWriter } from "../filesystem";
 import { joinPath } from "../utils";
@@ -11,12 +8,9 @@ export default class OneDriveFileSystem implements FileSystem {
 
   path: string;
 
-  systemConfig: SystemConfig;
-
   constructor(path?: string, accessToken?: string) {
     this.path = path || "/";
     this.accessToken = accessToken;
-    this.systemConfig = IoC.instance(SystemConfig) as SystemConfig;
   }
 
   async verify(): Promise<void> {
@@ -33,15 +27,11 @@ export default class OneDriveFileSystem implements FileSystem {
     if (path.startsWith("ScriptCat")) {
       path = path.substring(9);
     }
-    return Promise.resolve(
-      new OneDriveFileSystem(joinPath(this.path, path), this.accessToken)
-    );
+    return Promise.resolve(new OneDriveFileSystem(joinPath(this.path, path), this.accessToken));
   }
 
   create(path: string): Promise<FileWriter> {
-    return Promise.resolve(
-      new OneDriveFileWriter(this, joinPath(this.path, path))
-    );
+    return Promise.resolve(new OneDriveFileWriter(this, joinPath(this.path, path)));
   }
 
   createDir(dir: string): Promise<void> {
@@ -65,18 +55,15 @@ export default class OneDriveFileSystem implements FileSystem {
     if (parent !== "") {
       parent = `:${parent}:`;
     }
-    return this.request(
-      `https://graph.microsoft.com/v1.0/me/drive/special/approot${parent}/children`,
-      {
-        method: "POST",
-        headers: myHeaders,
-        body: JSON.stringify({
-          name: dirs[dirs.length - 1],
-          folder: {},
-          "@microsoft.graph.conflictBehavior": "replace",
-        }),
-      }
-    ).then((data: any) => {
+    return this.request(`https://graph.microsoft.com/v1.0/me/drive/special/approot${parent}/children`, {
+      method: "POST",
+      headers: myHeaders,
+      body: JSON.stringify({
+        name: dirs[dirs.length - 1],
+        folder: {},
+        "@microsoft.graph.conflictBehavior": "replace",
+      }),
+    }).then((data: any) => {
       if (data.errno) {
         throw new Error(JSON.stringify(data));
       }
@@ -84,7 +71,6 @@ export default class OneDriveFileSystem implements FileSystem {
     });
   }
 
-  // eslint-disable-next-line no-undef
   request(url: string, config?: RequestInit, nothen?: boolean) {
     config = config || {};
     const headers = <Headers>config.headers || new Headers();
@@ -121,10 +107,7 @@ export default class OneDriveFileSystem implements FileSystem {
 
   delete(path: string): Promise<void> {
     return this.request(
-      `https://graph.microsoft.com/v1.0/me/drive/special/approot:${joinPath(
-        this.path,
-        path
-      )}`,
+      `https://graph.microsoft.com/v1.0/me/drive/special/approot:${joinPath(this.path, path)}`,
       {
         method: "DELETE",
       },
@@ -144,9 +127,7 @@ export default class OneDriveFileSystem implements FileSystem {
     } else {
       path = `:${path}:`;
     }
-    return this.request(
-      `https://graph.microsoft.com/v1.0/me/drive/special/approot${path}/children`
-    ).then((data) => {
+    return this.request(`https://graph.microsoft.com/v1.0/me/drive/special/approot${path}/children`).then((data) => {
       const list: File[] = [];
       data.value.forEach((val: any) => {
         list.push({

@@ -1,5 +1,3 @@
-/* eslint-disable no-unused-vars */
-import IoC from "@App/app/ioc";
 import { SystemConfig } from "@App/pkg/config/config";
 import { AuthVerify } from "../auth";
 import FileSystem, { File, FileReader, FileWriter } from "../filesystem";
@@ -11,12 +9,9 @@ export default class BaiduFileSystem implements FileSystem {
 
   path: string;
 
-  systemConfig: SystemConfig;
-
   constructor(path?: string, accessToken?: string) {
     this.path = path || "/apps";
     this.accessToken = accessToken;
-    this.systemConfig = IoC.instance(SystemConfig) as SystemConfig;
   }
 
   async verify(): Promise<void> {
@@ -31,15 +26,11 @@ export default class BaiduFileSystem implements FileSystem {
   }
 
   openDir(path: string): Promise<FileSystem> {
-    return Promise.resolve(
-      new BaiduFileSystem(joinPath(this.path, path), this.accessToken)
-    );
+    return Promise.resolve(new BaiduFileSystem(joinPath(this.path, path), this.accessToken));
   }
 
   create(path: string): Promise<FileWriter> {
-    return Promise.resolve(
-      new BaiduFileWriter(this, joinPath(this.path, path))
-    );
+    return Promise.resolve(new BaiduFileWriter(this, joinPath(this.path, path)));
   }
 
   createDir(dir: string): Promise<void> {
@@ -51,15 +42,12 @@ export default class BaiduFileSystem implements FileSystem {
     urlencoded.append("rtype", "3");
     const myHeaders = new Headers();
     myHeaders.append("Content-Type", "application/x-www-form-urlencoded");
-    return this.request(
-      `https://pan.baidu.com/rest/2.0/xpan/file?method=create&access_token=${this.accessToken}`,
-      {
-        method: "POST",
-        headers: myHeaders,
-        body: urlencoded,
-        redirect: "follow",
-      }
-    ).then((data) => {
+    return this.request(`https://pan.baidu.com/rest/2.0/xpan/file?method=create&access_token=${this.accessToken}`, {
+      method: "POST",
+      headers: myHeaders,
+      body: urlencoded,
+      redirect: "follow",
+    }).then((data) => {
       if (data.errno) {
         throw new Error(JSON.stringify(data));
       }
@@ -71,9 +59,23 @@ export default class BaiduFileSystem implements FileSystem {
   request(url: string, config?: RequestInit) {
     config = config || {};
     const headers = <Headers>config.headers || new Headers();
-    // 利用GM函数的匿名实现不发送cookie,因为某些情况cookie会导致-6错误
-    headers.append(`${this.systemConfig.scriptCatFlag}-gm-xhr`, "true");
-    headers.append(`${this.systemConfig.scriptCatFlag}-anonymous`, "true");
+    // 处理请求匿名不发送cookie
+    chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [100],
+      addRules: [
+        {
+          id: 100,
+          action: {
+            type: chrome.declarativeNetRequest.RuleActionType.MODIFY_HEADERS,
+            responseHeaders: [{ operation: chrome.declarativeNetRequest.HeaderOperation.REMOVE, header: "cookie" }],
+          },
+          condition: {
+            urlFilter: url,
+            resourceTypes: [chrome.declarativeNetRequest.ResourceType.XMLHTTPREQUEST],
+          },
+        },
+      ],
+    });
     config.headers = headers;
     return fetch(url, config)
       .then((data) => data.json())
@@ -92,6 +94,11 @@ export default class BaiduFileSystem implements FileSystem {
             });
         }
         return data;
+      })
+      .finally(() => {
+        chrome.declarativeNetRequest.updateDynamicRules({
+          removeRuleIds: [100],
+        });
       });
   }
 
@@ -103,9 +110,7 @@ export default class BaiduFileSystem implements FileSystem {
       `https://pan.baidu.com/rest/2.0/xpan/file?method=filemanager&access_token=${this.accessToken}&opera=delete`,
       {
         method: "POST",
-        body: `async=0&filelist=${encodeURIComponent(
-          JSON.stringify(filelist)
-        )}`,
+        body: `async=0&filelist=${encodeURIComponent(JSON.stringify(filelist))}`,
         headers: myHeaders,
       }
     ).then((data) => {
@@ -145,10 +150,6 @@ export default class BaiduFileSystem implements FileSystem {
   }
 
   getDirUrl(): Promise<string> {
-    return Promise.resolve(
-      `https://pan.baidu.com/disk/main#/index?category=all&path=${encodeURIComponent(
-        this.path
-      )}`
-    );
+    return Promise.resolve(`https://pan.baidu.com/disk/main#/index?category=all&path=${encodeURIComponent(this.path)}`);
   }
 }

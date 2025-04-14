@@ -19,26 +19,26 @@ const userscriptsConfig = {
   },
 };
 
-const userscriptsRules = Object.fromEntries(
-  Object.keys(userscriptsConfig.rules).map((name) => {
-    const ruleName = name.split("/")[1];
-    // eslint-disable-next-line import/no-dynamic-require, global-require
-    const ruleMeta = require(`eslint-plugin-userscripts/lib/rules/${ruleName}.js`);
-    return [
-      name,
-      {
-        ...ruleMeta,
-        meta: {
-          ...ruleMeta.meta,
-          docs: {
-            ...ruleMeta.meta.docs,
-            url: `https://yash-singh1.github.io/eslint-plugin-userscripts/#/rules/${ruleName}`,
-          },
-        },
-      },
-    ];
-  })
-);
+// const userscriptsRules = Object.fromEntries(
+//   Object.keys(userscriptsConfig.rules).map((name) => {
+//     const ruleName = name.split("/")[1];
+//     // eslint-disable-next-line import/no-dynamic-require, global-require
+//     const ruleMeta = require(`eslint-plugin-userscripts/lib/rules/${ruleName}.js`);
+//     return [
+//       name,
+//       {
+//         ...ruleMeta,
+//         meta: {
+//           ...ruleMeta.meta,
+//           docs: {
+//             ...ruleMeta.meta.docs,
+//             url: `https://yash-singh1.github.io/eslint-plugin-userscripts/#/rules/${ruleName}`,
+//           },
+//         },
+//       },
+//     ];
+//   })
+// );
 
 // 默认规则
 const config = {
@@ -128,4 +128,4 @@ const config = {
 // 以文本形式导出默认规则
 const defaultConfig = JSON.stringify(config);
 
-export { defaultConfig, userscriptsConfig, userscriptsRules };
+export { defaultConfig, userscriptsConfig };

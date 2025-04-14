@@ -16,7 +16,7 @@ import React, { ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import "./index.css";
 import { useAppDispatch, useAppSelector } from "@App/pages/store/hooks";
-import { selectThemeMode, setDarkMode } from "@App/pages/store/features/setting";
+import { selectThemeMode, setDarkMode } from "@App/pages/store/features/config";
 import { RiFileCodeLine, RiImportLine, RiPlayListAddLine, RiTerminalBoxLine, RiTimerLine } from "react-icons/ri";
 
 const MainLayout: React.FC<{

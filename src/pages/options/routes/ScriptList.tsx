@@ -80,7 +80,7 @@ import {
   requestStopScript,
   requestRunScript,
 } from "@App/pages/store/features/script";
-import { selectScriptListColumnWidth } from "@App/pages/store/features/setting";
+import { systemConfig } from "@App/pages/store/global";
 
 type ListType = Script & { loading?: boolean };
 
@@ -93,7 +93,6 @@ function ScriptList() {
   const [cloudScript, setCloudScript] = useState<Script>();
   const dispatch = useAppDispatch();
   const scriptList = useAppSelector(selectScripts);
-  const scriptListColumnWidth = useAppSelector(selectScriptListColumnWidth);
   const inputRef = useRef<RefInputType>(null);
   const navigate = useNavigate();
   const openUserConfig = useSearchParams()[0].get("userConfig") || "";
@@ -557,12 +556,14 @@ function ScriptList() {
         });
       }
     }
-    setNewColumns(
-      columns.map((item) => {
-        item.width = scriptListColumnWidth[item.key!] ?? item.width;
-        return item;
-      })
-    );
+    systemConfig.getScriptListColumnWidth().then((columnWidth) => {
+      setNewColumns(
+        columns.map((item) => {
+          item.width = columnWidth[item.key!] ?? item.width;
+          return item;
+        })
+      );
+    });
   }, []);
 
   // 处理拖拽排序

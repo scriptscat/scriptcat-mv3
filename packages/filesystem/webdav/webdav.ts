@@ -1,4 +1,4 @@
-import { AuthType, createClient, FileStat, WebDAVClient } from "webdav/web";
+import { AuthType, createClient, FileStat, WebDAVClient } from "webdav";
 import FileSystem, { File, FileReader, FileWriter } from "../filesystem";
 import { joinPath } from "../utils";
 import { WebDAVFileReader, WebDAVFileWriter } from "./rw";
@@ -11,12 +11,7 @@ export default class WebDAVFileSystem implements FileSystem {
 
   basePath: string = "/";
 
-  constructor(
-    authType: AuthType | WebDAVClient,
-    url?: string,
-    username?: string,
-    password?: string
-  ) {
+  constructor(authType: AuthType | WebDAVClient, url?: string, username?: string, password?: string) {
     if (typeof authType === "object") {
       this.client = authType;
       this.basePath = joinPath(url || "");
@@ -44,28 +39,20 @@ export default class WebDAVFileSystem implements FileSystem {
   }
 
   open(file: File): Promise<FileReader> {
-    return Promise.resolve(
-      new WebDAVFileReader(this.client, joinPath(file.path, file.name))
-    );
+    return Promise.resolve(new WebDAVFileReader(this.client, joinPath(file.path, file.name)));
   }
 
   openDir(path: string): Promise<FileSystem> {
-    return Promise.resolve(
-      new WebDAVFileSystem(this.client, joinPath(this.basePath, path), this.url)
-    );
+    return Promise.resolve(new WebDAVFileSystem(this.client, joinPath(this.basePath, path), this.url));
   }
 
   create(path: string): Promise<FileWriter> {
-    return Promise.resolve(
-      new WebDAVFileWriter(this.client, joinPath(this.basePath, path))
-    );
+    return Promise.resolve(new WebDAVFileWriter(this.client, joinPath(this.basePath, path)));
   }
 
   async createDir(path: string): Promise<void> {
     try {
-      return Promise.resolve(
-        await this.client.createDirectory(joinPath(this.basePath, path))
-      );
+      return Promise.resolve(await this.client.createDirectory(joinPath(this.basePath, path)));
     } catch (e: any) {
       // 如果是405错误,则忽略
       if (e.message.includes("405")) {
@@ -80,9 +67,7 @@ export default class WebDAVFileSystem implements FileSystem {
   }
 
   async list(): Promise<File[]> {
-    const dir = (await this.client.getDirectoryContents(
-      this.basePath
-    )) as FileStat[];
+    const dir = (await this.client.getDirectoryContents(this.basePath)) as FileStat[];
     const ret: File[] = [];
     dir.forEach((item: FileStat) => {
       if (item.type !== "file") {

@@ -1,16 +1,5 @@
-import React, { useRef, useState } from "react";
-import {
-  Button,
-  Card,
-  Checkbox,
-  Drawer,
-  Empty,
-  Input,
-  List,
-  Message,
-  Modal,
-  Space,
-} from "@arco-design/web-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Button, Card, Checkbox, Drawer, Empty, Input, List, Message, Modal, Space } from "@arco-design/web-react";
 import Title from "@arco-design/web-react/es/Typography/title";
 import { formatUnixTime } from "@App/pkg/utils/utils";
 import FileSystemParams from "@App/pages/components/FileSystemParams";
@@ -18,19 +7,26 @@ import { IconQuestionCircleFill } from "@arco-design/web-react/icon";
 import { RefInputType } from "@arco-design/web-react/es/Input/interface";
 import { useTranslation } from "react-i18next";
 import { FileSystemType } from "@Packages/filesystem/factory";
+import { systemConfig } from "@App/pages/store/global";
 
 function Tools() {
   const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
   const fileRef = useRef<HTMLInputElement>(null);
-  const [fileSystemType, setFilesystemType] = useState<FileSystemType>(
-    systemConfig.backup.filesystem
-  );
+  const [fileSystemType, setFilesystemType] = useState<FileSystemType>("webdav");
   const [fileSystemParams, setFilesystemParam] = useState<{
     [key: string]: any;
-  }>(systemConfig.backup.params[fileSystemType] || {});
+  }>({});
   const [backupFileList, setBackupFileList] = useState<File[]>([]);
   const vscodeRef = useRef<RefInputType>(null);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    // 获取配置
+    systemConfig.getBackup().then((backup) => {
+      setFilesystemType(backup.filesystem);
+      setFilesystemParam(backup.params[backup.filesystem] || {});
+    });
+  }, []);
 
   return (
     <Space
@@ -47,12 +43,7 @@ function Tools() {
         <Space direction="vertical">
           <Title heading={6}>{t("local")}</Title>
           <Space>
-            <input
-              type="file"
-              ref={fileRef}
-              style={{ display: "none" }}
-              accept=".zip"
-            />
+            <input type="file" ref={fileRef} style={{ display: "none" }} accept=".zip" />
             <Button
               type="primary"
               loading={loading.local}
@@ -96,12 +87,12 @@ function Tools() {
                 loading={loading.cloud}
                 onClick={() => {
                   // Store parameters
-                  const params = { ...systemConfig.backup.params };
+                  const params = { ...fileSystemParams };
                   params[fileSystemType] = fileSystemParams;
-                  systemConfig.backup = {
+                  systemConfig.setBackup({
                     filesystem: fileSystemType,
                     params,
-                  };
+                  });
                   setLoading((prev) => ({ ...prev, cloud: true }));
                   Message.info(t("preparing_backup")!);
                   syncCtrl
@@ -123,10 +114,7 @@ function Tools() {
                 key="list"
                 type="primary"
                 onClick={async () => {
-                  let fs = await FileSystemFactory.create(
-                    fileSystemType,
-                    fileSystemParams
-                  );
+                  let fs = await FileSystemFactory.create(fileSystemType, fileSystemParams);
                   try {
                     fs = await fs.openDir("ScriptCat");
                     let list = await fs.list();
@@ -158,10 +146,7 @@ function Tools() {
                   type="secondary"
                   size="mini"
                   onClick={async () => {
-                    let fs = await FileSystemFactory.create(
-                      fileSystemType,
-                      fileSystemParams
-                    );
+                    let fs = await FileSystemFactory.create(fileSystemType, fileSystemParams);
                     try {
                       fs = await fs.openDir("ScriptCat");
                       const url = await fs.getDirUrl();
@@ -190,20 +175,14 @@ function Tools() {
               dataSource={backupFileList}
               render={(item: File) => (
                 <List.Item key={item.name}>
-                  <List.Item.Meta
-                    title={item.name}
-                    description={formatUnixTime(item.updatetime / 1000)}
-                  />
+                  <List.Item.Meta title={item.name} description={formatUnixTime(item.updatetime / 1000)} />
                   <Space className="w-full justify-end">
                     <Button
                       type="primary"
                       size="small"
                       onClick={async () => {
                         Message.info(t("pulling_data_from_cloud")!);
-                        let fs = await FileSystemFactory.create(
-                          fileSystemType,
-                          fileSystemParams
-                        );
+                        let fs = await FileSystemFactory.create(fileSystemType, fileSystemParams);
                         let file: FileReader;
                         let data: Blob;
                         try {
@@ -237,22 +216,13 @@ function Tools() {
                       onClick={() => {
                         Modal.confirm({
                           title: t("confirm_delete"),
-                          content: `${t("confirm_delete_backup_file")}${
-                            item.name
-                          }?`,
+                          content: `${t("confirm_delete_backup_file")}${item.name}?`,
                           onOk: async () => {
-                            let fs = await FileSystemFactory.create(
-                              fileSystemType,
-                              fileSystemParams
-                            );
+                            let fs = await FileSystemFactory.create(fileSystemType, fileSystemParams);
                             try {
                               fs = await fs.openDir("ScriptCat");
                               await fs.delete(item.name);
-                              setBackupFileList(
-                                backupFileList.filter(
-                                  (i) => i.name !== item.name
-                                )
-                              );
+                              setBackupFileList(backupFileList.filter((i) => i.name !== item.name));
                               Message.success(t("delete_success")!);
                             } catch (e) {
                               Message.error(`${t("delete_failed")}${e}`);

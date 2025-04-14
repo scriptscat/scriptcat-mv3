@@ -1,7 +1,4 @@
-/* eslint-disable camelcase */
-/* eslint-disable import/prefer-default-export */
-import { ExtServer } from "@App/app/const";
-import { api } from "@App/pkg/axios";
+import { ExtServer, ExtServerApi } from "@App/app/const";
 import { WarpTokenError } from "./error";
 
 type NetDiskType = "baidu" | "onedrive";
@@ -11,8 +8,8 @@ export function GetNetDiskToken(netDiskType: NetDiskType): Promise<{
   msg: string;
   data: { token: { access_token: string; refresh_token: string } };
 }> {
-  return api
-    .get(`/auth/net-disk/token?netDiskType=${netDiskType}`)
+  return fetch(ExtServerApi + `auth/net-disk/token?netDiskType=${netDiskType}`)
+    .then((resp) => resp.json())
     .then((resp) => {
       return resp.data;
     });
@@ -26,11 +23,17 @@ export function RefreshToken(
   msg: string;
   data: { token: { access_token: string; refresh_token: string } };
 }> {
-  return api
-    .post(`/auth/net-disk/token/refresh?netDiskType=${netDiskType}`, {
+  return fetch(ExtServerApi + `auth/net-disk/token/refresh?netDiskType=${netDiskType}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
       netDiskType,
       refreshToken,
-    })
+    }),
+  })
+    .then((resp) => resp.json())
     .then((resp) => {
       return resp.data;
     });
@@ -38,9 +41,7 @@ export function RefreshToken(
 
 export function NetDisk(netDiskType: NetDiskType) {
   return new Promise<void>((resolve) => {
-    const loginWindow = window.open(
-      `${ExtServer}api/v1/auth/net-disk?netDiskType=${netDiskType}`
-    );
+    const loginWindow = window.open(`${ExtServer}api/v1/auth/net-disk?netDiskType=${netDiskType}`);
     const t = setInterval(() => {
       try {
         if (loginWindow!.closed) {
