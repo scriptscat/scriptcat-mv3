@@ -60,9 +60,7 @@ export default class ContentRuntime {
               parentNode = (this.msg as CustomEventMessage).getAndDelRelatedTarget(parentNodeId);
             }
             const el = <Element>document.createElement(tagName);
-            Object.keys(attr).forEach((key) => {
-              el.setAttribute(key, attr[key]);
-            });
+
             let textContent = "";
             if (attr) {
               if (attr.textContent) {
@@ -72,6 +70,9 @@ export default class ContentRuntime {
             } else {
               attr = {};
             }
+            Object.keys(attr).forEach((key) => {
+              el.setAttribute(key, attr[key]);
+            });
             if (textContent) {
               el.innerHTML = textContent;
             }

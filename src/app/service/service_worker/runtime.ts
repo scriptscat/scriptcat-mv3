@@ -247,6 +247,10 @@ export class RuntimeService {
   registerInjectScript() {
     chrome.userScripts.getScripts({ ids: ["scriptcat-inject"] }).then((res) => {
       if (res.length == 0) {
+        chrome.userScripts.configureWorld({
+          csp: "script-src 'self' 'unsafe-inline' 'unsafe-eval' *",
+          messaging: true,
+        });
         fetch("inject.js")
           .then((res) => res.text())
           .then(async (injectJs) => {
@@ -261,18 +265,17 @@ export class RuntimeService {
                 world: "MAIN",
                 runAt: "document_start",
               },
+              // 注册content
+              {
+                id: "scriptcat-content",
+                js: [{ file: "src/content.js" }],
+                matches: ["<all_urls>"],
+                allFrames: true,
+                runAt: "document_start",
+                world: "USER_SCRIPT",
+              },
             ]);
           });
-        chrome.scripting.registerContentScripts([
-          {
-            id: "scriptcat-content",
-            js: ["src/content.js"],
-            matches: ["<all_urls>"],
-            allFrames: true,
-            runAt: "document_start",
-            world: "ISOLATED",
-          },
-        ]);
       }
     });
   }
@@ -426,7 +429,6 @@ export class RuntimeService {
       if (script.metadata["run-at"]) {
         registerScript.runAt = getRunAt(script.metadata["run-at"]);
       }
-      console.log("registerScript", script.name, registerScript, scriptMatchInfo);
       if (await Cache.getInstance().get("registryScript:" + script.uuid)) {
         await chrome.userScripts.update([registerScript]);
       } else {

@@ -1,4 +1,6 @@
+import Logger from "@App/app/logger/logger";
 import { Message, MessageConnect, MessageSend, MessageSender } from "./server";
+import LoggerCore from "@App/app/logger/core";
 
 export class ExtensionMessageSend implements MessageSend {
   constructor() {}
@@ -44,6 +46,10 @@ export class ServiceWorkerMessage extends ExtensionMessageSend implements Messag
 }
 
 export class ExtensionMessage extends ExtensionMessageSend implements Message {
+  constructor(private onUserScript = false) {
+    super();
+  }
+
   onConnect(callback: (data: any, con: MessageConnect) => void) {
     chrome.runtime.onConnect.addListener((port) => {
       const handler = (msg: any) => {
@@ -52,6 +58,16 @@ export class ExtensionMessage extends ExtensionMessageSend implements Message {
       };
       port.onMessage.addListener(handler);
     });
+    if (this.onUserScript) {
+      // 监听用户脚本的连接
+      chrome.runtime.onUserScriptConnect.addListener((port) => {
+        const handler = (msg: any) => {
+          port.onMessage.removeListener(handler);
+          callback(msg, new ExtensionMessageConnect(port));
+        };
+        port.onMessage.addListener(handler);
+      });
+    }
   }
 
   // 注意chrome.runtime.onMessage.addListener的回调函数需要返回true才能处理异步请求
@@ -62,6 +78,15 @@ export class ExtensionMessage extends ExtensionMessageSend implements Message {
       }
       return callback(msg, sendResponse, sender);
     });
+    if (this.onUserScript) {
+      // 监听用户脚本的消息
+      chrome.runtime.onUserScriptMessage.addListener((msg, sender, sendResponse) => {
+        if (msg.action === "messageQueue") {
+          return false;
+        }
+        return callback(msg, sendResponse, sender);
+      });
+    }
   }
 }
 

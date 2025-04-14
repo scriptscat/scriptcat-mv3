@@ -56,7 +56,7 @@ async function main() {
   });
   loggerCore.logger().debug("service worker start");
   // 初始化管理器
-  const message = new ExtensionMessage();
+  const message = new ExtensionMessage(true);
   const server = new Server("serviceWorker", message);
   const manager = new ServiceWorkerManager(server, new MessageQueue(), new ServiceWorkerMessageSend());
   manager.initManager();
