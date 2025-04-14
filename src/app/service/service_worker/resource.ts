@@ -193,6 +193,19 @@ export class ResourceService {
           (u.hash.sha512 && u.hash.sha512 !== resource.hash.sha512)
         ) {
           resource.content = `console.warn("ScriptCat: couldn't load resource from URL ${url} due to a SRI error ");`;
+          // 尝试重新加载
+          this.loadByUrl(u.url, resource.type).then((reloadRes) => {
+            this.logger.info("reload resource success", {
+              url: u.url,
+              hash: {
+                expected: u.hash,
+                old: resource.hash,
+                new: reloadRes.hash,
+              },
+            });
+            reloadRes.updatetime = new Date().getTime();
+            this.resourceDAO.save(reloadRes);
+          });
         }
       }
       return Promise.resolve(resource);
@@ -214,12 +227,13 @@ export class ResourceService {
             sha512: "",
           });
         } else {
+          const wordArray = crypto.lib.WordArray.create(<ArrayBuffer>reader.result);
           resolve({
-            md5: crypto.MD5(<string>reader.result).toString(),
-            sha1: crypto.SHA1(<string>reader.result).toString(),
-            sha256: crypto.SHA256(<string>reader.result).toString(),
-            sha384: crypto.SHA384(<string>reader.result).toString(),
-            sha512: crypto.SHA512(<string>reader.result).toString(),
+            md5: crypto.MD5(wordArray).toString(),
+            sha1: crypto.SHA1(wordArray).toString(),
+            sha256: crypto.SHA256(wordArray).toString(),
+            sha384: crypto.SHA384(wordArray).toString(),
+            sha512: crypto.SHA512(wordArray).toString(),
           });
         }
       };

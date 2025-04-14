@@ -46,7 +46,7 @@ export default class ExecScript {
     this.scriptRes = scriptRes;
     this.logger = LoggerCore.getInstance().logger({
       component: "exec",
-      script: this.scriptRes.uuid,
+      uuid: this.scriptRes.uuid,
       name: this.scriptRes.name,
     });
     this.GM_info = GMApi.GM_info(this.scriptRes);

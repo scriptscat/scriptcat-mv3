@@ -43,10 +43,10 @@ describe("UrlMatch-google-error", () => {
       url.add("https://*foo/bar", "ok1");
     }).toThrow(Error);
   });
+  // 从v0.17.0开始允许这种
   it("error-2", () => {
-    expect(() => {
-      url.add("https://foo.*.bar/baz", "ok1");
-    }).toThrow(Error);
+    url.add("https://foo.*.bar/baz", "ok1");
+    expect(url.match("https://foo.api.bar/baz")).toEqual(["ok1"]);
   });
   it("error-3", () => {
     expect(() => {
@@ -69,6 +69,13 @@ describe("UrlMatch-search", () => {
     expect(url.match("https://bbs.tampermonkey.net.cn")).toEqual(["ok2"]);
     expect(url.match("https://bbs.tampermonkey.net.cn/")).toEqual(["ok2"]);
     expect(url.match("https://bbs.tampermonkey.net.cn/foo/bar.html")).toEqual([]);
+  });
+  it("http://api.*.example.com/*", () => {
+    const url = new UrlMatch<string>();
+    url.add("http://api.*.example.com/*", "ok1");
+    expect(url.match("http://api.foo.example.com/")).toEqual(["ok1"]);
+    expect(url.match("http://api.bar.example.com/")).toEqual(["ok1"]);
+    expect(url.match("http://api.example.com/")).toEqual([]);
   });
 });
 
@@ -106,13 +113,47 @@ describe("UrlMatch-port2", () => {
 // https://developer.chrome.com/docs/extensions/mv3/match_patterns/
 describe("dealPatternMatches", () => {
   it("https://developer.chrome.com/docs/extensions/develop/concepts/match-patterns?hl=zh-cn#examples", () => {
-    const matches = dealPatternMatches(["https://*/*", "http://127.0.0.1/*", "http://127.0.0.1/"]);
-    expect(matches.patternResult).toEqual(["https://*/*", "http://127.0.0.1/*", "http://127.0.0.1/"]);
+    const matches = dealPatternMatches([
+      "https://*/*",
+      "http://127.0.0.1/*",
+      "http://127.0.0.1/",
+      "https://*.example.com/*",
+    ]);
+    expect(matches.patternResult).toEqual([
+      "https://*/*",
+      "http://127.0.0.1/*",
+      "http://127.0.0.1/",
+      "https://*.example.com/*",
+    ]);
   });
   // 处理一些特殊情况
-  it("*://link.17173.com*", () => {
-    const matches = dealPatternMatches(["*://link.17173.com*"]);
-    expect(matches.patternResult).toEqual(["*://link.17173.com/*"]);
+  it("特殊情况", () => {
+    const matches = dealPatternMatches([
+      "*://www.example.com*",
+      "*://api.*.example.com/*",
+      "*://api.*.*.example.com/*",
+      "*://*example.com/*",
+    ]);
+    expect(matches.patternResult).toEqual([
+      "*://www.example.com/*",
+      "*://*.example.com/*",
+      "*://*.example.com/*",
+      "*://example.com/*",
+    ]);
+    expect(matches.result).toEqual([
+      "*://www.example.com*",
+      "*://api.*.example.com/*",
+      "*://api.*.*.example.com/*",
+      "*://*example.com/*",
+    ]);
+  });
+  it("特殊情况-exclude", () => {
+    const matches = dealPatternMatches(["*://api.*.example.com/*", "*://api.*.*.example.com/*"], {
+      exclude: true,
+    });
+    console.log(matches);
+    expect(matches.patternResult).toEqual(["*://example.com/*", "*://example.com/*"]);
+    expect(matches.result).toEqual(["*://api.*.example.com/*", "*://api.*.*.example.com/*"]);
   });
 });
 
@@ -146,11 +187,19 @@ describe("parsePatternMatchesURL", () => {
       path: "*",
     });
   });
-  it("*://link.17173.com*", () => {
-    const matches = parsePatternMatchesURL("*://link.17173.com*");
+  it("*://www.example.com*", () => {
+    const matches = parsePatternMatchesURL("*://www.example.com*");
     expect(matches).toEqual({
       scheme: "*",
-      host: "link.17173.com",
+      host: "www.example.com",
+      path: "*",
+    });
+  });
+  it("*://api.*.example.com/*", () => {
+    const matches = parsePatternMatchesURL("*://api.*.example.com/*");
+    expect(matches).toEqual({
+      scheme: "*",
+      host: "*.example.com",
       path: "*",
     });
   });

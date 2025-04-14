@@ -198,7 +198,6 @@ export class PopupService {
         scriptMenu.push(script);
       }
     });
-    console.log("popup脚本菜单", runScript);
     // 后台脚本只显示开启或者运行中的脚本
     return { scriptList: scriptMenu, backScriptList: await this.getScriptMenu(-1) };
   }

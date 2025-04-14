@@ -22,6 +22,8 @@ import { ExtensionContentMessageSend } from "@Packages/message/extension_message
 import { sendMessage } from "@Packages/message/client";
 import { compileInjectScript } from "../content/utils";
 import { PopupService } from "./popup";
+import Logger from "@App/app/logger/logger";
+import LoggerCore from "@App/app/logger/core";
 
 // 为了优化性能，存储到缓存时删除了code与value
 export interface ScriptMatchInfo extends ScriptRunResouce {
@@ -389,22 +391,27 @@ export class RuntimeService {
       world: "MAIN",
     };
 
+    // 排除由loadPage时决定, 不使用userScript的excludeMatches处理
     if (script.metadata["exclude"]) {
       const excludeMatches = script.metadata["exclude"];
-      const result = dealPatternMatches(excludeMatches);
+      const result = dealPatternMatches(excludeMatches, {
+        exclude: true,
+      });
 
-      registerScript.excludeMatches = result.patternResult;
+      // registerScript.excludeMatches = result.patternResult;
       scriptMatchInfo.excludeMatches = result.result;
     }
     // 自定义排除
     if (script.selfMetadata && script.selfMetadata.exclude) {
       const excludeMatches = script.selfMetadata.exclude;
-      const result = dealPatternMatches(excludeMatches);
+      const result = dealPatternMatches(excludeMatches, {
+        exclude: true,
+      });
 
       if (!registerScript.excludeMatches) {
         registerScript.excludeMatches = [];
       }
-      registerScript.excludeMatches.push(...result.patternResult);
+      // registerScript.excludeMatches.push(...result.patternResult);
       scriptMatchInfo.customizeExcludeMatches = result.result;
     }
 
@@ -419,10 +426,22 @@ export class RuntimeService {
       if (script.metadata["run-at"]) {
         registerScript.runAt = getRunAt(script.metadata["run-at"]);
       }
+      console.log("registerScript", script.name, registerScript, scriptMatchInfo);
       if (await Cache.getInstance().get("registryScript:" + script.uuid)) {
         await chrome.userScripts.update([registerScript]);
       } else {
-        await chrome.userScripts.register([registerScript]);
+        await chrome.userScripts.register([registerScript], () => {
+          if (chrome.runtime.lastError) {
+            LoggerCore.logger().error("registerScript error", {
+              error: chrome.runtime.lastError,
+              name: script.name,
+              registerMatch: {
+                matches: registerScript.matches,
+                excludeMatches: registerScript.excludeMatches,
+              },
+            });
+          }
+        });
       }
       await Cache.getInstance().set("registryScript:" + script.uuid, true);
     }

@@ -79,6 +79,11 @@ export default class ContentRuntime {
             const nodeId = (this.msg as CustomEventMessage).sendRelatedTarget(el);
             return nodeId;
           }
+          case "GM_log":
+            // 拦截GM_log，打印到控制台
+            // 由于某些页面会处理掉console.log，所以丢到这里来打印
+            console.log(...data.params);
+            break;
         }
         return false;
       }

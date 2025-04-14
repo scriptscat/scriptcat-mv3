@@ -32,28 +32,27 @@ export default class Logger {
   }
 
   log(level: LogLevel, message: string, ...label: LogLabel[]) {
+    const newLabel = buildLabel(this.label, label);
     if (levelNumber[level] >= levelNumber[this.core.level]) {
-      this.core.writer.write(level, message, buildLabel(this.label, label));
+      this.core.writer.write(level, message, newLabel);
     }
     if (this.core.debug !== "none" && levelNumber[level] >= levelNumber[this.core.debug]) {
       if (typeof message === "object") {
         message = JSON.stringify(message);
       }
-      const msg = `${dayjs(new Date()).format("YYYY-MM-DD HH:mm:ss")} [${level}] msg=${message} label=${JSON.stringify(
-        buildLabel(this.label, label)
-      )}`;
+      const msg = `${dayjs(new Date()).format("YYYY-MM-DD HH:mm:ss")} [${level}] ${message}`;
       switch (level) {
         case "error":
-          console.error(msg);
+          console.error(msg, newLabel);
           break;
         case "warn":
-          console.warn(msg);
+          console.warn(msg, newLabel);
           break;
         case "trace":
-          console.info(msg);
+          console.info(msg, newLabel);
           break;
         default:
-          console.info(msg);
+          console.info(msg, newLabel);
           break;
       }
     }

@@ -69,8 +69,6 @@ export default class Match<T> {
       if (!u.host.endsWith(":*")) {
         u.host = u.host.substring(0, u.host.length - 1);
       }
-    } else if (pos !== -1 && pos !== 0) {
-      return "";
     }
     u.host = u.host.replace(/\*/g, "[^/]*?");
     // 处理 *.开头
@@ -225,7 +223,12 @@ export interface PatternMatchesUrl {
 }
 
 // 解析URL, 根据https://developer.chrome.com/docs/extensions/develop/concepts/match-patterns?hl=zh-cn进行处理
-export function parsePatternMatchesURL(url: string): PatternMatchesUrl | undefined {
+export function parsePatternMatchesURL(
+  url: string,
+  options?: {
+    exclude?: boolean;
+  }
+): PatternMatchesUrl | undefined {
   let result: PatternMatchesUrl | undefined;
   const match = /^(.+?):\/\/(.*?)(\/(.*?)(\?.*?|)|)$/.exec(url);
   if (match) {
@@ -260,17 +263,38 @@ export function parsePatternMatchesURL(url: string): PatternMatchesUrl | undefin
       if (result.host.endsWith("*")) {
         result.host = result.host.slice(0, -1);
       }
+      // 处理 www.*.example.com 的情况为 *.example.com
+      const pos = result.host.lastIndexOf("*");
+      if (pos > 0 && pos < result.host.length - 1) {
+        if (options && options.exclude) {
+          // 如果是exclude, 按最小匹配处理
+          // 包括*也去掉
+          result.host = result.host.substring(pos + 1);
+          if (result.host.startsWith(".")) {
+            result.host = result.host.substring(1);
+          }
+        } else {
+          // 如果不是exclude
+          // 将*前面的全部去掉
+          result.host = result.host.substring(pos);
+        }
+      }
     }
   }
   return result;
 }
 
 // 处理油猴的match和include为chrome的pattern-matche
-export function dealPatternMatches(matches: string[]) {
+export function dealPatternMatches(
+  matches: string[],
+  options?: {
+    exclude?: boolean;
+  }
+) {
   const patternResult: string[] = [];
   const result: string[] = [];
   for (let i = 0; i < matches.length; i++) {
-    const url = parsePatternMatchesURL(matches[i]);
+    const url = parsePatternMatchesURL(matches[i], options);
     if (url) {
       patternResult.push(`${url.scheme}://${url.host}/${url.path}`);
       result.push(matches[i]);

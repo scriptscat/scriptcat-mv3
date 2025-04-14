@@ -4,9 +4,10 @@ import DBWriter from "./app/logger/db_writer";
 import { LoggerDAO } from "./app/repo/logger";
 import { OffscreenManager } from "./app/service/offscreen";
 
+// 初始化数据库
+migrate();
+
 function main() {
-  // 初始化数据库
-  migrate();
   // 初始化日志组件
   const loggerCore = new LoggerCore({
     writer: new DBWriter(new LoggerDAO()),

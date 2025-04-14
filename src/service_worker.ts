@@ -8,6 +8,9 @@ import { Server } from "@Packages/message/server";
 import { MessageQueue } from "@Packages/message/message_queue";
 import { ServiceWorkerMessageSend } from "@Packages/message/window_message";
 
+// 初始化数据库
+migrate();
+
 const OFFSCREEN_DOCUMENT_PATH = "src/offscreen.html";
 
 let creating: Promise<void> | null;
@@ -46,8 +49,6 @@ async function setupOffscreenDocument() {
 }
 
 async function main() {
-  // 初始化数据库
-  migrate();
   // 初始化日志组件
   const loggerCore = new LoggerCore({
     writer: new DBWriter(new LoggerDAO()),
