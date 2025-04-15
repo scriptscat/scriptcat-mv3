@@ -3,7 +3,8 @@ import { Button, Card, Collapse, Link, Message, Space, Typography } from "@arco-
 import { useTranslation } from "react-i18next";
 import FileSystemParams from "../FileSystemParams";
 import { systemConfig } from "@App/pages/store/global";
-import { FileSystemType } from "@Packages/filesystem/factory";
+import FileSystemFactory, { FileSystemType } from "@Packages/filesystem/factory";
+import { set } from "node_modules/yaml/dist/schema/yaml-1.1/set";
 
 const CollapseItem = Collapse.Item;
 
@@ -52,13 +53,13 @@ const GMApiSetting: React.FC = () => {
                       Message.error(`${t("account_validation_failed")}: ${e}`);
                       return;
                     }
-                    const params = { ...systemConfig.catFileStorage.params };
+                    const params = { ...fileSystemParams };
                     params[fileSystemType] = fileSystemParams;
-                    systemConfig.catFileStorage = {
+                    systemConfig.setCatFileStorage({
                       status: "success",
                       filesystem: fileSystemType,
                       params,
-                    };
+                    });
                     setStatus("success");
                     Message.success(t("save_success")!);
                   }}
@@ -68,10 +69,14 @@ const GMApiSetting: React.FC = () => {
                 <Button
                   key="reset"
                   onClick={() => {
-                    const config = systemConfig.catFileStorage;
-                    config.status = "unset";
-                    systemConfig.catFileStorage = config;
+                    systemConfig.setCatFileStorage({
+                      status: "unset",
+                      filesystem: "webdav",
+                      params: {},
+                    });
                     setStatus("unset");
+                    setFilesystemParam({});
+                    setFilesystemType("webdav");
                   }}
                   type="primary"
                   status="danger"

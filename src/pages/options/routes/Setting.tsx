@@ -10,9 +10,9 @@ import i18n from "@App/locales/locales";
 import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
 import Logger from "@App/app/logger/logger";
-import { systemConfig } from "@App/pages/store/global";
-import { FileSystemType } from "@Packages/filesystem/factory";
+import FileSystemFactory, { FileSystemType } from "@Packages/filesystem/factory";
 import FileSystemParams from "@App/pages/components/FileSystemParams";
+import { systemConfig } from "@App/pages/store/global";
 
 function Setting() {
   const [syncDelete, setSyncDelete] = useState<boolean>();
@@ -46,16 +46,25 @@ function Setting() {
 
   useEffect(() => {
     const loadConfigs = async () => {
-      const [cloudSync, menuExpandNum, checkCycle, updateDisabled, silenceUpdate, eslintConfig, enableEslint] =
-        await Promise.all([
-          systemConfig.getCloudSync(),
-          systemConfig.getMenuExpandNum(),
-          systemConfig.getCheckScriptUpdateCycle(),
-          systemConfig.getUpdateDisableScript(),
-          systemConfig.getSilenceUpdateScript(),
-          systemConfig.getEslintConfig(),
-          systemConfig.getEnableEslint(),
-        ]);
+      const [
+        cloudSync,
+        menuExpandNum,
+        checkCycle,
+        updateDisabled,
+        silenceUpdate,
+        eslintConfig,
+        enableEslint,
+        language,
+      ] = await Promise.all([
+        systemConfig.getCloudSync(),
+        systemConfig.getMenuExpandNum(),
+        systemConfig.getCheckScriptUpdateCycle(),
+        systemConfig.getUpdateDisableScript(),
+        systemConfig.getSilenceUpdateScript(),
+        systemConfig.getEslintConfig(),
+        systemConfig.getEnableEslint(),
+        systemConfig.getLanguage(),
+      ]);
 
       setSyncDelete(cloudSync.syncDelete);
       setEnableCloudSync(cloudSync.enable);
@@ -67,6 +76,7 @@ function Setting() {
       setSilenceUpdateScript(silenceUpdate);
       setEslintConfig(eslintConfig);
       setEnableEslint(enableEslint);
+      setLanguage(language);
     };
 
     loadConfigs();
@@ -96,9 +106,7 @@ function Setting() {
                   return;
                 }
                 setLanguage(value);
-                i18n.changeLanguage(value);
-                dayjs.locale(value.toLocaleLowerCase());
-                localStorage.language = value;
+                systemConfig.setLanguage(value);
                 Message.success(t("language_change_tip")!);
               }}
             >

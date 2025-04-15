@@ -3,7 +3,7 @@ import Logger from "@App/app/logger/logger";
 import { Script, ScriptDAO } from "@App/app/repo/scripts";
 import { ExtMessageSender, GetSender, Group, MessageSend } from "@Packages/message/server";
 import { ValueService } from "@App/app/service/service_worker/value";
-import PermissionVerify from "./permission_verify";
+import PermissionVerify, { ConfirmParam } from "./permission_verify";
 import { connect, sendMessage } from "@Packages/message/client";
 import Cache, { incr } from "@App/app/cache";
 import EventEmitter from "eventemitter3";
@@ -13,6 +13,7 @@ import { getIcon, isFirefox } from "@App/pkg/utils/utils";
 import { PopupService } from "./popup";
 import { act } from "react";
 import { MockMessageConnect } from "@Packages/message/mock_message";
+import i18next, { i18nName } from "@App/locales/locales";
 
 // GMApi,处理脚本的GM API调用请求
 
@@ -357,8 +358,35 @@ export default class GMApi {
     });
   }
 
-  // TODO: maxRedirects实现
-  @PermissionVerify.API()
+  @PermissionVerify.API({
+    confirm: async (request: Request) => {
+      console.log("confirm", request);
+      const config = <GMSend.XHRDetails>request.params[0];
+      const url = new URL(config.url);
+      if (request.script.metadata.connect) {
+        const { connect } = request.script.metadata;
+        for (let i = 0; i < connect.length; i += 1) {
+          if (url.hostname.endsWith(connect[i])) {
+            return Promise.resolve(true);
+          }
+        }
+      }
+      const metadata: { [key: string]: string } = {};
+      metadata[i18next.t("script_name")] = i18nName(request.script);
+      metadata[i18next.t("request_domain")] = url.hostname;
+      metadata[i18next.t("request_url")] = config.url;
+
+      return Promise.resolve({
+        permission: "cors",
+        permissionValue: url.hostname,
+        title: i18next.t("script_accessing_cross_origin_resource"),
+        metadata,
+        describe: i18next.t("confirm_operation_description"),
+        wildcard: true,
+        permissionContent: i18next.t("domain"),
+      } as ConfirmParam);
+    },
+  })
   async GM_xmlhttpRequest(request: Request, sender: GetSender) {
     if (request.params.length === 0) {
       throw new Error("param is failed");

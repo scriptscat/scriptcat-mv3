@@ -58,7 +58,8 @@ async function main() {
   // 初始化管理器
   const message = new ExtensionMessage(true);
   const server = new Server("serviceWorker", message);
-  const manager = new ServiceWorkerManager(server, new MessageQueue(), new ServiceWorkerMessageSend());
+  const messageQueue = new MessageQueue();
+  const manager = new ServiceWorkerManager(server, messageQueue, new ServiceWorkerMessageSend());
   manager.initManager();
   // 初始化沙盒环境
   await setupOffscreenDocument();

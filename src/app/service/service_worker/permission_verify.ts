@@ -183,6 +183,7 @@ export default class PermissionVerify {
       }
       return Promise.resolve(model);
     });
+    console.log("confirm", request, confirm);
     // 有查询到结果,进入判断,不再需要用户确认
     if (ret) {
       if (ret.allow) {
@@ -249,9 +250,27 @@ export default class PermissionVerify {
 
   // 弹出窗口让用户进行确认
   async confirmWindow(script: Script, confirm: ConfirmParam): Promise<UserConfirm> {
-    return Promise.resolve({
-      allow: true,
-      type: 1,
+    return new Promise((resolve, reject) => {
+      const uuid = uuidv4();
+      // 超时处理
+      const timeout = setTimeout(() => {
+        this.confirmMap.delete(uuid);
+        reject(new Error("permission confirm timeout"));
+      }, 40 * 1000);
+      // 保存到map中
+      this.confirmMap.set(uuid, {
+        confirm,
+        script,
+        resolve: (value: UserConfirm) => {
+          clearTimeout(timeout);
+          resolve(value);
+        },
+        reject,
+      });
+      // 打开窗口
+      chrome.tabs.create({
+        url: chrome.runtime.getURL(`src/confirm.html?uuid=${uuid}`),
+      });
     });
   }
 }

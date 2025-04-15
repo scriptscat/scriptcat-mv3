@@ -3,6 +3,8 @@ import ChromeStorage from "./chrome_storage";
 import { defaultConfig } from "../../../packages/eslint/linter-config";
 import { FileSystemType } from "@Packages/filesystem/factory";
 import { MessageQueue } from "@Packages/message/message_queue";
+import i18n from "@App/locales/locales";
+import dayjs from "dayjs";
 
 export const SystamConfigChange = "systemConfigChange";
 
@@ -213,5 +215,27 @@ export class SystemConfig {
 
   setMenuExpandNum(val: number) {
     this.set("menu_expand_num", val);
+  }
+
+  async getLanguage() {
+    const defaultLanguage = await new Promise<string>((resolve) => {
+      chrome.i18n.getAcceptLanguages((lngs) => {
+        // 遍历数组寻找匹配语言
+        for (let i = 0; i < lngs.length; i += 1) {
+          const lng = lngs[i];
+          if (i18n.hasResourceBundle(lng, "translation")) {
+            resolve(lng);
+            break;
+          }
+        }
+      });
+    });
+    return this.get("language", defaultLanguage || chrome.i18n.getUILanguage());
+  }
+
+  setLanguage(value: any) {
+    this.set("language", value);
+    i18n.changeLanguage(value);
+    dayjs.locale(value.toLocaleLowerCase());
   }
 }
