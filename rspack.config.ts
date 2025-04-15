@@ -3,6 +3,8 @@ import { defineConfig } from "@rspack/cli";
 import { rspack } from "@rspack/core";
 import { version } from "./package.json";
 
+const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
+
 const isDev = process.env.NODE_ENV === "development";
 const isBeta = version.includes("-");
 
@@ -36,6 +38,7 @@ export default defineConfig({
     options: `${src}/pages/options/main.tsx`,
     "editor.worker": "monaco-editor/esm/vs/editor/editor.worker.js",
     "ts.worker": "monaco-editor/esm/vs/language/typescript/ts.worker.js",
+    "linter.worker": `${src}/linter.worker.ts`,
   },
   output: {
     path: `${dist}/ext/src`,
@@ -47,6 +50,9 @@ export default defineConfig({
     alias: {
       "@App": path.resolve(__dirname, "src/"),
       "@Packages": path.resolve(__dirname, "packages/"),
+      // 改写eslint-plugin-userscripts以适配脚本猫，打包时重定义模块路径
+      "../data/compat-grant": path.resolve(__dirname, "./packages/eslint/compat-grant"),
+      "../data/compat-headers": path.resolve(__dirname, "./packages/eslint/compat-headers"),
     },
     fallback: {
       child_process: false,
@@ -175,6 +181,7 @@ export default defineConfig({
       minify: true,
       chunks: ["sandbox"],
     }),
+    new NodePolyfillPlugin(),
   ].filter(Boolean),
   optimization: {
     minimizer: [

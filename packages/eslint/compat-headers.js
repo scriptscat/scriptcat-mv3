@@ -195,6 +195,7 @@ const compatMap = {
     exportValue: [],
     exportCookie: [],
     scriptUrl: [],
+    storageName: [],
   },
 };
 

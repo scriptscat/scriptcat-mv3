@@ -3,6 +3,7 @@ import { LinterWorker } from "@App/pkg/utils/monaco-editor";
 import { useAppSelector } from "@App/pages/store/hooks";
 import { editor, Range } from "monaco-editor";
 import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
+import { globalCache, systemConfig } from "@App/pages/store/global";
 
 type Props = {
   className?: string;
@@ -18,10 +19,26 @@ const CodeEditor: React.ForwardRefRenderFunction<{ editor: editor.IStandaloneCod
 ) => {
   const settings = useAppSelector((state) => state.setting);
   const [monacoEditor, setEditor] = useState<editor.IStandaloneCodeEditor>();
+  const [enableEslint, setEnableEslint] = useState(false);
+  const [eslintConfig, setEslintConfig] = useState("");
+
   const div = useRef<HTMLDivElement>(null);
   useImperativeHandle(ref, () => ({
     editor: monacoEditor,
   }));
+
+  useEffect(() => {
+    const loadConfigs = async () => {
+      const [eslintConfig, enableEslint] = await Promise.all([
+        systemConfig.getEslintConfig(),
+        systemConfig.getEnableEslint(),
+      ]);
+      setEslintConfig(eslintConfig);
+      setEnableEslint(enableEslint);
+    };
+    loadConfigs();
+  }, []);
+
   useEffect(() => {
     if (diffCode === undefined || code === undefined || !div.current) {
       return () => {};
@@ -70,8 +87,7 @@ const CodeEditor: React.ForwardRefRenderFunction<{ editor: editor.IStandaloneCod
   }, [div, code, diffCode, editable, id]);
 
   useEffect(() => {
-    return () => {};
-    if (!settings.eslint.enable) {
+    if (!enableEslint) {
       return () => {};
     }
     if (!monacoEditor) {
@@ -89,7 +105,7 @@ const CodeEditor: React.ForwardRefRenderFunction<{ editor: editor.IStandaloneCod
         LinterWorker.sendLinterMessage({
           code: model.getValue(),
           id,
-          config: JSON.parse(settings.eslint.config),
+          config: JSON.parse(eslintConfig),
         });
       }, 500);
     };
@@ -183,7 +199,7 @@ const CodeEditor: React.ForwardRefRenderFunction<{ editor: editor.IStandaloneCod
           }
         }
       );
-      Cache.getInstance().set("eslint-fix", fix);
+      globalCache.set("eslint-fix", fix);
 
       // 在行号旁显示ESLint错误/警告图标
       const formatMarkers = message.markers.map(
@@ -203,7 +219,7 @@ const CodeEditor: React.ForwardRefRenderFunction<{ editor: editor.IStandaloneCod
     return () => {
       LinterWorker.hook.removeListener("message", handler);
     };
-  }, [id, monacoEditor, settings.eslint.config, settings.eslint.enable]);
+  }, [id, monacoEditor, enableEslint, eslintConfig]);
 
   return (
     <div

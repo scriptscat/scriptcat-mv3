@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Button, Card, Checkbox, Input, Message, Select, Space } from "@arco-design/web-react";
 import Title from "@arco-design/web-react/es/Typography/title";
 import { IconQuestionCircleFill } from "@arco-design/web-react/icon";
-import { format } from "prettier";
-import babel from "prettier/parser-babel";
+import prettier from "prettier/standalone";
+import * as babel from "prettier/parser-babel";
+import prettierPluginEstree from "prettier/plugins/estree";
 import GMApiSetting from "@App/pages/components/GMApiSetting";
 import i18n from "@App/locales/locales";
 import { useTranslation } from "react-i18next";
@@ -270,10 +271,11 @@ function Setting() {
               setEslintConfig(v);
             }}
             onBlur={(v) => {
-              format(eslintConfig, {
-                parser: "json",
-                plugins: [babel],
-              })
+              prettier
+                .format(eslintConfig, {
+                  parser: "json",
+                  plugins: [prettierPluginEstree, babel],
+                })
                 .then((res) => {
                   systemConfig.setEslintConfig(v.target.value);
                 })

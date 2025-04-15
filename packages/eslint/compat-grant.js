@@ -14,6 +14,7 @@ const compatMap = {
   GM_addElement: [
     { type: "tampermonkey", versionConstraint: ">=4.11.6113" },
     { type: "violentmonkey", versionConstraint: ">=2.13.0-beta.3" },
+    { type: "scriptcat", versionConstraint: "*" },
   ],
   "GM.addStyle": [
     { type: "tampermonkey", versionConstraint: ">=4.5" },
@@ -24,15 +25,19 @@ const compatMap = {
     { type: "violentmonkey", versionConstraint: "*" },
     { type: "greasemonkey", versionConstraint: ">=0.6.1.4 <4" },
   ],
-  "GM.addValueChangeListener": [
-    { type: "tampermonkey", versionConstraint: ">=4.5" },
-  ],
+  "GM.addValueChangeListener": [{ type: "tampermonkey", versionConstraint: ">=4.5" }],
   GM_addValueChangeListener: [
     { type: "tampermonkey", versionConstraint: ">=2.3.2607" },
     { type: "violentmonkey", versionConstraint: ">=2.12.0" },
   ],
-  "GM.cookie": [{ type: "tampermonkey", versionConstraint: ">=4.8" }],
-  GM_cookie: [{ type: "tampermonkey", versionConstraint: ">=4.8" }],
+  "GM.cookie": [
+    { type: "tampermonkey", versionConstraint: ">=4.8" },
+    { type: "scriptcat", versionConstraint: "*" },
+  ],
+  GM_cookie: [
+    { type: "tampermonkey", versionConstraint: ">=4.8" },
+    { type: "scriptcat", versionConstraint: "*" },
+  ],
   "GM.deleteValue": [
     { type: "tampermonkey", versionConstraint: ">=4.5" },
     { type: "violentmonkey", versionConstraint: ">=2.12.0" },
@@ -54,9 +59,7 @@ const compatMap = {
     { type: "violentmonkey", versionConstraint: "*" },
     { type: "greasemonkey", versionConstraint: ">=0.8.20080609.0 <4" },
   ],
-  "GM.getResourceURL": [
-    { type: "violentmonkey", versionConstraint: ">=2.12.0 <2.13.0.10" },
-  ],
+  "GM.getResourceURL": [{ type: "violentmonkey", versionConstraint: ">=2.12.0 <2.13.0.10" }],
   GM_getResourceURL: [
     { type: "tampermonkey", versionConstraint: "*" },
     { type: "violentmonkey", versionConstraint: "*" },
@@ -139,9 +142,7 @@ const compatMap = {
     { type: "violentmonkey", versionConstraint: "*" },
     { type: "greasemonkey", versionConstraint: ">=0.2.5 <4" },
   ],
-  "GM.removeValueChangeListener": [
-    { type: "tampermonkey", versionConstraint: ">=4.5" },
-  ],
+  "GM.removeValueChangeListener": [{ type: "tampermonkey", versionConstraint: ">=4.5" }],
   GM_removeValueChangeListener: [
     { type: "tampermonkey", versionConstraint: ">=2.3.2607" },
     { type: "violentmonkey", versionConstraint: ">=2.12.0" },
@@ -168,9 +169,7 @@ const compatMap = {
     { type: "violentmonkey", versionConstraint: "*" },
     { type: "greasemonkey", versionConstraint: ">=0.3-beta <4" },
   ],
-  "GM.unregisterMenuCommand": [
-    { type: "tampermonkey", versionConstraint: ">=4.5" },
-  ],
+  "GM.unregisterMenuCommand": [{ type: "tampermonkey", versionConstraint: ">=4.5" }],
   GM_unregisterMenuCommand: [
     { type: "tampermonkey", versionConstraint: ">=3.6.3737" },
     { type: "violentmonkey", versionConstraint: ">=2.9.4" },
