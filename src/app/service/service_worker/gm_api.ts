@@ -70,9 +70,8 @@ export default class GMApi {
 
   scriptDAO: ScriptDAO = new ScriptDAO();
 
-  permissionVerify: PermissionVerify = new PermissionVerify();
-
   constructor(
+    private permissionVerify: PermissionVerify,
     private group: Group,
     private send: MessageSend,
     private mq: MessageQueue,
@@ -109,7 +108,49 @@ export default class GMApi {
     return req;
   }
 
-  @PermissionVerify.API()
+  @PermissionVerify.API({
+    confirm(request: Request) {
+      if (request.params[0] === "store") {
+        return Promise.resolve(true);
+      }
+      const detail = <GMTypes.CookieDetails>request.params[1];
+      if (!detail.url && !detail.domain) {
+        return Promise.reject(new Error("there must be one of url or domain"));
+      }
+      let url: URL = <URL>{};
+      if (detail.url) {
+        url = new URL(detail.url);
+      } else {
+        url.host = detail.domain || "";
+        url.hostname = detail.domain || "";
+      }
+      let flag = false;
+      if (request.script.metadata.connect) {
+        const { connect } = request.script.metadata;
+        for (let i = 0; i < connect.length; i += 1) {
+          if (url.hostname.endsWith(connect[i])) {
+            flag = true;
+            break;
+          }
+        }
+      }
+      if (!flag) {
+        return Promise.reject(new Error("hostname must be in the definition of connect"));
+      }
+      const metadata: { [key: string]: string } = {};
+      metadata[i18next.t("script_name")] = i18nName(request.script);
+      metadata[i18next.t("request_domain")] = url.host;
+      return Promise.resolve({
+        permission: "cookie",
+        permissionValue: url.host,
+        title: i18next.t("access_cookie_content")!,
+        metadata,
+        describe: i18next.t("confirm_script_operation")!,
+        permissionContent: i18next.t("cookie_domain")!,
+        uuid: "",
+      });
+    },
+  })
   async GM_cookie(request: Request, sender: GetSender) {
     const param = request.params;
     if (param.length !== 2) {

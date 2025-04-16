@@ -4,6 +4,7 @@ import { InstallSource } from ".";
 import { Resource } from "@App/app/repo/resource";
 import { MessageSend } from "@Packages/message/server";
 import { ScriptMenu, ScriptMenuItem } from "./popup";
+import PermissionVerify, { ConfirmParam, UserConfirm } from "./permission_verify";
 
 export class ServiceWorkerClient extends Client {
   constructor(msg: MessageSend) {
@@ -125,5 +126,19 @@ export class PopupClient extends Client {
         documentId: data.documentId,
       },
     });
+  }
+}
+
+export class PermissionClient extends Client {
+  constructor(msg: MessageSend) {
+    super(msg, "serviceWorker/runtime/permission");
+  }
+
+  confirm(uuid: string, userConfirm: UserConfirm): Promise<void> {
+    return this.do("confirm", { uuid, userConfirm });
+  }
+
+  getPermissionInfo(uuid: string): ReturnType<PermissionVerify["getInfo"]> {
+    return this.do("getInfo", uuid);
   }
 }

@@ -6,6 +6,7 @@ import { Api, Request } from "./gm_api";
 import Queue from "@App/pkg/utils/queue";
 import CacheKey from "@App/app/cache_key";
 import { Permission, PermissionDAO } from "@App/app/repo/permission";
+import { Group } from "@Packages/message/server";
 
 export interface ConfirmParam {
   // 权限名
@@ -95,21 +96,18 @@ export default class PermissionVerify {
     reject: (reason: any) => void;
   }> = new Queue();
 
-  async removePermissionCache(scriptId: number) {
+  async removePermissionCache(uuid: string) {
     // 先删除缓存
     (await Cache.getInstance().list()).forEach((key) => {
-      if (key.startsWith(`permission:${scriptId.toString()}:`)) {
+      if (key.startsWith(`permission:${uuid}:`)) {
         Cache.getInstance().del(key);
       }
     });
   }
 
-  private permissionDAO: PermissionDAO;
+  private permissionDAO: PermissionDAO = new PermissionDAO();
 
-  constructor() {
-    this.permissionDAO = new PermissionDAO();
-    this.dealConfirmQueue();
-  }
+  constructor(private group: Group) {}
 
   // 验证是否有权限
   verify(request: Request, api: ApiValue): Promise<boolean> {
@@ -272,5 +270,50 @@ export default class PermissionVerify {
         url: chrome.runtime.getURL(`src/confirm.html?uuid=${uuid}`),
       });
     });
+  }
+
+  // 处理确认
+  private userConfirm(data: { uuid: string; userConfirm: UserConfirm }) {
+    const confirm = this.confirmMap.get(data.uuid);
+    if (!confirm) {
+      if (data.userConfirm.type === 0) {
+        // 忽略
+        return Promise.resolve(undefined);
+      }
+      return Promise.reject(new Error("confirm not found"));
+    }
+    this.confirmMap.delete(data.uuid);
+    confirm.resolve(data.userConfirm);
+    return Promise.resolve(true);
+  }
+
+  // 获取信息
+  private getInfo(uuid: string) {
+    const data = this.confirmMap.get(uuid);
+    if (!data) {
+      return Promise.reject(new Error("permission confirm not found"));
+    }
+    const { script, confirm } = data;
+    // 查询允许统配的有多少个相同等待确认权限
+    let likeNum = 0;
+    if (data.confirm.wildcard) {
+      this.confirmQueue.list.forEach((value) => {
+        const confirm = value.confirm as ConfirmParam;
+        if (
+          confirm.wildcard &&
+          value.request.uuid === data.script.uuid &&
+          confirm.permission === data.confirm.permission
+        ) {
+          likeNum += 1;
+        }
+      });
+    }
+    return Promise.resolve({ script, confirm, likeNum });
+  }
+
+  init() {
+    this.dealConfirmQueue();
+    this.group.on("confirm", this.userConfirm.bind(this));
+    this.group.on("getInfo", this.getInfo.bind(this));
   }
 }

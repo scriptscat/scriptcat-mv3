@@ -24,6 +24,7 @@ import { compileInjectScript } from "../content/utils";
 import { PopupService } from "./popup";
 import Logger from "@App/app/logger/logger";
 import LoggerCore from "@App/app/logger/core";
+import PermissionVerify from "./permission_verify";
 
 // 为了优化性能，存储到缓存时删除了code与value
 export interface ScriptMatchInfo extends ScriptRunResouce {
@@ -56,7 +57,9 @@ export class RuntimeService {
 
   async init() {
     // 启动gm api
-    const gmApi = new GMApi(this.group, this.sender, this.mq, this.value, this);
+    const permission = new PermissionVerify(this.group.group("permission"));
+    const gmApi = new GMApi(permission, this.group, this.sender, this.mq, this.value, this);
+    permission.init();
     gmApi.start();
 
     this.group.on("stopScript", this.stopScript.bind(this));

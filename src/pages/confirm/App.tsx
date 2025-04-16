@@ -2,6 +2,7 @@ import { ConfirmParam } from "@App/app/service/service_worker/permission_verify"
 import { Button, Message, Space } from "@arco-design/web-react";
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { permissionClient } from "../store/features/script";
 
 function App() {
   const uuid = window.location.search.split("=")[1];
@@ -21,15 +22,16 @@ function App() {
 
   useEffect(() => {
     window.addEventListener("beforeunload", () => {
-      permissionCtrl.sendConfirm(uuid, {
+      permissionClient.confirm(uuid, {
         allow: false,
         type: 0,
       });
     });
 
-    permissionCtrl
-      .getConfirm(uuid)
+    permissionClient
+      .getPermissionInfo(uuid)
       .then((data) => {
+        console.log(data);
         setConfirm(data.confirm);
         setLikeNum(data.likeNum);
       })
@@ -41,7 +43,7 @@ function App() {
   const handleConfirm = (allow: boolean, type: number) => {
     return async () => {
       try {
-        await permissionCtrl.sendConfirm(uuid, {
+        await permissionClient.confirm(uuid, {
           allow,
           type,
         });
