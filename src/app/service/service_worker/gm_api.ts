@@ -10,10 +10,13 @@ import EventEmitter from "eventemitter3";
 import { MessageQueue } from "@Packages/message/message_queue";
 import { RuntimeService } from "./runtime";
 import { getIcon, isFirefox } from "@App/pkg/utils/utils";
-import { PopupService } from "./popup";
-import { act } from "react";
 import { MockMessageConnect } from "@Packages/message/mock_message";
 import i18next, { i18nName } from "@App/locales/locales";
+import { SystemConfig } from "@App/pkg/config/config";
+import FileSystemFactory from "@Packages/filesystem/factory";
+import FileSystem from "@Packages/filesystem/filesystem";
+import { isWarpTokenError } from "@Packages/filesystem/error";
+import { joinPath } from "@Packages/filesystem/utils";
 
 // GMApi,处理脚本的GM API调用请求
 
@@ -71,6 +74,7 @@ export default class GMApi {
   scriptDAO: ScriptDAO = new ScriptDAO();
 
   constructor(
+    private systemConfig: SystemConfig,
     private permissionVerify: PermissionVerify,
     private group: Group,
     private send: MessageSend,
@@ -248,6 +252,119 @@ export default class GMApi {
     });
   }
 
+  @PermissionVerify.API()
+  CAT_userConfig(request: Request) {
+    chrome.tabs.create({
+      url: `/src/options.html#/?userConfig=${request.uuid}`,
+      active: true,
+    });
+  }
+
+  @PermissionVerify.API({
+    confirm: (request: Request) => {
+      const [action, details] = request.params;
+      if (action === "config") {
+        return Promise.resolve(true);
+      }
+      const dir = details.baseDir ? details.baseDir : request.script.uuid;
+      const metadata: { [key: string]: string } = {};
+      metadata[i18next.t("script_name")] = i18nName(request.script);
+      return Promise.resolve({
+        permission: "file_storage",
+        permissionValue: dir,
+        title: i18next.t("script_operation_title"),
+        metadata,
+        describe: i18next.t("script_operation_description", { dir }),
+        wildcard: false,
+        permissionContent: i18next.t("script_permission_content"),
+      } as ConfirmParam);
+    },
+  })
+  async CAT_fileStorage(request: Request, sender: GetSender): Promise<{ action: string; data: any } | boolean> {
+    const [action, details] = request.params;
+    if (action === "config") {
+      chrome.tabs.create({
+        url: `/src/options.html#/setting`,
+        active: true,
+      });
+      return true;
+    }
+    const fsConfig = await this.systemConfig.getCatFileStorage();
+    if (fsConfig.status === "unset") {
+      return { action: "error", data: { code: 1, error: "file storage is unset" } };
+    }
+    if (fsConfig.status === "error") {
+      return { action: "error", data: { code: 2, error: "file storage is error" } };
+    }
+    let fs: FileSystem;
+    const baseDir = `ScriptCat/app/${details.baseDir ? details.baseDir : request.script.uuid}`;
+    try {
+      fs = await FileSystemFactory.create(fsConfig.filesystem, fsConfig.params[fsConfig.filesystem]);
+      await FileSystemFactory.mkdirAll(fs, baseDir);
+      fs = await fs.openDir(baseDir);
+    } catch (e: any) {
+      if (isWarpTokenError(e)) {
+        fsConfig.status = "error";
+        this.systemConfig.setCatFileStorage(fsConfig);
+        return { action: "error", data: { code: 2, error: e.error.message } };
+      }
+      return { action: "error", data: { code: 8, error: e.message } };
+    }
+    switch (action) {
+      case "list":
+        try {
+          const list = await fs.list();
+          list.forEach((file) => {
+            (<any>file).absPath = file.path;
+            file.path = joinPath(file.path.substring(file.path.indexOf(baseDir) + baseDir.length));
+          });
+          return { action: "onload", data: list };
+        } catch (e: any) {
+          return { action: "error", data: { code: 3, error: e.message } };
+        }
+      case "upload":
+        try {
+          const w = await fs.create(details.path);
+          await w.write(await (await fetch(<string>details.data)).blob());
+          return { action: "onload", data: true };
+        } catch (e: any) {
+          return { action: "error", data: { code: 4, error: e.message } };
+        }
+      case "download":
+        try {
+          const info = <CATType.FileStorageFileInfo>details.file;
+          fs = await fs.openDir(`${info.path}`);
+          const r = await fs.open({
+            fsid: (<any>info).fsid,
+            name: info.name,
+            path: info.absPath,
+            size: info.size,
+            digest: info.digest,
+            createtime: info.createtime,
+            updatetime: info.updatetime,
+          });
+          const blob = await r.read("blob");
+          const url = URL.createObjectURL(blob);
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+          }, 6000);
+          return { action: "onload", data: url };
+        } catch (e: any) {
+          return { action: "error", data: { code: 5, error: e.message } };
+        }
+        break;
+      case "delete":
+        try {
+          await fs.delete(`${details.path}`);
+          return { action: "onload", data: true };
+        } catch (e: any) {
+          return { action: "error", data: { code: 6, error: e.message } };
+        }
+      default:
+        throw new Error("action is not supported");
+    }
+  }
+
   // 根据header生成dnr规则
   async buildDNRRule(reqeustId: number, params: GMSend.XHRDetails): Promise<{ [key: string]: string }> {
     // 检查是否有unsafe header,有则生成dnr规则
@@ -401,7 +518,6 @@ export default class GMApi {
 
   @PermissionVerify.API({
     confirm: async (request: Request) => {
-      console.log("confirm", request);
       const config = <GMSend.XHRDetails>request.params[0];
       const url = new URL(config.url);
       if (request.script.metadata.connect) {

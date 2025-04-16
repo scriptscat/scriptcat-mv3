@@ -25,6 +25,7 @@ import { PopupService } from "./popup";
 import Logger from "@App/app/logger/logger";
 import LoggerCore from "@App/app/logger/core";
 import PermissionVerify from "./permission_verify";
+import { SystemConfig } from "@App/pkg/config/config";
 
 // 为了优化性能，存储到缓存时删除了code与value
 export interface ScriptMatchInfo extends ScriptRunResouce {
@@ -48,6 +49,7 @@ export class RuntimeService {
   scriptMatchCache: Map<string, ScriptMatchInfo> | null | undefined;
 
   constructor(
+    private systemConfig: SystemConfig,
     private group: Group,
     private sender: MessageSend,
     private mq: MessageQueue,
@@ -58,7 +60,7 @@ export class RuntimeService {
   async init() {
     // 启动gm api
     const permission = new PermissionVerify(this.group.group("permission"));
-    const gmApi = new GMApi(permission, this.group, this.sender, this.mq, this.value, this);
+    const gmApi = new GMApi(this.systemConfig, permission, this.group, this.sender, this.mq, this.value, this);
     permission.init();
     gmApi.start();
 

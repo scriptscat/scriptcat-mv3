@@ -1,5 +1,6 @@
 import { Metadata, Script } from "@App/app/repo/scripts";
 import { CronTime } from "cron";
+import crypto from "crypto-js";
 import dayjs from "dayjs";
 import semver from "semver";
 
@@ -233,4 +234,19 @@ export function getIcon(script: Script): string | undefined {
     (script.metadata.icon64 && script.metadata.icon64[0]) ||
     (script.metadata.icon64url && script.metadata.icon64url[0])
   );
+}
+
+export function calculateMd5(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsArrayBuffer(blob);
+    reader.onloadend = () => {
+      if (!reader.result) {
+        reject(new Error("result is null"));
+      } else {
+        const wordArray = crypto.lib.WordArray.create(<ArrayBuffer>reader.result);
+        resolve(crypto.MD5(wordArray).toString());
+      }
+    };
+  });
 }

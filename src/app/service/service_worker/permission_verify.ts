@@ -181,7 +181,6 @@ export default class PermissionVerify {
       }
       return Promise.resolve(model);
     });
-    console.log("confirm", request, confirm);
     // 有查询到结果,进入判断,不再需要用户确认
     if (ret) {
       if (ret.allow) {

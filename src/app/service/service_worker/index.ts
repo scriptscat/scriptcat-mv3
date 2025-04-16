@@ -6,6 +6,7 @@ import { ValueService } from "./value";
 import { RuntimeService } from "./runtime";
 import { ServiceWorkerMessageSend } from "@Packages/message/window_message";
 import { PopupService } from "./popup";
+import { SystemConfig } from "@App/pkg/config/config";
 
 export type InstallSource = "user" | "system" | "sync" | "subscribe" | "vscode";
 
@@ -24,12 +25,14 @@ export default class ServiceWorkerManager {
       this.mq.emit("preparationOffscreen", {});
     });
 
+    const systemConfig = new SystemConfig(this.mq);
+
     const resource = new ResourceService(this.api.group("resource"), this.mq);
     resource.init();
     const value = new ValueService(this.api.group("value"), this.sender);
     const script = new ScriptService(this.api.group("script"), this.mq, value, resource);
     script.init();
-    const runtime = new RuntimeService(this.api.group("runtime"), this.sender, this.mq, value, script);
+    const runtime = new RuntimeService(systemConfig, this.api.group("runtime"), this.sender, this.mq, value, script);
     runtime.init();
     const popup = new PopupService(this.api.group("popup"), this.mq, runtime);
     popup.init();

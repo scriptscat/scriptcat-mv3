@@ -55,12 +55,11 @@ export default class BaiduFileSystem implements FileSystem {
     });
   }
 
-  // eslint-disable-next-line no-undef
-  request(url: string, config?: RequestInit) {
+  async request(url: string, config?: RequestInit) {
     config = config || {};
     const headers = <Headers>config.headers || new Headers();
     // 处理请求匿名不发送cookie
-    chrome.declarativeNetRequest.updateDynamicRules({
+    await chrome.declarativeNetRequest.updateDynamicRules({
       removeRuleIds: [100],
       addRules: [
         {

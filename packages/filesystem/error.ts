@@ -1,4 +1,3 @@
-// eslint-disable-next-line import/prefer-default-export, max-classes-per-file
 export class WarpTokenError {
   error: Error;
 

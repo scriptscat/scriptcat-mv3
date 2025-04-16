@@ -318,6 +318,52 @@ export default class GMApi {
     this.sendMessage("GM_unregisterMenuCommand", [id]);
   }
 
+  @GMContext.API()
+  CAT_userConfig() {
+    return this.sendMessage("CAT_userConfig", []);
+  }
+
+  @GMContext.API({
+    depend: ["CAT_fetchBlob", "CAT_createBlobUrl"],
+  })
+  async CAT_fileStorage(action: "list" | "download" | "upload" | "delete" | "config", details: any) {
+    if (action === "config") {
+      this.sendMessage("CAT_fileStorage", ["config"]);
+      return;
+    }
+    const sendDetails: { [key: string]: string } = {
+      baseDir: details.baseDir || "",
+      path: details.path || "",
+      filename: details.filename,
+      file: details.file,
+    };
+    if (action === "upload") {
+      const url = await this.CAT_createBlobUrl(details.data);
+      sendDetails.data = url;
+    }
+    this.sendMessage("CAT_fileStorage", [action, sendDetails]).then(async (resp: { action: string; data: any }) => {
+      switch (resp.action) {
+        case "onload": {
+          if (action === "download") {
+            // 读取blob
+            const blob = await this.CAT_fetchBlob(resp.data);
+            details.onload && details.onload(blob);
+          } else {
+            details.onload && details.onload(resp.data);
+          }
+          break;
+        }
+        case "error": {
+          if (typeof resp.data.code === "undefined") {
+            details.onerror && details.onerror({ code: -1, message: resp.data.message });
+            return;
+          }
+          details.onerror && details.onerror(resp.data);
+        }
+      }
+    });
+  }
+
   // 用于脚本跨域请求,需要@connect domain指定允许的域名
   @GMContext.API({
     depend: ["CAT_fetchBlob", "CAT_createBlobUrl", "CAT_fetchDocument"],

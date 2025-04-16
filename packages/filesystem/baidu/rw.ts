@@ -1,5 +1,3 @@
-/* eslint-disable max-classes-per-file */
-/* eslint-disable import/prefer-default-export */
 import { calculateMd5 } from "@App/pkg/utils/utils";
 import { MD5 } from "crypto-js";
 import { File, FileReader, FileWriter } from "../filesystem";
