@@ -53,6 +53,10 @@ export class ScriptClient extends Client {
   excludeUrl(uuid: string, url: string, remove: boolean) {
     return this.do("excludeUrl", { uuid, url, remove });
   }
+
+  requestCheckUpdate(uuid: string) {
+    return this.do("requestCheckUpdate", uuid);
+  }
 }
 
 export class ResourceClient extends Client {
@@ -72,6 +76,10 @@ export class ValueClient extends Client {
 
   getScriptValue(script: Script) {
     return this.do("getScriptValue", script);
+  }
+
+  setScriptValue(uuid: string, key: string, value: any) {
+    return this.do("setScriptValue", { uuid, key, value });
   }
 }
 

@@ -2,7 +2,7 @@ import LoggerCore from "@App/app/logger/core";
 import Logger from "@App/app/logger/logger";
 import { Script, SCRIPT_TYPE_NORMAL, ScriptDAO } from "@App/app/repo/scripts";
 import { ValueDAO } from "@App/app/repo/value";
-import { Group, MessageSend } from "@Packages/message/server";
+import { GetSender, Group, MessageSend } from "@Packages/message/server";
 import { RuntimeService } from "./runtime";
 import { PopupService } from "./popup";
 import { sendMessage } from "@Packages/message/client";
@@ -95,9 +95,17 @@ export class ValueService {
     return Promise.resolve(true);
   }
 
+  setScriptValue(data: { uuid: string; key: string; value: any }, sender: GetSender) {
+    return this.setValue(data.uuid, data.key, data.value, {
+      runFlag: "user",
+      tabId: -2,
+    });
+  }
+
   init(runtime: RuntimeService, popup: PopupService) {
     this.popup = popup;
     this.runtime = runtime;
     this.group.on("getScriptValue", this.getScriptValue.bind(this));
+    this.group.on("setScriptValue", this.setScriptValue.bind(this));
   }
 }

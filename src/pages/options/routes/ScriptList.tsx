@@ -25,6 +25,7 @@ import {
   SCRIPT_STATUS_ENABLE,
   SCRIPT_TYPE_BACKGROUND,
   SCRIPT_TYPE_NORMAL,
+  ScriptDAO,
   UserConfig,
 } from "@App/app/repo/scripts";
 import {
@@ -68,7 +69,7 @@ import CloudScriptPlan from "@App/pages/components/CloudScriptPlan";
 import { useTranslation } from "react-i18next";
 import { nextTime, semTime } from "@App/pkg/utils/utils";
 import { i18nName } from "@App/locales/locales";
-import { getValues, ListHomeRender, ScriptIcons } from "./utils";
+import { ListHomeRender, ScriptIcons } from "./utils";
 import { useAppDispatch, useAppSelector } from "@App/pages/store/hooks";
 import {
   requestEnableScript,
@@ -79,8 +80,10 @@ import {
   sortScript,
   requestStopScript,
   requestRunScript,
+  scriptClient,
 } from "@App/pages/store/features/script";
-import { systemConfig } from "@App/pages/store/global";
+import { message, systemConfig } from "@App/pages/store/global";
+import { ValueClient } from "@App/app/service/service_worker/client";
 
 type ListType = Script & { loading?: boolean };
 
@@ -399,35 +402,36 @@ function ScriptList() {
               cursor: "pointer",
             }}
             onClick={() => {
-              // if (!script.checkUpdateUrl) {
-              //   Message.warning(t("update_not_supported")!);
-              //   return;
-              // }
-              // Message.info({
-              //   id: "checkupdate",
-              //   content: t("checking_for_updates"),
-              // });
-              // scriptCtrl
-              //   .checkUpdate(script.id)
-              //   .then((res) => {
-              //     if (res) {
-              //       Message.warning({
-              //         id: "checkupdate",
-              //         content: t("new_version_available"),
-              //       });
-              //     } else {
-              //       Message.success({
-              //         id: "checkupdate",
-              //         content: t("latest_version"),
-              //       });
-              //     }
-              //   })
-              //   .catch((e) => {
-              //     Message.error({
-              //       id: "checkupdate",
-              //       content: `${t("update_check_failed")}: ${e.message}`,
-              //     });
-              //   });
+              if (!script.checkUpdateUrl) {
+                Message.warning(t("update_not_supported")!);
+                return;
+              }
+              Message.info({
+                id: "checkupdate",
+                content: t("checking_for_updates"),
+              });
+              scriptClient
+                .requestCheckUpdate(script.uuid)
+                .then((res) => {
+                  console.log("res", res);
+                  if (res) {
+                    Message.warning({
+                      id: "checkupdate",
+                      content: t("new_version_available"),
+                    });
+                  } else {
+                    Message.success({
+                      id: "checkupdate",
+                      content: t("latest_version"),
+                    });
+                  }
+                })
+                .catch((e) => {
+                  Message.error({
+                    id: "checkupdate",
+                    content: `${t("update_check_failed")}: ${e.message}`,
+                  });
+                });
             }}
           >
             {semTime(new Date(col))}
@@ -473,7 +477,7 @@ function ScriptList() {
                 type="text"
                 icon={<RiSettings3Fill />}
                 onClick={() => {
-                  getValues(item).then((newValues) => {
+                  new ValueClient(message).getScriptValue(item).then((newValues) => {
                     setUserConfig({
                       userConfig: { ...item.config! },
                       script: item,
@@ -545,16 +549,18 @@ function ScriptList() {
   // 设置列和判断是否打开用户配置
   useEffect(() => {
     if (openUserConfig) {
-      const script = scriptList.find((item) => item.uuid === openUserConfig);
-      if (script && script.config) {
-        getValues(script).then((values) => {
-          setUserConfig({
-            script,
-            userConfig: script.config!,
-            values: values,
+      const dao = new ScriptDAO();
+      dao.get(openUserConfig).then((script) => {
+        if (script && script.config) {
+          new ValueClient(message).getScriptValue(script).then((values) => {
+            setUserConfig({
+              script,
+              userConfig: script.config!,
+              values: values,
+            });
           });
-        });
-      }
+        }
+      });
     }
     systemConfig.getScriptListColumnWidth().then((columnWidth) => {
       setNewColumns(
@@ -697,57 +703,33 @@ function ScriptList() {
                   type="primary"
                   size="mini"
                   onClick={() => {
-                    const ids: number[] = [];
+                    const uuids: string[] = [];
                     switch (action) {
                       case "enable":
                         select.forEach((item) => {
-                          scriptCtrl.enable(item.id).then(() => {
-                            const list = scriptList.map((script) => {
-                              if (script.id === item.id) {
-                                script.status = SCRIPT_STATUS_ENABLE;
-                              }
-                              return script;
-                            });
-                            setScriptList(list);
-                          });
+                          dispatch(requestEnableScript({ uuid: item.uuid, enable: true }));
                         });
                         break;
                       case "disable":
                         select.forEach((item) => {
-                          scriptCtrl.disable(item.id).then(() => {
-                            const list = scriptList.map((script) => {
-                              if (script.id === item.id) {
-                                script.status = SCRIPT_STATUS_DISABLE;
-                              }
-                              return script;
-                            });
-                            setScriptList(list);
-                          });
+                          dispatch(requestEnableScript({ uuid: item.uuid, enable: false }));
                         });
                         break;
                       case "export":
                         select.forEach((item) => {
-                          ids.push(item.id);
+                          uuids.push(item.uuid);
                         });
-                        synchronizeCtrl.backup(ids);
+                        synchronizeCtrl.backup(uuids);
                         break;
                       case "delete":
-                        // eslint-disable-next-line no-restricted-globals, no-alert
                         if (confirm(t("list.confirm_delete")!)) {
                           select.forEach((item) => {
-                            scriptCtrl.delete(item.id).then(() => {
-                              setScriptList((list) => {
-                                return list.filter((script) => {
-                                  return script.id !== item.id;
-                                });
-                              });
-                            });
+                            dispatch(requestDeleteScript(item.uuid));
                           });
                         }
                         break;
                       // 批量检查更新
                       case "check_update":
-                        // eslint-disable-next-line no-restricted-globals, no-alert
                         if (confirm(t("list.confirm_update")!)) {
                           select.forEach((item, index, array) => {
                             if (!item.checkUpdateUrl) {
@@ -757,8 +739,8 @@ function ScriptList() {
                               id: "checkupdateStart",
                               content: t("starting_updates"),
                             });
-                            scriptCtrl
-                              .checkUpdate(item.id)
+                            scriptClient
+                              .requestCheckUpdate(item.uuid)
                               .then((res) => {
                                 if (res) {
                                   // 需要更新
@@ -878,7 +860,7 @@ function ScriptList() {
                     newColumns.forEach((column) => {
                       newWidth[column.key! as string] = column.width as number;
                     });
-                    systemConfig.scriptListColumnWidth = newWidth;
+                    systemConfig.setScriptListColumnWidth(newWidth);
                   }}
                 >
                   {t("save")}

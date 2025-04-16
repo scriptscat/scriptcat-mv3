@@ -30,12 +30,21 @@ export default class ServiceWorkerManager {
     const resource = new ResourceService(this.api.group("resource"), this.mq);
     resource.init();
     const value = new ValueService(this.api.group("value"), this.sender);
-    const script = new ScriptService(this.api.group("script"), this.mq, value, resource);
+    const script = new ScriptService(systemConfig, this.api.group("script"), this.mq, value, resource);
     script.init();
     const runtime = new RuntimeService(systemConfig, this.api.group("runtime"), this.sender, this.mq, value, script);
     runtime.init();
     const popup = new PopupService(this.api.group("popup"), this.mq, runtime);
     popup.init();
     value.init(runtime, popup);
+
+    // 定时器处理
+    chrome.alarms.onAlarm.addListener((alarm) => {
+      switch (alarm.name) {
+        case "checkScriptUpdate":
+          script.checkScriptUpdate();
+          break;
+      }
+    });
   }
 }

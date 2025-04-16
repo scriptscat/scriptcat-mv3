@@ -1,3 +1,4 @@
+import Logger from "@App/app/logger/logger";
 import { Metadata, Script } from "@App/app/repo/scripts";
 import { CronTime } from "cron";
 import crypto from "crypto-js";
@@ -144,12 +145,12 @@ export function parseStorageValue(str: string): unknown {
 }
 
 // 对比版本大小
-export function ltever(newVersion: string, oldVersion: string) {
+export function ltever(newVersion: string, oldVersion: string, logger?: Logger) {
   // 先验证符不符合语义化版本规范
   try {
     return semver.lte(newVersion, oldVersion);
   } catch (e) {
-    console.error(e);
+    logger?.warn("does not conform to the Semantic Versioning specification", Logger.E(e));
   }
   const newVer = newVersion.split(".");
   const oldVer = oldVersion.split(".");

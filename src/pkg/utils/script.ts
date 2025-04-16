@@ -139,7 +139,7 @@ export async function fetchScriptInfo(
   return ret;
 }
 
-export function copyScript(script: ScriptAndCode, old: Script): ScriptAndCode {
+export function copyScript(script: Script, old: Script): Script {
   const ret = script;
   ret.uuid = old.uuid;
   ret.createtime = old.createtime;
@@ -206,7 +206,7 @@ export function prepareScriptByCode(
   url: string,
   uuid?: string,
   override?: boolean
-): Promise<{ script: ScriptAndCode; oldScript?: ScriptAndCode }> {
+): Promise<{ script: Script; oldScript?: Script; oldScriptCode?: string }> {
   const dao = new ScriptDAO();
   return new Promise((resolve, reject) => {
     const metadata = parseMetadata(code);
@@ -255,10 +255,9 @@ export function prepareScriptByCode(
     } else {
       newUUID = uuidv4();
     }
-    let script: ScriptAndCode = {
+    let script: Script = {
       uuid: newUUID,
       name: metadata.name[0],
-      code: code,
       author: metadata.author && metadata.author[0],
       namespace: metadata.namespace && metadata.namespace[0],
       originDomain: domain,
@@ -309,7 +308,7 @@ export function prepareScriptByCode(
         }
         script.checktime = new Date().getTime();
       }
-      resolve({ script, oldScript: old ? Object.assign(old, oldCode) : undefined });
+      resolve({ script, oldScript: old, oldScriptCode: oldCode?.code });
     };
     handler();
   });

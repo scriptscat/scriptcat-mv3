@@ -1,11 +1,11 @@
-import { fetchScriptInfo } from "@App/pkg/utils/script";
+import { fetchScriptInfo, prepareScriptByCode } from "@App/pkg/utils/script";
 import { v4 as uuidv4 } from "uuid";
 import { Group } from "@Packages/message/server";
 import Logger from "@App/app/logger/logger";
 import LoggerCore from "@App/app/logger/core";
 import Cache from "@App/app/cache";
 import CacheKey from "@App/app/cache_key";
-import { openInCurrentTab, randomString } from "@App/pkg/utils/utils";
+import { checkSilenceUpdate, ltever, openInCurrentTab, randomString } from "@App/pkg/utils/utils";
 import {
   Script,
   SCRIPT_RUN_STATUS,
@@ -20,6 +20,7 @@ import { InstallSource } from ".";
 import { ResourceService } from "./resource";
 import { ValueService } from "./value";
 import { compileScriptCode } from "../content/utils";
+import { SystemConfig } from "@App/pkg/config/config";
 
 export class ScriptService {
   logger: Logger;
@@ -27,6 +28,7 @@ export class ScriptService {
   scriptCodeDAO: ScriptCodeDAO = new ScriptCodeDAO();
 
   constructor(
+    private systemConfig: SystemConfig,
     private group: Group,
     private mq: MessageQueue,
     private valueService: ValueService,
@@ -305,6 +307,117 @@ export class ScriptService {
       });
   }
 
+  async checkUpdate(uuid: string, source: "user" | "system") {
+    // 检查更新
+    const script = await this.scriptDAO.get(uuid);
+    if (!script) {
+      return Promise.resolve(false);
+    }
+    await this.scriptDAO.update(uuid, { checktime: new Date().getTime() });
+    if (!script.checkUpdateUrl) {
+      return Promise.resolve(false);
+    }
+    const logger = LoggerCore.logger({
+      uuid: script.uuid,
+      name: script.name,
+    });
+    try {
+      const info = await fetchScriptInfo(script.checkUpdateUrl, source, false, script.uuid);
+      const { metadata } = info;
+      if (!metadata) {
+        logger.error("parse metadata failed");
+        return Promise.resolve(false);
+      }
+      const newVersion = metadata.version && metadata.version[0];
+      if (!newVersion) {
+        logger.error("parse version failed", { version: "" });
+        return Promise.resolve(false);
+      }
+      let oldVersion = script.metadata.version && script.metadata.version[0];
+      if (!oldVersion) {
+        oldVersion = "0.0.0";
+      }
+      // 对比版本大小
+      if (ltever(newVersion, oldVersion, logger)) {
+        return Promise.resolve(false);
+      }
+      // 进行更新
+      this.openUpdatePage(script, source);
+    } catch (e) {
+      logger.error("check update failed", Logger.E(e));
+      return Promise.resolve(false);
+    }
+    return Promise.resolve(true);
+  }
+
+  // 打开更新窗口
+  public openUpdatePage(script: Script, source: "user" | "system") {
+    const logger = this.logger.with({
+      uuid: script.uuid,
+      name: script.name,
+      downloadUrl: script.downloadUrl,
+      checkUpdateUrl: script.checkUpdateUrl,
+    });
+    fetchScriptInfo(script.downloadUrl || script.checkUpdateUrl!, source, true, script.uuid)
+      .then(async (info) => {
+        // 是否静默更新
+        if (await this.systemConfig.getSilenceUpdateScript()) {
+          try {
+            const prepareScript = await prepareScriptByCode(
+              info.code,
+              script.downloadUrl || script.checkUpdateUrl!,
+              script.uuid
+            );
+            if (checkSilenceUpdate(prepareScript.oldScript!.metadata, prepareScript.script.metadata)) {
+              logger.info("silence update script");
+              this.installScript({
+                script: prepareScript.script,
+                code: info.code,
+                upsertBy: source,
+              });
+              return;
+            }
+          } catch (e) {
+            logger.error("prepare script failed", Logger.E(e));
+          }
+          return;
+        }
+        // 打开安装页面
+        Cache.getInstance().set(CacheKey.scriptInstallInfo(info.uuid), info);
+        chrome.tabs.create({
+          url: `/src/install.html?uuid=${info.uuid}`,
+        });
+      })
+      .catch((e) => {
+        logger.error("fetch script info failed", Logger.E(e));
+      });
+  }
+
+  checkScriptUpdate() {
+    this.scriptDAO.all().then(async (scripts) => {
+      const checkCycle = await this.systemConfig.getCheckScriptUpdateCycle();
+      if (!checkCycle) {
+        return;
+      }
+      const check = await this.systemConfig.getUpdateDisableScript();
+      scripts.forEach(async (script) => {
+        // 是否检查禁用脚本
+        if (!check && script.status === SCRIPT_STATUS_DISABLE) {
+          return;
+        }
+        // 检查是否符合
+        if (script.checktime + checkCycle * 1000 > Date.now()) {
+          return;
+        }
+        this.checkUpdate(script.uuid, "system");
+      });
+    });
+  }
+
+  requestCheckUpdate(uuid: string) {
+    return this.checkUpdate(uuid, "user");
+  }
+
   init() {
     this.listenerScriptInstall();
 
@@ -317,5 +430,12 @@ export class ScriptService {
     this.group.on("getCode", this.getCode.bind(this));
     this.group.on("getScriptRunResource", this.buildScriptRunResource.bind(this));
     this.group.on("excludeUrl", this.excludeUrl.bind(this));
+    this.group.on("requestCheckUpdate", this.requestCheckUpdate.bind(this));
+
+    // 定时检查更新, 每10分钟检查一次
+    chrome.alarms.create("checkScriptUpdate", {
+      delayInMinutes: 10,
+      periodInMinutes: 10,
+    });
   }
 }

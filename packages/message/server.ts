@@ -173,7 +173,7 @@ export function forwardMessage(
       } else if (resp !== false) {
         return resp;
       }
-      return handler(params, sender);
     }
+    return handler(params, sender);
   });
 }

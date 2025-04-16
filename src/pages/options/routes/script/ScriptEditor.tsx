@@ -129,7 +129,7 @@ const emptyScript = async (template: string, hotKeys: any, target?: string) => {
 
   return Promise.resolve({
     script,
-    code: script.code,
+    code,
     active: true,
     hotKeys,
     isChanged: false,
@@ -218,7 +218,7 @@ function ScriptEditor() {
               setEditors((prev) => {
                 for (let i = 0; i < prev.length; i += 1) {
                   if (prev[i].script.uuid === newScript.uuid) {
-                    prev[i].script.code = newScript.code;
+                    prev[i].script.code = prepareScript.scriptCode;
                     prev[i].isChanged = false;
                     prev[i].script.name = newScript.name;
                     break;

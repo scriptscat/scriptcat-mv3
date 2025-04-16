@@ -23,6 +23,7 @@
   "default_locale": "zh_CN",
   "permissions": [
     "tabs",
+    "alarms",
     "storage",
     "cookies",
     "offscreen",
