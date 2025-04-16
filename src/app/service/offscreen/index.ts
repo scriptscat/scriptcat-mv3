@@ -54,5 +54,14 @@ export class OffscreenManager {
 
     const gmApi = new GMApi(this.windowServer.group("gmApi"));
     gmApi.init();
+
+    this.windowServer.on("createObjectURL", (data: Blob) => {
+      console.log("createObjectURL", data);
+      const url = URL.createObjectURL(data);
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000 * 60);
+      return Promise.resolve(url);
+    });
   }
 }

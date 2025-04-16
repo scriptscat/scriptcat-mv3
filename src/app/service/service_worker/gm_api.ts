@@ -347,7 +347,7 @@ export default class GMApi {
           const url = URL.createObjectURL(blob);
           setTimeout(() => {
             URL.revokeObjectURL(url);
-          }, 6000);
+          }, 30*1000);
           return { action: "onload", data: url };
         } catch (e: any) {
           return { action: "error", data: { code: 5, error: e.message } };

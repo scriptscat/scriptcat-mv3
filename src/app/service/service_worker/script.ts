@@ -142,7 +142,7 @@ export class ScriptService {
       setTimeout(() => {
         // 清理缓存
         Cache.getInstance().del(CacheKey.scriptInstallInfo(uuid));
-      }, 60 * 1000);
+      }, 30 * 1000);
       openInCurrentTab(`/src/install.html?uuid=${uuid}`);
     });
   }

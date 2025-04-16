@@ -1,9 +1,5 @@
 import JSZip from "jszip";
-import FileSystem, {
-  File,
-  FileReader,
-  FileWriter,
-} from "@Pkg/filesystem/filesystem";
+import FileSystem, { File, FileReader, FileWriter } from "@Packages/filesystem/filesystem";
 import { ZipFileReader, ZipFileWriter } from "./rw";
 
 export default class ZipFileSystem implements FileSystem {

@@ -8,13 +8,20 @@ import {
   ScriptDAO,
 } from "@App/app/repo/scripts";
 import { arrayMove } from "@dnd-kit/sortable";
-import { PermissionClient, PopupClient, RuntimeClient, ScriptClient } from "@App/app/service/service_worker/client";
+import {
+  PermissionClient,
+  PopupClient,
+  RuntimeClient,
+  ScriptClient,
+  ValueClient,
+} from "@App/app/service/service_worker/client";
 import { message } from "../global";
 
 export const scriptClient = new ScriptClient(message);
 export const runtimeClient = new RuntimeClient(message);
 export const popupClient = new PopupClient(message);
 export const permissionClient = new PermissionClient(message);
+export const valueClient = new ValueClient(message);
 
 export const fetchAndSortScriptList = createAsyncThunk("script/fetchScriptList", async () => {
   // 排序

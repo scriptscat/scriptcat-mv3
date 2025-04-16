@@ -25,6 +25,7 @@ export default class ServiceWorkerManager {
       await this.sender.init();
       this.mq.emit("preparationOffscreen", {});
     });
+    this.sender.init();
 
     const systemConfig = new SystemConfig(this.mq);
 
@@ -38,7 +39,7 @@ export default class ServiceWorkerManager {
     const popup = new PopupService(this.api.group("popup"), this.mq, runtime);
     popup.init();
     value.init(runtime, popup);
-    const synchronize = new SynchronizeService(this.api.group("synchronize"));
+    const synchronize = new SynchronizeService(this.sender, this.api.group("synchronize"), value, resource);
     synchronize.init();
 
     // 定时器处理

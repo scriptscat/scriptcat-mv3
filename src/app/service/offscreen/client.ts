@@ -1,7 +1,7 @@
 import { WindowMessage } from "@Packages/message/window_message";
 import { SCRIPT_RUN_STATUS, ScriptRunResouce } from "@App/app/repo/scripts";
 import { sendMessage } from "@Packages/message/client";
-import {  MessageSend } from "@Packages/message/server";
+import { MessageSend } from "@Packages/message/server";
 
 export function preparationSandbox(msg: WindowMessage) {
   return sendMessage(msg, "offscreen/preparationSandbox");
@@ -30,4 +30,8 @@ export function runScript(msg: MessageSend, data: ScriptRunResouce) {
 
 export function stopScript(msg: MessageSend, uuid: string) {
   return sendMessage(msg, "offscreen/script/stopScript", uuid);
+}
+
+export function createObjectURL(msg: MessageSend, data: Blob) {
+  return sendMessage(msg, "offscreen/createObjectURL", data);
 }

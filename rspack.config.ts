@@ -36,6 +36,7 @@ export default defineConfig({
     popup: `${src}/pages/popup/main.tsx`,
     install: `${src}/pages/install/main.tsx`,
     confirm: `${src}/pages/confirm/main.tsx`,
+    import: `${src}/pages/import/main.tsx`,
     options: `${src}/pages/options/main.tsx`,
     "editor.worker": "monaco-editor/esm/vs/editor/editor.worker.js",
     "ts.worker": "monaco-editor/esm/vs/language/typescript/ts.worker.js",
@@ -152,7 +153,6 @@ export default defineConfig({
       minify: true,
       chunks: ["install"],
     }),
-    ,
     new rspack.HtmlRspackPlugin({
       filename: `${dist}/ext/src/confirm.html`,
       template: `${src}/pages/template.html`,
@@ -160,6 +160,14 @@ export default defineConfig({
       title: "Confirm - ScriptCat",
       minify: true,
       chunks: ["confirm"],
+    }),
+    new rspack.HtmlRspackPlugin({
+      filename: `${dist}/ext/src/import.html`,
+      template: `${src}/pages/template.html`,
+      inject: "head",
+      title: "Import - ScriptCat",
+      minify: true,
+      chunks: ["import"],
     }),
     new rspack.HtmlRspackPlugin({
       filename: `${dist}/ext/src/options.html`,

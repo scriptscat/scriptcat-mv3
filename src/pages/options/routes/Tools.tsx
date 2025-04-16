@@ -7,7 +7,13 @@ import { IconQuestionCircleFill } from "@arco-design/web-react/icon";
 import { RefInputType } from "@arco-design/web-react/es/Input/interface";
 import { useTranslation } from "react-i18next";
 import { FileSystemType } from "@Packages/filesystem/factory";
-import { systemConfig } from "@App/pages/store/global";
+import { message, systemConfig } from "@App/pages/store/global";
+import { SynchronizeClient } from "@App/app/service/service_worker/client";
+import Cache from "@App/app/cache";
+import CacheKey from "@App/app/cache_key";
+import { v4 as uuidv4 } from "uuid";
+
+const synchronizeClient = new SynchronizeClient(message);
 
 function Tools() {
   const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
@@ -49,7 +55,7 @@ function Tools() {
               loading={loading.local}
               onClick={async () => {
                 setLoading((prev) => ({ ...prev, local: true }));
-                await syncCtrl.backup();
+                await synchronizeClient.backup();
                 setLoading((prev) => ({ ...prev, local: false }));
               }}
             >
@@ -58,14 +64,36 @@ function Tools() {
             <Button
               type="primary"
               onClick={() => {
-                syncCtrl
-                  .openImportFile(fileRef.current!)
-                  .then(() => {
-                    Message.success(t("select_import_script")!);
-                  })
-                  .then((e) => {
-                    Message.error(`${t("import_error")}${e}`);
-                  });
+                const el = fileRef.current!;
+                el.onchange = async () => {
+                  const { files } = el;
+                  if (!files) {
+                    return;
+                  }
+                  const file = files[0];
+                  if (!file) {
+                    return;
+                  }
+                  const url = URL.createObjectURL(file);
+                  try {
+                    const uuid = uuidv4();
+                    Cache.getInstance()
+                      .set(CacheKey.importFile(uuid), {
+                        filename: file.name,
+                        url: url,
+                      })
+                      .then(() => {
+                        Message.success(t("select_import_script")!);
+                        // 打开导入窗口
+                        chrome.tabs.create({
+                          url: `/src/import.html?uuid=${uuid}`,
+                        });
+                      });
+                  } catch (e) {
+                    Message.error(`${t("import_error")}: ${e}`);
+                  }
+                };
+                el.click();
               }}
             >
               {t("import_file")}

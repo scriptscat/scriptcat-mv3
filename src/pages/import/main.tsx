@@ -17,7 +17,7 @@ migrate();
 // 初始化日志组件
 const loggerCore = new LoggerCore({
   writer: new DBWriter(new LoggerDAO()),
-  labels: { env: "confirm" },
+  labels: { env: "import" },
 });
 
 loggerCore.logger().debug("page start");
@@ -25,7 +25,7 @@ loggerCore.logger().debug("page start");
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <Provider store={store}>
-      <MainLayout className="!flex-col !px-4 box-border">
+      <MainLayout className="!flex-col !p-[10px] box-border h-auto overflow-auto">
         <App />
       </MainLayout>
     </Provider>

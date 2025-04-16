@@ -150,3 +150,17 @@ export class PermissionClient extends Client {
     return this.do("getInfo", uuid);
   }
 }
+
+export class SynchronizeClient extends Client {
+  constructor(msg: MessageSend) {
+    super(msg, "serviceWorker/synchronize");
+  }
+
+  backup(uuids?: string[]) {
+    return this.do("backup", uuids);
+  }
+
+  openImportWindow(filename: string, url: string) {
+    return this.do("openImportWindow", { filename, url });
+  }
+}

@@ -129,7 +129,7 @@ const CloudScriptPlan: React.FC<{
           const url = URL.createObjectURL(files);
           setTimeout(() => {
             URL.revokeObjectURL(url);
-          }, 60 * 1000);
+          }, 30 * 1000);
           chrome.downloads.download({
             url,
             saveAs: true,

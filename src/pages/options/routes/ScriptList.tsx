@@ -83,7 +83,7 @@ import {
   scriptClient,
 } from "@App/pages/store/features/script";
 import { message, systemConfig } from "@App/pages/store/global";
-import { ValueClient } from "@App/app/service/service_worker/client";
+import { SynchronizeClient, ValueClient } from "@App/app/service/service_worker/client";
 
 type ListType = Script & { loading?: boolean };
 
@@ -719,7 +719,17 @@ function ScriptList() {
                         select.forEach((item) => {
                           uuids.push(item.uuid);
                         });
-                        synchronizeCtrl.backup(uuids);
+                        Message.loading({
+                          id: "export",
+                          content: t("exporting"),
+                        });
+                        new SynchronizeClient(message).backup(uuids).then(() => {
+                          Message.success({
+                            id: "export",
+                            content: t("export_success"),
+                            duration: 3000,
+                          });
+                        });
                         break;
                       case "delete":
                         if (confirm(t("list.confirm_delete")!)) {
