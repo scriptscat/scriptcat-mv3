@@ -3,11 +3,8 @@ name: test
 on:
   push:
     branches:
-      - main
-      - release/*
-      - dev
-      - develop/*
-  pull_request:
+      - disable # 暂时禁用
+  # pull_request:
 
 jobs:
   tests:

@@ -7,6 +7,7 @@ import { RuntimeService } from "./runtime";
 import { ServiceWorkerMessageSend } from "@Packages/message/window_message";
 import { PopupService } from "./popup";
 import { SystemConfig } from "@App/pkg/config/config";
+import { SynchronizeService } from "./synchronize";
 
 export type InstallSource = "user" | "system" | "sync" | "subscribe" | "vscode";
 
@@ -37,6 +38,8 @@ export default class ServiceWorkerManager {
     const popup = new PopupService(this.api.group("popup"), this.mq, runtime);
     popup.init();
     value.init(runtime, popup);
+    const synchronize = new SynchronizeService(this.api.group("synchronize"));
+    synchronize.init();
 
     // 定时器处理
     chrome.alarms.onAlarm.addListener((alarm) => {
