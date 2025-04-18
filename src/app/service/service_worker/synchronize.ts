@@ -12,6 +12,9 @@ import { ValueService } from "./value";
 import { ResourceService } from "./resource";
 import dayjs from "dayjs";
 import { createObjectURL } from "../offscreen/client";
+import FileSystemFactory, { FileSystemType } from "@Packages/filesystem/factory";
+import { systemConfig } from "@App/pages/store/global";
+import { CloudSyncConfig } from "@App/pkg/config/config";
 
 export class SynchronizeService {
   logger: Logger;
@@ -169,8 +172,8 @@ export class SynchronizeService {
     };
   }
 
-  // 请求生成备份文件
-  async requestBackup(uuids?: string[]) {
+  // 请求导出文件
+  async requestExport(uuids?: string[]) {
     const zip = new JSZip();
     const fs = new ZipFileSystem(zip);
     await this.backup(fs, uuids);
@@ -192,11 +195,49 @@ export class SynchronizeService {
     return Promise.resolve();
   }
 
-  // 请求导入备份文件
-  async openImportWindow(url: string) {}
+  // 备份到云端
+  async backupToCloud({ type, params }: { type: FileSystemType; params: any }) {
+    // 首先生成zip文件
+    const zip = new JSZip();
+    const fs = new ZipFileSystem(zip);
+    await this.backup(fs);
+    this.logger.info("backup to cloud");
+    // 然后创建云端文件系统
+    let cloudFs = await FileSystemFactory.create(type, params);
+    try {
+      await cloudFs.createDir("ScriptCat");
+      cloudFs = await cloudFs.openDir("ScriptCat");
+      // 云端文件系统写入文件
+      const file = await cloudFs.create(`scriptcat-backup-${dayjs().format("YYYY-MM-DDTHH-mm-ss")}.zip`);
+      await file.write(
+        await zip.generateAsync({
+          type: "blob",
+          compression: "DEFLATE",
+          compressionOptions: {
+            level: 9,
+          },
+          comment: "Created by Scriptcat",
+        })
+      );
+    } catch (e) {
+      this.logger.error("backup to cloud error", Logger.E(e));
+      return Promise.reject(e);
+    }
+    return Promise.resolve();
+  }
+
+  cloudSync() {}
+
+  startCloudSync(value: CloudSyncConfig) {
+    if (value.enable) {
+      
+      this.cloudSync();
+    }
+  }
 
   init() {
-    this.group.on("backup", this.requestBackup.bind(this));
-    this.group.on("import", this.openImportWindow.bind(this));
+    this.group.on("export", this.requestExport.bind(this));
+    this.group.on("backupToCloud", this.backupToCloud.bind(this));
+    // this.group.on("import", this.openImportWindow.bind(this));
   }
 }

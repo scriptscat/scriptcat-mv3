@@ -170,14 +170,15 @@ function Setting() {
                       return;
                     }
                   }
-                  const params = { ...systemConfig.backup.params };
+                  const cloudSync = await systemConfig.getCloudSync();
+                  const params = { ...cloudSync.params };
                   params[fileSystemType] = fileSystemParams;
-                  systemConfig.cloudSync = {
-                    enable: enableCloudSync,
-                    syncDelete,
+                  systemConfig.setCloudSync({
+                    enable: enableCloudSync || false,
+                    syncDelete: syncDelete || false,
                     filesystem: fileSystemType,
                     params,
-                  };
+                  });
                   Message.success(t("save_success")!);
                 }}
               >

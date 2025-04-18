@@ -33,6 +33,13 @@ export class SystemConfig {
     });
   }
 
+  addListener(key: string, callback: (value: any) => void) {
+    this.mq.subscribe(key, (msg) => {
+      const { value } = msg;
+      callback(value);
+    });
+  }
+
   async getAll(): Promise<{ [key: string]: any }> {
     const ret: { [key: string]: any } = {};
     const list = await this.storage.keys();

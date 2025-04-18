@@ -50,5 +50,16 @@ export default class ServiceWorkerManager {
           break;
       }
     });
+
+    // 监听配置变化
+    this.mq.subscribe("systemConfigChange", (msg) => {
+      console.log("systemConfigChange", msg);
+      switch (msg.key) {
+        case "cloud_sync": {
+          synchronize.startCloudSync(msg.value);
+          break;
+        }
+      }
+    });
   }
 }

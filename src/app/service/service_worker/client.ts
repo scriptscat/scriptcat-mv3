@@ -5,6 +5,10 @@ import { Resource } from "@App/app/repo/resource";
 import { MessageSend } from "@Packages/message/server";
 import { ScriptMenu, ScriptMenuItem } from "./popup";
 import PermissionVerify, { ConfirmParam, UserConfirm } from "./permission_verify";
+import { FileSystemType } from "@Packages/filesystem/factory";
+import { v4 as uuidv4 } from "uuid";
+import Cache from "@App/app/cache";
+import CacheKey from "@App/app/cache_key";
 
 export class ServiceWorkerClient extends Client {
   constructor(msg: MessageSend) {
@@ -156,11 +160,28 @@ export class SynchronizeClient extends Client {
     super(msg, "serviceWorker/synchronize");
   }
 
-  backup(uuids?: string[]) {
-    return this.do("backup", uuids);
+  export(uuids?: string[]) {
+    return this.do("export", uuids);
   }
 
-  openImportWindow(filename: string, url: string) {
-    return this.do("openImportWindow", { filename, url });
+  backupToCloud(type: FileSystemType, params: any) {
+    return this.do("backupToCloud", { type, params });
+  }
+
+  async openImportWindow(filename: string, file: File | Blob) {
+    // 打开导入窗口，用cache实现数据交互
+    const url = URL.createObjectURL(file);
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 60 * 1000);
+    const uuid = uuidv4();
+    await Cache.getInstance().set(CacheKey.importFile(uuid), {
+      filename: filename,
+      url: url,
+    });
+    // 打开导入窗口，用cache实现数据交互
+    chrome.tabs.create({
+      url: `/src/import.html?uuid=${uuid}`,
+    });
   }
 }

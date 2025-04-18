@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Card, Checkbox, Drawer, Empty, Input, List, Message, Modal, Space } from "@arco-design/web-react";
 import Title from "@arco-design/web-react/es/Typography/title";
 import { formatUnixTime } from "@App/pkg/utils/utils";
@@ -6,12 +6,11 @@ import FileSystemParams from "@App/pages/components/FileSystemParams";
 import { IconQuestionCircleFill } from "@arco-design/web-react/icon";
 import { RefInputType } from "@arco-design/web-react/es/Input/interface";
 import { useTranslation } from "react-i18next";
-import { FileSystemType } from "@Packages/filesystem/factory";
+import FileSystemFactory, { FileSystemType } from "@Packages/filesystem/factory";
+import { File, FileReader } from "@Packages/filesystem/filesystem";
 import { message, systemConfig } from "@App/pages/store/global";
 import { SynchronizeClient } from "@App/app/service/service_worker/client";
-import Cache from "@App/app/cache";
-import CacheKey from "@App/app/cache_key";
-import { v4 as uuidv4 } from "uuid";
+import { set } from "node_modules/yaml/dist/schema/yaml-1.1/set";
 
 const synchronizeClient = new SynchronizeClient(message);
 
@@ -22,16 +21,26 @@ function Tools() {
   const [fileSystemParams, setFilesystemParam] = useState<{
     [key: string]: any;
   }>({});
+  const [vscodeUrl, setVscodeUrl] = useState<string>("");
+  const [vscodeReconnect, setVscodeReconnect] = useState<boolean>(false);
   const [backupFileList, setBackupFileList] = useState<File[]>([]);
   const vscodeRef = useRef<RefInputType>(null);
   const { t } = useTranslation();
 
   useEffect(() => {
     // 获取配置
-    systemConfig.getBackup().then((backup) => {
+    const loadConfig = async () => {
+      const [backup, vscodeUrl] = await Promise.all([
+        systemConfig.getBackup(),
+        systemConfig.getVscodeUrl(),
+        systemConfig.getVscodeReconnect(),
+      ]);
       setFilesystemType(backup.filesystem);
       setFilesystemParam(backup.params[backup.filesystem] || {});
-    });
+      setVscodeUrl(vscodeUrl);
+      setVscodeReconnect(systemConfig.vscodeReconnect);
+    };
+    loadConfig();
   }, []);
 
   return (
@@ -55,7 +64,7 @@ function Tools() {
               loading={loading.local}
               onClick={async () => {
                 setLoading((prev) => ({ ...prev, local: true }));
-                await synchronizeClient.backup();
+                await synchronizeClient.export();
                 setLoading((prev) => ({ ...prev, local: false }));
               }}
             >
@@ -74,21 +83,9 @@ function Tools() {
                   if (!file) {
                     return;
                   }
-                  const url = URL.createObjectURL(file);
                   try {
-                    const uuid = uuidv4();
-                    Cache.getInstance()
-                      .set(CacheKey.importFile(uuid), {
-                        filename: file.name,
-                        url: url,
-                      })
-                      .then(() => {
-                        Message.success(t("select_import_script")!);
-                        // 打开导入窗口
-                        chrome.tabs.create({
-                          url: `/src/import.html?uuid=${uuid}`,
-                        });
-                      });
+                    await synchronizeClient.openImportWindow(file.name, file);
+                    Message.success(t("select_import_script")!);
                   } catch (e) {
                     Message.error(`${t("import_error")}: ${e}`);
                   }
@@ -123,7 +120,7 @@ function Tools() {
                   });
                   setLoading((prev) => ({ ...prev, cloud: true }));
                   Message.info(t("preparing_backup")!);
-                  syncCtrl
+                  synchronizeClient
                     .backupToCloud(fileSystemType, fileSystemParams)
                     .then(() => {
                       Message.success(t("backup_success")!);
@@ -221,12 +218,8 @@ function Tools() {
                           Message.error(`${t("pull_failed")}: ${e}`);
                           return;
                         }
-                        const url = URL.createObjectURL(data);
-                        setTimeout(() => {
-                          URL.revokeObjectURL(url);
-                        }, 60 * 100000);
-                        syncCtrl
-                          .openImportWindow(item.name, url)
+                        synchronizeClient
+                          .openImportWindow(item.name, data)
                           .then(() => {
                             Message.success(t("select_import_script")!);
                           })
@@ -299,22 +292,24 @@ function Tools() {
           <Title heading={6}>{t("vscode_url")}</Title>
           <Input
             ref={vscodeRef}
-            defaultValue={systemConfig.vscodeUrl}
+            value={vscodeUrl}
             onChange={(value) => {
-              systemConfig.vscodeUrl = value;
+              setVscodeUrl(value);
             }}
           />
           <Checkbox
+            checked={vscodeReconnect}
             onChange={(checked) => {
-              systemConfig.vscodeReconnect = checked;
+              setVscodeReconnect(checked);
             }}
-            defaultChecked={systemConfig.vscodeReconnect}
           >
             {t("auto_connect_vscode_service")}
           </Checkbox>
           <Button
             type="primary"
             onClick={() => {
+              systemConfig.setVscodeUrl(vscodeUrl);
+              systemConfig.setVscodeReconnect(vscodeReconnect);
               const ctrl = IoC.instance(SystemController) as SystemController;
               ctrl
                 .connectVSCode()

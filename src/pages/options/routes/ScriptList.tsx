@@ -723,7 +723,7 @@ function ScriptList() {
                           id: "export",
                           content: t("exporting"),
                         });
-                        new SynchronizeClient(message).backup(uuids).then(() => {
+                        new SynchronizeClient(message).export(uuids).then(() => {
                           Message.success({
                             id: "export",
                             content: t("export_success"),
