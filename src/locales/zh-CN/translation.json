@@ -366,5 +366,6 @@
   "script_name_cannot_be_set_to_empty": "脚本name不可以设置为空",
   "eslint_config_format_error": "eslint配置格式错误",
   "export_success": "导出成功",
-  "get_backup_dir_url_failed": "获取备份目录地址失败"
+  "get_backup_dir_url_failed": "获取备份目录地址失败",
+  "get_backup_files_failed": "获取备份文件失败"
 }

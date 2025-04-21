@@ -141,8 +141,8 @@ function Tools() {
                 loading={loading.cloud}
                 onClick={async () => {
                   setLoading((prev) => ({ ...prev, cloud: true }));
-                  let fs = await FileSystemFactory.create(fileSystemType, fileSystemParams);
                   try {
+                    let fs = await FileSystemFactory.create(fileSystemType, fileSystemParams);
                     fs = await fs.openDir("ScriptCat");
                     let list = await fs.list();
                     list.sort((a, b) => b.updatetime - a.updatetime);
