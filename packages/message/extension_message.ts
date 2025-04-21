@@ -123,9 +123,16 @@ export class ExtensionContentMessageSend extends ExtensionMessageSend {
 
   sendMessage(data: any): Promise<any> {
     return new Promise((resolve) => {
-      chrome.tabs.sendMessage(this.tabId, data, this.options || {}, (resp) => {
-        resolve(resp);
-      });
+      if (!this.options?.documentId || this.options?.frameId) {
+        // 发送给指定的tab
+        chrome.tabs.sendMessage(this.tabId, data, (resp) => {
+          resolve(resp);
+        });
+      } else {
+        chrome.tabs.sendMessage(this.tabId, data, this.options, (resp) => {
+          resolve(resp);
+        });
+      }
     });
   }
 

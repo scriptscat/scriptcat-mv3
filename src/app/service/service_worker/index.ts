@@ -39,7 +39,15 @@ export default class ServiceWorkerManager {
     const popup = new PopupService(this.api.group("popup"), this.mq, runtime);
     popup.init();
     value.init(runtime, popup);
-    const synchronize = new SynchronizeService(this.sender, this.api.group("synchronize"), value, resource);
+    const synchronize = new SynchronizeService(
+      this.sender,
+      this.api.group("synchronize"),
+      script,
+      value,
+      resource,
+      this.mq,
+      systemConfig
+    );
     synchronize.init();
 
     // 定时器处理
@@ -48,6 +56,13 @@ export default class ServiceWorkerManager {
         case "checkScriptUpdate":
           script.checkScriptUpdate();
           break;
+        case "cloudSync":
+          // 进行一次云同步
+          systemConfig.getCloudSync().then((config) => {
+            synchronize.buildFileSystem(config).then((fs) => {
+              synchronize.syncOnce(fs);
+            });
+          });
       }
     });
 
@@ -56,10 +71,14 @@ export default class ServiceWorkerManager {
       console.log("systemConfigChange", msg);
       switch (msg.key) {
         case "cloud_sync": {
-          synchronize.startCloudSync(msg.value);
+          synchronize.cloudSyncConfigChange(msg.value);
           break;
         }
       }
+    });
+    // 启动一次云同步
+    systemConfig.getCloudSync().then((config) => {
+      synchronize.cloudSyncConfigChange(config);
     });
   }
 }

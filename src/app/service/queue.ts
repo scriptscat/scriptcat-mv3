@@ -1,9 +1,10 @@
 import { MessageQueue } from "@Packages/message/message_queue";
 import { Script, SCRIPT_RUN_STATUS } from "../repo/scripts";
+import { InstallSource } from "./service_worker";
 
 export function subscribeScriptInstall(
   messageQueue: MessageQueue,
-  callback: (message: { script: Script; update: boolean }) => void
+  callback: (message: { script: Script; update: boolean; upsertBy: InstallSource }) => void
 ) {
   return messageQueue.subscribe("installScript", callback);
 }

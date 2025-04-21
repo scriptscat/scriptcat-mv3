@@ -138,7 +138,9 @@ function Tools() {
               <Button
                 key="list"
                 type="primary"
+                loading={loading.cloud}
                 onClick={async () => {
+                  setLoading((prev) => ({ ...prev, cloud: true }));
                   let fs = await FileSystemFactory.create(fileSystemType, fileSystemParams);
                   try {
                     fs = await fs.openDir("ScriptCat");
@@ -154,6 +156,7 @@ function Tools() {
                   } catch (e) {
                     Message.error(`${t("get_backup_files_failed")}: ${e}`);
                   }
+                  setLoading((prev) => ({ ...prev, cloud: false }));
                 }}
               >
                 {t("backup_list")}

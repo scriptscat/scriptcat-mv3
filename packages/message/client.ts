@@ -1,14 +1,21 @@
 import LoggerCore from "@App/app/logger/core";
 import { MessageConnect, MessageSend } from "./server";
+import Logger from "@App/app/logger/logger";
 
 export async function sendMessage(msg: MessageSend, action: string, data?: any): Promise<any> {
   const res = await msg.sendMessage({ action, data });
-  LoggerCore.getInstance().logger().trace("sendMessage", { action, data, response: res });
+  const logger = LoggerCore.getInstance().logger().with({ action, data, response: res });
+  logger.trace("sendMessage");
   if (res && res.code) {
     console.error(res);
     throw res.message;
   } else {
-    return res.data;
+    try {
+      return res.data;
+    } catch (e) {
+      logger.trace("Invalid response data", Logger.E(e));
+      return undefined;
+    }
   }
 }
 
