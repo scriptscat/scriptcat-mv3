@@ -196,33 +196,36 @@ export class RuntimeService {
     // 匹配当前页面的脚本
     const matchScriptUuid = await this.getPageScriptUuidByUrl(chromeSender.url!);
 
-    const scripts = await Promise.all(
-      matchScriptUuid.map(async (uuid): Promise<undefined | ScriptRunResouce> => {
-        const scriptRes = Object.assign({}, this.scriptMatchCache?.get(uuid));
-        // 判断脚本是否开启
-        if (scriptRes.status === SCRIPT_STATUS_DISABLE) {
+    const scripts = matchScriptUuid.map((uuid) => {
+      const scriptRes = Object.assign({}, this.scriptMatchCache?.get(uuid));
+      // 判断脚本是否开启
+      if (scriptRes.status === SCRIPT_STATUS_DISABLE) {
+        return undefined;
+      }
+      // 如果是iframe,判断是否允许在iframe里运行
+      if (chromeSender.frameId !== undefined) {
+        if (scriptRes.metadata.noframes) {
           return undefined;
         }
-        // 如果是iframe,判断是否允许在iframe里运行
-        if (chromeSender.frameId !== undefined) {
-          if (scriptRes.metadata.noframes) {
-            return undefined;
-          }
-        }
-        // 获取value
-        return scriptRes;
-      })
-    );
+      }
+      // 获取value
+      return scriptRes;
+    });
 
     const enableScript = scripts.filter((item) => item);
 
-    // 加载value
-    await Promise.all(
-      enableScript.map(async (script) => {
+    await Promise.all([
+      // 加载value
+      ...enableScript.map(async (script) => {
         const value = await this.value.getScriptValue(script!);
         script!.value = value;
-      })
-    );
+      }),
+      // 加载resource
+      ...enableScript.map(async (script) => {
+        // const resource = await this.script.buildScriptRunResource(script!);
+        // script!.resource = resource;
+      }),
+    ]);
 
     this.mq.emit("pageLoad", {
       tabId: chromeSender.tab?.id,
