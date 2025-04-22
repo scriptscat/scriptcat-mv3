@@ -59,7 +59,7 @@ export class ScriptService {
         // 读取脚本url内容, 进行安装
         const logger = this.logger.with({ url: targetUrl });
         logger.debug("install script");
-        this.openInstallPageByUrl(targetUrl).catch((e) => {
+        this.openInstallPageByUrl(targetUrl, "user").catch((e) => {
           logger.error("install script error", Logger.E(e));
           // 如果打开失败, 则重定向到安装页
           chrome.scripting.executeScript({
@@ -135,9 +135,9 @@ export class ScriptService {
     );
   }
 
-  public openInstallPageByUrl(url: string) {
+  public openInstallPageByUrl(url: string, source: InstallSource) {
     const uuid = uuidv4();
-    return fetchScriptInfo(url, "user", false, uuidv4()).then((info) => {
+    return fetchScriptInfo(url, source, false, uuidv4()).then((info) => {
       Cache.getInstance().set(CacheKey.scriptInstallInfo(uuid), info);
       setTimeout(() => {
         // 清理缓存
@@ -145,6 +145,19 @@ export class ScriptService {
       }, 30 * 1000);
       openInCurrentTab(`/src/install.html?uuid=${uuid}`);
     });
+  }
+
+  // 直接通过url静默安装脚本
+  async installByUrl(url: string, source: InstallSource, subscribeUrl?: string) {
+    const info = await fetchScriptInfo(url, source, false, uuidv4());
+    const prepareScript = await prepareScriptByCode(info.code, url, info.uuid);
+    prepareScript.script.subscribeUrl = subscribeUrl;
+    this.installScript({
+      script: prepareScript.script,
+      code: info.code,
+      upsertBy: source,
+    });
+    return Promise.resolve(prepareScript.script);
   }
 
   // 获取安装信息
@@ -330,7 +343,7 @@ export class ScriptService {
       }
       const newVersion = metadata.version && metadata.version[0];
       if (!newVersion) {
-        logger.error("parse version failed", { version: "" });
+        logger.error("parse version failed", { version: metadata.version });
         return Promise.resolve(false);
       }
       let oldVersion = script.metadata.version && script.metadata.version[0];
@@ -393,16 +406,16 @@ export class ScriptService {
       });
   }
 
-  checkScriptUpdate() {
+  async checkScriptUpdate() {
+    const checkCycle = await this.systemConfig.getCheckScriptUpdateCycle();
+    if (!checkCycle) {
+      return;
+    }
     this.scriptDAO.all().then(async (scripts) => {
-      const checkCycle = await this.systemConfig.getCheckScriptUpdateCycle();
-      if (!checkCycle) {
-        return;
-      }
-      const check = await this.systemConfig.getUpdateDisableScript();
+      const checkDisableScript = await this.systemConfig.getUpdateDisableScript();
       scripts.forEach(async (script) => {
         // 是否检查禁用脚本
-        if (!check && script.status === SCRIPT_STATUS_DISABLE) {
+        if (!checkDisableScript && script.status === SCRIPT_STATUS_DISABLE) {
           return;
         }
         // 检查是否符合

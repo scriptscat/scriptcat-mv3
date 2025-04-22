@@ -9,6 +9,7 @@ import { FileSystemType } from "@Packages/filesystem/factory";
 import { v4 as uuidv4 } from "uuid";
 import Cache from "@App/app/cache";
 import CacheKey from "@App/app/cache_key";
+import { Subscribe } from "@App/app/repo/subscribe";
 
 export class ServiceWorkerClient extends Client {
   constructor(msg: MessageSend) {
@@ -183,5 +184,27 @@ export class SynchronizeClient extends Client {
     chrome.tabs.create({
       url: `/src/import.html?uuid=${uuid}`,
     });
+  }
+}
+
+export class SubscribeClient extends Client {
+  constructor(msg: MessageSend) {
+    super(msg, "serviceWorker/subscribe");
+  }
+
+  install(subscribe: Subscribe) {
+    return this.do("install", { subscribe });
+  }
+
+  delete(url: string) {
+    return this.do("delete", { url });
+  }
+
+  checkUpdate(url: string) {
+    return this.do("checkUpdate", { url });
+  }
+
+  enable(url: string, enable: boolean) {
+    return this.do("enable", { url, enable });
   }
 }

@@ -13,11 +13,13 @@ import {
   PopupClient,
   RuntimeClient,
   ScriptClient,
+  SubscribeClient,
   ValueClient,
 } from "@App/app/service/service_worker/client";
 import { message } from "../global";
 
 export const scriptClient = new ScriptClient(message);
+export const subscribeClient = new SubscribeClient(message);
 export const runtimeClient = new RuntimeClient(message);
 export const popupClient = new PopupClient(message);
 export const permissionClient = new PermissionClient(message);

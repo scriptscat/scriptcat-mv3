@@ -7,7 +7,7 @@ import { i18nDescription, i18nName } from "@App/locales/locales";
 import { useTranslation } from "react-i18next";
 import { prepareScriptByCode, prepareSubscribeByCode, ScriptInfo } from "@App/pkg/utils/script";
 import { nextTime } from "@App/pkg/utils/utils";
-import { scriptClient } from "../store/features/script";
+import { scriptClient, subscribeClient } from "../store/features/script";
 
 type Permission = { label: string; color?: string; value: string[] }[];
 
@@ -253,18 +253,18 @@ function App() {
                         return;
                       }
                       if (scriptInfo?.userSubscribe) {
-                        // subscribeCtrl
-                        //   .upsert(upsertScript as Subscribe)
-                        //   .then(() => {
-                        //     Message.success(t("subscribe_success")!);
-                        //     setBtnText(t("subscribe_success")!);
-                        //     setTimeout(() => {
-                        //       closeWindow();
-                        //     }, 200);
-                        //   })
-                        //   .catch((e) => {
-                        //     Message.error(`${t("subscribe_failed")}: ${e}`);
-                        //   });
+                        subscribeClient
+                          .install(upsertScript as Subscribe)
+                          .then(() => {
+                            Message.success(t("subscribe_success")!);
+                            setBtnText(t("subscribe_success")!);
+                            setTimeout(() => {
+                              closeWindow();
+                            }, 500);
+                          })
+                          .catch((e) => {
+                            Message.error(`${t("subscribe_failed")}: ${e}`);
+                          });
                         return;
                       }
                       scriptClient

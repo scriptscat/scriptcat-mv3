@@ -12,7 +12,6 @@ export interface SubscribeScript {
 }
 
 export interface Subscribe {
-  id: number;
   url: string;
   name: string;
   code: string;
@@ -31,6 +30,10 @@ export class SubscribeDAO extends Repo<Subscribe> {
   }
 
   public findByUrl(url: string) {
-    return this.findOne((key, value) => value.url === url);
+    return this.get(url);
+  }
+
+  public save(val: Subscribe) {
+    return super._save(val.url, val);
   }
 }

@@ -8,6 +8,7 @@ import { ServiceWorkerMessageSend } from "@Packages/message/window_message";
 import { PopupService } from "./popup";
 import { SystemConfig } from "@App/pkg/config/config";
 import { SynchronizeService } from "./synchronize";
+import { SubscribeService } from "./subscribe";
 
 export type InstallSource = "user" | "system" | "sync" | "subscribe" | "vscode";
 
@@ -49,6 +50,8 @@ export default class ServiceWorkerManager {
       systemConfig
     );
     synchronize.init();
+    const subscribe = new SubscribeService(systemConfig, this.api.group("subscribe"), this.mq, script);
+    subscribe.init();
 
     // 定时器处理
     chrome.alarms.onAlarm.addListener((alarm) => {
@@ -63,6 +66,10 @@ export default class ServiceWorkerManager {
               synchronize.syncOnce(fs);
             });
           });
+          break;
+        case "checkSubscribeUpdate":
+          subscribe.checkSubscribeUpdate();
+          break;
       }
     });
 

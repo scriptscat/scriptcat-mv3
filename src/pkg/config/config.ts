@@ -65,7 +65,9 @@ export class SystemConfig {
 
   public set(key: string, val: any) {
     this.cache.set(key, val);
-    this.storage.set(key, val);
+    this.storage.set(key, val).then(() => {
+      console.log(chrome.runtime.lastError, val);
+    });
     // 发送消息通知更新
     this.mq.publish(SystamConfigChange, {
       key,

@@ -1,6 +1,7 @@
 import { MessageQueue } from "@Packages/message/message_queue";
 import { Script, SCRIPT_RUN_STATUS } from "../repo/scripts";
 import { InstallSource } from "./service_worker";
+import { Subscribe } from "../repo/subscribe";
 
 export function subscribeScriptInstall(
   messageQueue: MessageQueue,
@@ -11,6 +12,17 @@ export function subscribeScriptInstall(
 
 export function subscribeScriptDelete(messageQueue: MessageQueue, callback: (message: { uuid: string }) => void) {
   return messageQueue.subscribe("deleteScript", callback);
+}
+
+export function subscribeSubscribeInstall(
+  messageQueue: MessageQueue,
+  callback: (message: { subscribe: Subscribe; update: boolean }) => void
+) {
+  return messageQueue.subscribe("installSubscribe", callback);
+}
+
+export function publishSubscribeInstall(messageQueue: MessageQueue, message: { subscribe: Subscribe }) {
+  return messageQueue.publish("installSubscribe", message);
 }
 
 export type ScriptEnableCallbackValue = { uuid: string; enable: boolean };
