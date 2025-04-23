@@ -2,7 +2,6 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import LoggerCore from "@App/app/logger/core.ts";
-import migrate from "@App/app/migrate.ts";
 import { LoggerDAO } from "@App/app/repo/logger.ts";
 import DBWriter from "@App/app/logger/db_writer.ts";
 import "@arco-design/web-react/dist/css/arco.css";
@@ -12,8 +11,6 @@ import "./index.css";
 import { Provider } from "react-redux";
 import { store } from "../store/store.ts";
 
-// 初始化数据库
-migrate();
 // 初始化日志组件
 const loggerCore = new LoggerCore({
   writer: new DBWriter(new LoggerDAO()),

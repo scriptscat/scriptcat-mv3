@@ -1,8 +1,9 @@
 import { db } from "./repo/dao";
-import { Script } from "./repo/scripts";
+import { Script, ScriptAndCode, ScriptCodeDAO, ScriptDAO } from "./repo/scripts";
+import { Subscribe, SubscribeDAO } from "./repo/subscribe";
 
 // 0.10.0重构,重命名字段,统一使用小峰驼
-function renameField(): void {
+function renameField() {
   db.version(16)
     .stores({
       scripts:
@@ -33,9 +34,100 @@ function renameField(): void {
     export: "++id,&scriptId",
   });
   // 将脚本数据迁移到chrome.storage
-  // db.version(18)
-  //   .stores({})
-  //   .upgrade((tx) => {});
+  db.version(18).upgrade(async (tx) => {
+    // 迁移脚本
+    const scripts = await tx.table("scripts").toArray();
+    const scriptDAO = new ScriptDAO();
+    const scriptCodeDAO = new ScriptCodeDAO();
+    await Promise.all(
+      scripts.map((script: ScriptAndCode) => {
+        const {
+          uuid,
+          name,
+          namespace,
+          author,
+          originDomain,
+          subscribeUrl,
+          type,
+          sort,
+          status,
+          runStatus,
+          metadata,
+          createtime,
+          checktime,
+          code,
+        } = script;
+        return scriptDAO
+          .save({
+            uuid,
+            name,
+            namespace,
+            author,
+            originDomain,
+            subscribeUrl,
+            type,
+            sort,
+            status,
+            runStatus,
+            metadata,
+            createtime,
+            checktime,
+          })
+          .then((s) =>
+            scriptCodeDAO.save({
+              uuid: s.uuid,
+              code,
+            })
+          );
+      })
+    );
+    // 迁移订阅
+    const subscribe = await tx.table("subscribe").toArray();
+    const subscribeDAO = new SubscribeDAO();
+    await Promise.all(
+      subscribe.map((s: Subscribe) => {
+        const { url, name, code, author, scripts, metadata, status, createtime, updatetime, checktime } = s;
+        return subscribeDAO.save({
+          url,
+          name,
+          code,
+          author,
+          scripts,
+          metadata,
+          status,
+          createtime,
+          updatetime,
+          checktime,
+        });
+      })
+    );
+    // 迁移value
+    interface MV2Value {
+      id: number;
+      scriptId: number;
+      storageName?: string;
+      key: string;
+      value: any;
+      createtime: number;
+      updatetime: number;
+    }
+    const values = await tx.table("value").toArray();
+    const valueDAO = new ScriptCodeDAO();
+    await Promise.all(
+      values.map((v) => {
+        const { scriptId, storageName, key, value, createtime } = v;
+        return valueDAO.save({
+          scriptId,
+          storageName,
+          key,
+          value,
+          createtime,
+        });
+      })
+    );
+    // 迁移permission
+  });
+  return db.open();
 }
 
 export default function migrate() {
@@ -90,7 +182,8 @@ export default function migrate() {
       value: "++id,scriptId,storageName,key,createtime",
     })
     .upgrade((tx) => {
-      tx.table("value")
+      return tx
+        .table("value")
         .toCollection()
         .modify((value) => {
           if (value.namespace) {
@@ -112,5 +205,5 @@ export default function migrate() {
     permission: "++id,scriptId,[scriptId+permission+permissionValue],createtime,updatetime",
   });
   // 使用小峰驼统一命名规范
-  renameField();
+  return renameField();
 }

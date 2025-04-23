@@ -1,5 +1,4 @@
 import ServiceWorkerManager from "./app/service/service_worker";
-import migrate from "./app/migrate";
 import LoggerCore from "./app/logger/core";
 import DBWriter from "./app/logger/db_writer";
 import { LoggerDAO } from "./app/repo/logger";
@@ -7,8 +6,8 @@ import { ExtensionMessage } from "@Packages/message/extension_message";
 import { Server } from "@Packages/message/server";
 import { MessageQueue } from "@Packages/message/message_queue";
 import { ServiceWorkerMessageSend } from "@Packages/message/window_message";
+import migrate from "./app/migrate";
 
-// 初始化数据库
 migrate();
 
 const OFFSCREEN_DOCUMENT_PATH = "src/offscreen.html";
