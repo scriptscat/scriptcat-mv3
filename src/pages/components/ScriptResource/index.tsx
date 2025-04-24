@@ -33,7 +33,6 @@ const ScriptResource: React.FC<{
 }> = ({ script, visible, onCancel, onOk }) => {
   const [data, setData] = useState<ResourceListItem[]>([]);
   const inputRef = useRef<RefInputType>(null);
-  // const resourceCtrl = IoC.instance(ResourceController) as ResourceController;
   const { t } = useTranslation();
 
   useEffect(() => {

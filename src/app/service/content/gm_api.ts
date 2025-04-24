@@ -391,7 +391,7 @@ export default class GMApi {
       anonymous: details.anonymous,
       user: details.user,
       password: details.password,
-      maxRedirects: details.maxRedirects,
+      redirect: details.redirect,
     };
     if (!param.headers) {
       param.headers = {};
