@@ -72,6 +72,10 @@ export class ResourceClient extends Client {
   getScriptResources(script: Script): Promise<{ [key: string]: Resource }> {
     return this.do("getScriptResources", script);
   }
+
+  deleteResource(url: string) {
+    return this.do("deleteResource", url);
+  }
 }
 
 export class ValueClient extends Client {
@@ -79,7 +83,7 @@ export class ValueClient extends Client {
     super(msg, "serviceWorker/value");
   }
 
-  getScriptValue(script: Script) {
+  getScriptValue(script: Script): Promise<{ [key: string]: any }> {
     return this.do("getScriptValue", script);
   }
 

@@ -1,15 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Script } from "@App/app/repo/scripts";
-import {
-  Space,
-  Popconfirm,
-  Button,
-  Divider,
-  Typography,
-  Modal,
-  Input,
-} from "@arco-design/web-react";
+import { Script, ScriptDAO } from "@App/app/repo/scripts";
+import { Space, Popconfirm, Button, Divider, Typography, Modal, Input } from "@arco-design/web-react";
 import Table, { ColumnProps } from "@arco-design/web-react/es/Table";
 import { IconDelete } from "@arco-design/web-react/icon";
 
@@ -25,7 +17,7 @@ type MatchItem = {
 const Match: React.FC<{
   script: Script;
 }> = ({ script }) => {
-  // const scriptCtrl = IoC.instance(ScriptController) as ScriptController;
+  const scriptDAO = new ScriptDAO();
   const [match, setMatch] = useState<MatchItem[]>([]);
   const [exclude, setExclude] = useState<MatchItem[]>([]);
   const [matchValue, setMatchValue] = useState<string>("");
@@ -37,7 +29,7 @@ const Match: React.FC<{
   useEffect(() => {
     if (script) {
       // 从数据库中获取是简单处理数据一致性的问题
-      scriptCtrl.scriptDAO.findById(script.id).then((res) => {
+      scriptDAO.get(script.uuid).then((res) => {
         if (!res) {
           return;
         }
@@ -68,8 +60,7 @@ const Match: React.FC<{
         });
         setMatch(v);
 
-        const excludeArr =
-          res.selfMetadata?.exclude || res.metadata.exclude || [];
+        const excludeArr = res.selfMetadata?.exclude || res.metadata.exclude || [];
         const excludeMap = new Map<string, boolean>();
         res.metadata.exclude?.forEach((m) => {
           excludeMap.set(m, true);
@@ -125,9 +116,7 @@ const Match: React.FC<{
           return (
             <Space>
               <Popconfirm
-                title={`${t("confirm_delete_exclude")}${
-                  item.hasMatch ? ` ${t("after_deleting_match_item")}` : ""
-                }`}
+                title={`${t("confirm_delete_exclude")}${item.hasMatch ? ` ${t("after_deleting_match_item")}` : ""}`}
                 onOk={() => {
                   exclude.splice(exclude.indexOf(item), 1);
                   scriptCtrl
@@ -159,9 +148,7 @@ const Match: React.FC<{
         return (
           <Space>
             <Popconfirm
-              title={`${t("confirm_delete_match")}${
-                item.self ? "" : ` ${t("after_deleting_exclude_item")}`
-              }`}
+              title={`${t("confirm_delete_match")}${item.self ? "" : ` ${t("after_deleting_exclude_item")}`}`}
               onOk={() => {
                 match.splice(match.indexOf(item), 1);
                 scriptCtrl

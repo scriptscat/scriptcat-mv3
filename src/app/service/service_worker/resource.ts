@@ -305,7 +305,12 @@ export class ResourceService {
     return { url: urls[0], hash };
   }
 
+  deleteResource(url: string) {
+    return this.resourceDAO.delete(url);
+  }
+
   init() {
     this.group.on("getScriptResources", this.getScriptResources.bind(this));
+    this.group.on("deleteResource", this.deleteResource.bind(this));
   }
 }

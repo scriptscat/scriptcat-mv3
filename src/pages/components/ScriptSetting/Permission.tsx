@@ -19,9 +19,6 @@ import { IconDelete } from "@arco-design/web-react/icon";
 const PermissionManager: React.FC<{
   script: Script;
 }> = ({ script }) => {
-  // const permissionCtrl = IoC.instance(
-  //   PermissionController
-  // ) as PermissionController;
   const [permission, setPermission] = useState<Permission[]>([]);
   const [permissionVisible, setPermissionVisible] = useState<boolean>(false);
   const [permissionValue, setPermissionValue] = useState<Permission>();

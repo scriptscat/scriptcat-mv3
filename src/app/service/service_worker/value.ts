@@ -42,6 +42,7 @@ export class ValueService {
     const storageName = getStorageName(script);
     let oldValue;
     // 使用事务来保证数据一致性
+    console.log("setValue", key, value);
     await Cache.getInstance().tx("setValue:" + storageName, async () => {
       const valueModel = await this.valueDAO.get(storageName);
       if (!valueModel) {
@@ -54,7 +55,11 @@ export class ValueService {
         });
       } else {
         oldValue = valueModel.data[key];
-        valueModel.data[key] = value;
+        if (value === undefined) {
+          delete valueModel.data[key];
+        } else {
+          valueModel.data[key] = value;
+        }
         await this.valueDAO.save(storageName, valueModel);
       }
       return true;

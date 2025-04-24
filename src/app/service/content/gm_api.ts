@@ -159,10 +159,11 @@ export default class GMApi {
     }
     if (value === undefined) {
       delete this.scriptRes.value[key];
+      return this.sendMessage("GM_setValue", [key]);
     } else {
       this.scriptRes.value[key] = value;
+      return this.sendMessage("GM_setValue", [key, value]);
     }
-    return this.sendMessage("GM_setValue", [key, value]);
   }
 
   @GMContext.API({ depend: ["GM_setValue"] })
