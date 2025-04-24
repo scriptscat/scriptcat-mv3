@@ -48,14 +48,14 @@ async function setupOffscreenDocument() {
 }
 
 async function main() {
+  // 初始化管理器
+  const message = new ExtensionMessage(true);
   // 初始化日志组件
   const loggerCore = new LoggerCore({
     writer: new DBWriter(new LoggerDAO()),
     labels: { env: "service_worker" },
   });
   loggerCore.logger().debug("service worker start");
-  // 初始化管理器
-  const message = new ExtensionMessage(true);
   const server = new Server("serviceWorker", message);
   const messageQueue = new MessageQueue();
   const manager = new ServiceWorkerManager(server, messageQueue, new ServiceWorkerMessageSend());
