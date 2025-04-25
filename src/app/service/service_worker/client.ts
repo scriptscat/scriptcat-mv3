@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from "uuid";
 import Cache from "@App/app/cache";
 import CacheKey from "@App/app/cache_key";
 import { Subscribe } from "@App/app/repo/subscribe";
+import { Permission } from "@App/app/repo/permission";
 
 export class ServiceWorkerClient extends Client {
   constructor(msg: MessageSend) {
@@ -57,6 +58,16 @@ export class ScriptClient extends Client {
 
   excludeUrl(uuid: string, url: string, remove: boolean) {
     return this.do("excludeUrl", { uuid, url, remove });
+  }
+
+  // 重置匹配项
+  resetMatch(uuid: string, match: string[] | undefined) {
+    return this.do("resetMatch", { uuid, match });
+  }
+
+  // 重置排除项
+  resetExclude(uuid: string, exclude: string[] | undefined) {
+    return this.do("resetExclude", { uuid, exclude });
   }
 
   requestCheckUpdate(uuid: string) {
@@ -157,6 +168,22 @@ export class PermissionClient extends Client {
 
   getPermissionInfo(uuid: string): ReturnType<PermissionVerify["getInfo"]> {
     return this.do("getInfo", uuid);
+  }
+
+  deletePermission(uuid: string, permission: string, permissionValue: string) {
+    return this.do("deletePermission", { uuid, permission, permissionValue });
+  }
+
+  getScriptPermissions(uuid: string): ReturnType<PermissionVerify["getScriptPermissions"]> {
+    return this.do("getScriptPermissions", uuid);
+  }
+
+  addPermission(permission: Permission) {
+    return this.do("addPermission", permission);
+  }
+
+  resetPermission(uuid: string) {
+    return this.do("resetPermission", uuid);
   }
 }
 

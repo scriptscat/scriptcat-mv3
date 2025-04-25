@@ -305,7 +305,15 @@ export class ResourceService {
     return { url: urls[0], hash };
   }
 
-  deleteResource(url: string) {
+  async deleteResource(url: string) {
+    // 删除缓存
+    const res = await this.resourceDAO.get(url);
+    if (!res) {
+      throw new Error("resource not found");
+    }
+    Object.keys(res.link).forEach((key) => {
+      this.cache.delete(key);
+    });
     return this.resourceDAO.delete(url);
   }
 
