@@ -17,6 +17,8 @@ import { useTranslation } from "react-i18next";
 import ScriptMenuList from "../components/ScriptMenuList";
 import { popupClient } from "../store/features/script";
 import { ScriptMenu } from "@App/app/service/service_worker/popup";
+import { systemConfig } from "../store/global";
+import { SystemConfig } from "@App/pkg/config/config";
 
 const CollapseItem = Collapse.Item;
 
@@ -30,9 +32,11 @@ function App() {
   const [scriptList, setScriptList] = useState<ScriptMenu[]>([]);
   const [backScriptList, setBackScriptList] = useState<ScriptMenu[]>([]);
   const [showAlert, setShowAlert] = useState(false);
-  const [notice, setNotice] = useState("");
-  const [isRead, setIsRead] = useState(true);
-  const [version, setVersion] = useState(ExtVersion);
+  const [checkUpdate, setCheckUpdate] = useState<Parameters<typeof systemConfig.setCheckUpdate>[0]>({
+    version: ExtVersion,
+    notice: "",
+    isRead: false,
+  });
   const [currentUrl, setCurrentUrl] = useState("");
   const [isEnableScript, setIsEnableScript] = useState(localStorage.enable_script !== "false");
   const { t } = useTranslation();
@@ -45,22 +49,15 @@ function App() {
   }
 
   useEffect(() => {
-    // systemManage.getNotice().then((res) => {
-    //   if (res) {
-    //     setNotice(res.notice);
-    //     setIsRead(res.isRead);
-    //   }
-    // });
-    // systemManage.getVersion().then((res) => {
-    //   res && setVersion(res);
-    // });
+    systemConfig.getCheckUpdate().then((res) => {
+      setCheckUpdate(res);
+    });
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (!tabs.length) {
         return;
       }
       setCurrentUrl(tabs[0].url || "");
       popupClient.getPopupData({ url: tabs[0].url!, tabId: tabs[0].id! }).then((resp) => {
-        console.log(resp);
         // 按照开启状态和更新时间排序
         const list = resp.scriptList;
         list.sort((a, b) => {
@@ -109,15 +106,17 @@ function App() {
                 window.open("/src/options.html", "_blank");
               }}
             />
-            <Badge count={isRead ? 0 : 1} dot offset={[-8, 6]}>
+            <Badge count={checkUpdate.isRead ? 0 : 1} dot offset={[-8, 6]}>
               <Button
                 type="text"
                 icon={<IconNotification />}
                 iconOnly
                 onClick={() => {
                   setShowAlert(!showAlert);
-                  setIsRead(true);
-                  systemManage.setRead(true);
+                  console.log(checkUpdate);
+                  checkUpdate.isRead = true;
+                  setCheckUpdate(checkUpdate);
+                  systemConfig.setCheckUpdate(checkUpdate);
                 }}
               />
             </Badge>
@@ -179,9 +178,9 @@ function App() {
       bodyStyle={{ padding: 0 }}
     >
       <Alert
-        style={{ marginBottom: 20, display: showAlert ? "flex" : "none" }}
+        style={{ display: showAlert ? "flex" : "none" }}
         type="info"
-        content={<div dangerouslySetInnerHTML={{ __html: notice }} />}
+        content={<div dangerouslySetInnerHTML={{ __html: checkUpdate.notice || "" }} />}
       />
       <Collapse bordered={false} defaultActiveKey={["script", "background"]} style={{ maxWidth: 640 }}>
         <CollapseItem
@@ -204,7 +203,7 @@ function App() {
       </Collapse>
       <div className="flex flex-row arco-card-header !h-6">
         <span className="text-[12px] font-500">{`v${ExtVersion}`}</span>
-        {semver.lt(ExtVersion, version) && (
+        {semver.lt(ExtVersion, checkUpdate.version) && (
           <span
             onClick={() => {
               window.open(`https://github.com/scriptscat/scriptcat/releases/tag/v${version}`);

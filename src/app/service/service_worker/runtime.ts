@@ -15,7 +15,7 @@ import { subscribeScriptDelete, subscribeScriptEnable, subscribeScriptInstall } 
 import { ScriptService } from "./script";
 import { runScript, stopScript } from "../offscreen/client";
 import { getRunAt } from "./utils";
-import { randomString } from "@App/pkg/utils/utils";
+import { isUserScriptsAvailable, randomString } from "@App/pkg/utils/utils";
 import Cache from "@App/app/cache";
 import { dealPatternMatches, UrlMatch } from "@App/pkg/utils/match";
 import { ExtensionContentMessageSend } from "@Packages/message/extension_message";
@@ -70,6 +70,11 @@ export class RuntimeService {
     this.group.on("runScript", this.runScript.bind(this));
     this.group.on("pageLoad", this.pageLoad.bind(this));
 
+    // 检查是否开启了开发者模式
+    if(!isUserScriptsAvailable()){
+        // 未开启加上警告引导
+
+    }
     // 读取inject.js注入页面
     this.registerInjectScript();
     // 监听脚本开启
