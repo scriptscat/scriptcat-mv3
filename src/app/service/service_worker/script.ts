@@ -21,7 +21,7 @@ import { ResourceService } from "./resource";
 import { ValueService } from "./value";
 import { compileScriptCode } from "../content/utils";
 import { SystemConfig } from "@App/pkg/config/config";
-import i18n from "@App/locales/locales";
+import i18n, { localePath } from "@App/locales/locales";
 
 export class ScriptService {
   logger: Logger;
@@ -109,10 +109,6 @@ export class ScriptService {
       }
     );
     // 获取i18n
-    let localePath = "";
-    if (i18n.language !== "zh-CN") {
-      localePath = `/en`;
-    }
     // 重定向到脚本安装页
     chrome.declarativeNetRequest.updateDynamicRules(
       {

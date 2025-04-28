@@ -266,7 +266,6 @@ export function errorMsg(e: any): string {
 }
 
 export function isUserScriptsAvailable() {
-  return false;
   try {
     // Property access which throws if developer mode is not enabled.
     chrome.userScripts;
